@@ -4,29 +4,33 @@ from io import BytesIO
 
 import matplotlib.pyplot as plt
 import numpy as np
-from spdm.core.path import update_tree, merge_tree
-from spdm.core.Expression import Expression
-from spdm.core.Signal import Signal
-from spdm.core.Field import Field
-from spdm.core.Function import Function
-from spdm.geometry.BBox import BBox
-from spdm.geometry.Circle import Circle
-from spdm.geometry.Curve import Curve
-from spdm.geometry.GeoObject import GeoObject
-from spdm.geometry.Line import Line
-from spdm.geometry.Point import Point
-from spdm.geometry.PointSet import PointSet
-from spdm.geometry.polygon import Polygon, Rectangle
-from spdm.geometry.Polyline import Polyline
-from spdm.utils.envs import SP_DEBUG
-from spdm.utils.logger import SP_DEBUG, logger
-from spdm.utils.tags import _not_found_
-from spdm.utils.typing import array_type, as_array, is_array, is_scalar
-from spdm.view.View import View
+
+from ..core.path import update_tree, merge_tree
+from ..core.expression import Expression
+from ..core.signal import Signal
+from ..core.field import Field
+from ..core.function import Function
+
+from ..geometry.bbox import BBox
+from ..geometry.circle import Circle
+from ..geometry.curve import Curve
+from ..geometry.geo_object import GeoObject
+from ..geometry.line import Line
+from ..geometry.point import Point
+from ..geometry.point_set import PointSet
+from ..geometry.polygon import Polygon, Rectangle
+from ..geometry.polyline import Polyline
+
+from ..utils.envs import SP_DEBUG
+from ..utils.logger import SP_DEBUG, logger
+from ..utils.tags import _not_found_
+from ..utils.typing import array_type, as_array, is_array, is_scalar
+
+from .sp_view import SpView
 
 
-@View.register(["matplotlib"])
-class MatplotlibView(View):
+@SpView.register(["matplotlib"])
+class MatplotlibView(SpView):
     backend = "matplotlib"
 
     def __init__(self, *args, **kwargs) -> None:

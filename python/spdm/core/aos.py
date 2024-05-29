@@ -6,12 +6,11 @@ from copy import deepcopy
 
 from typing_extensions import Self
 
-from spdm.core.HTree import HTree, HTreeNode
-from spdm.utils.tags import _not_found_
 
 from .entry import Entry
-from .htree import HTree, List, Dict
+from .htree import HTree, List, Dict, HTreeNode
 from .path import Path, PathLike, as_path, OpTags, update_tree, merge_tree
+
 from ..utils.tags import _not_found_, _undefined_
 from ..utils.typing import array_type, get_args, get_type_hint
 from ..utils.logger import logger

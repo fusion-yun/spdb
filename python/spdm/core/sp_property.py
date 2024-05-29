@@ -50,7 +50,7 @@ from enum import Enum
 from typing_extensions import Self
 
 from .entry import Entry
-from .AoS import AoS
+from .aos import AoS
 from .htree import HTree, Dict, List, HTreeNode
 from .path import update_tree, merge_tree, Path
 from .expression import Expression

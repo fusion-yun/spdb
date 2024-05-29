@@ -16,7 +16,7 @@ import os
 #  报错 : AttributeError: module 'matplotlib' has no attribute 'colors'. Did you mean: 'colormaps'?
 
 
-class View(Pluggable):
+class SpView(Pluggable):
     """Abstract class for all views"""
 
     _plugin_registry = {}
@@ -44,8 +44,8 @@ class View(Pluggable):
     #     super().__dispatch_init__(_backend_type, self, *args, **kwargs)
 
     def __init__(self, *args, **kwargs) -> None:
-        if self.__class__ is View:
-            View.__dispatch_init__(kwargs.pop("backend", None), self, *args, **kwargs)
+        if self.__class__ is SpView:
+            SpView.__dispatch_init__(kwargs.pop("backend", None), self, *args, **kwargs)
             return
 
     @property
@@ -71,7 +71,7 @@ def viewer(backend=None):
     instance = _view_instances.get(backend, None)
 
     if instance is None:
-        instance = _view_instances[backend] = View(backend=backend)
+        instance = _view_instances[backend] = SpView(backend=backend)
 
     return instance
 

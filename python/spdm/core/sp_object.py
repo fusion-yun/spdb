@@ -1,5 +1,5 @@
 import uuid
-from ..view import View as sp_view
+from ..view import sp_view as sp_view
 
 from .pluggable import Pluggable
 from .sp_property import SpTree
@@ -25,3 +25,6 @@ class SpObject(SpTree, Pluggable):
     @property
     def uid(self) -> uuid.UUID:
         return self._uid
+
+    def _plugin_path(self) -> str:
+        return self.__module__ + "." + self.__class__.__name__

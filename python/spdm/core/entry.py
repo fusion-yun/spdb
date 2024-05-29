@@ -377,7 +377,7 @@ def _open_entry(entry: str | URITuple | pathlib.Path | Entry, mapping_files=None
 
     if new_url.protocol.startswith(("local+", "file+")):  # or (new_url.protocol == "" and new_url.path != ""):
         # 单一文件不进行 schema 检查，直接读取。因为schema转换在文件plugin中进行。
-        from .File import File
+        from .file import File
 
         entry = File(new_url, **query).read()
     elif new_url.protocol.startswith(("http", "https", "ssh")):
@@ -460,7 +460,7 @@ def open_entry(entry, local_schema=None, **kwargs) -> Entry:
     # #     return EntryProxy(local_schema=local_schema, global_schema=global_schema, ** kwargs)
 
     # if url.protocol in ["file", "local", "", None]:
-    #     from .File import File
+    #     from .file import File
     #     return File(url, *args, **kwargs).read()
 
     # elif url.protocol in ["https", "http"]:
@@ -619,7 +619,7 @@ class EntryProxy(Entry):
         **kwargs,
     ):
         """检索并导入 mapping files"""
-        from .File import File
+        from .file import File
 
         if len(EntryProxy._mapping_path) == 0:
             EntryProxy._mapping_path.extend(
