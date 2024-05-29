@@ -13,6 +13,7 @@ from .htree import HTreeNode
 from .time_series import TimeSeriesAoS, TimeSlice
 from .edge import InPorts, OutPorts
 from .sp_object import SpObject
+from .sp_property import sp_property
 
 
 class Actor(SpObject):
@@ -29,6 +30,11 @@ class Actor(SpObject):
         self._inports = InPorts(self)
         self._outports = OutPorts(self)
 
+    time_slice: TimeSeriesAoS[TimeSlice] = sp_property()
+    """时间片序列，保存 Actor 历史状态。
+        @note: TimeSeriesAoS 长度为 n(=3) 循环队列。当压入序列的 TimeSlice 数量超出 n 时，会调用 TimeSeriesAoS.__full__(first_slice)
+        """
+
     @property
     def inports(self) -> InPorts:
         """输入的 Edge，记录对其他 Actor 的依赖。"""
@@ -42,12 +48,7 @@ class Actor(SpObject):
     def connect(self, **kwargs):
         return self._inports.connect(**kwargs)
 
-    @property
-    def time_slice(self) -> TimeSeriesAoS[TimeSlice]:
-        """时间片序列，保存 Actor 历史状态。
-        @note: TimeSeriesAoS 长度为 n(=3) 循环队列。当压入序列的 TimeSlice 数量超出 n 时，会调用 TimeSeriesAoS.__full__(first_slice)
-        """
-        return self.get_cache("time_slice", TimeSeriesAoS[TimeSlice](self))
+    # return self.get_cache("time_slice", TimeSeriesAoS[TimeSlice](self))
 
     @property
     def current(self) -> typing.Type[TimeSlice]:
