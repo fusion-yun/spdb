@@ -1,4 +1,4 @@
-from spdm.core.Path import Path
+from spdm.core.path import Path
 from spdm.utils.logger import logger
 
 

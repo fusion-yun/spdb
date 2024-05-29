@@ -1,7 +1,7 @@
 import unittest
 from copy import deepcopy
 import pprint
-from spdm.core.Path import Path
+from spdm.core.path import Path
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 

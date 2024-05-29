@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 from scipy import constants
-from spdm.core.Expression import Expression, Variable, derivative, antiderivative
-from spdm.core.Function import Function
+from spdm.core.expression import Expression, Variable, derivative, antiderivative
+from spdm.core.function import Function
 from spdm.utils.logger import logger
 
 TWOPI = constants.pi * 2.0

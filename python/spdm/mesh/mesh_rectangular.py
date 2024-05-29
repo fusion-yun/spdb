@@ -1,4 +1,4 @@
-from .Mesh import Mesh
+from .mesh import Mesh
 from ..utils.typing import ArrayType
 from .mesh_rectilinear import RectilinearMesh
 

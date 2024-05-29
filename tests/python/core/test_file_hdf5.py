@@ -5,7 +5,7 @@ import unittest
 
 import h5py
 import numpy as np
-from spdm.data import File
+from spdm.core.file import File
 from spdm.utils.logger import logger
 
 SP_TEST_DATA_DIRECTORY = pathlib.Path("../data")

@@ -3,7 +3,7 @@ import typing
 import unittest
 from copy import deepcopy
 
-from spdm.core.HTree import Dict, HTree, List, HTreeNode
+from spdm.core.htree import Dict, HTree, List, HTreeNode
 from spdm.utils.logger import logger
 from spdm.utils.tags import _undefined_
 from spdm.utils.typing import as_value

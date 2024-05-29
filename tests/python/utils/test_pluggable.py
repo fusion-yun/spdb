@@ -1,10 +1,11 @@
 import unittest
 from copy import deepcopy
 
-from spdm.core.Path import Path
+from spdm.core.path import Path
+from spdm.core.pluggable import Pluggable
+
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.utils.pluggable import Pluggable
 import typing
 
 

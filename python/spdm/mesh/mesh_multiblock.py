@@ -2,9 +2,9 @@ import typing
 
 from numpy.typing import ArrayLike, NDArray
 
-from ..core.Container import Container
-from ..core.Function import Function
-from .Mesh import Mesh
+from ..core.container import Container
+from ..core.function import Function
+from .mesh import Mesh
 
 
 class MultiBlockMesh(Container[Mesh]):

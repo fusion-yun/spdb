@@ -14,12 +14,12 @@ from lxml.etree import Element as Element
 
 from lxml.etree import fromstring, tostring
 from lxml.etree import parse as parse_xml
-from spdm.core.Entry import Entry
-from spdm.core.File import File
-from spdm.core.Path import Path, PathLike
+from spdm.core.entry import Entry
+from spdm.core.file import File
+from spdm.core.path import Path, PathLike
 from spdm.utils.logger import logger
 from spdm.utils.misc import normalize_path, serialize
-from spdm.utils.PathTraverser import PathTraverser
+from spdm.utils.path_traverser import PathTraverser
 from spdm.utils.tags import _not_found_, _undefined_
 from spdm.utils.tree_utils import format_string_recursive
 

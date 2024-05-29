@@ -16,7 +16,7 @@ from .tags import _not_found_
 class Pluggable(metaclass=abc.ABCMeta):
     """Factory class to create objects from a registry."""
 
-    _plugin_prefix = __package__
+    _plugin_prefix = None
     _plugin_registry = {}
 
     @classmethod
@@ -53,6 +53,10 @@ class Pluggable(metaclass=abc.ABCMeta):
                 return o_cls
 
             return decorator
+
+    @classmethod
+    def plugin_tag(cls) -> str:
+        return f"{cls._plugin_prefix}{cls.__name__.lower()}"
 
     @classmethod
     def _plugin_guess_name(cls, self, *args, **kwargs) -> str | None:

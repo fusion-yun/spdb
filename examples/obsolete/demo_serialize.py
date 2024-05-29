@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     sys.path.append("/home/salmon/workspace/SpDev/SpDB")
 
-    from spdm.core.File import File
+    from spdm.core.file import File
     from ..util.logger import logger
 
     fp = File("/home/salmon/workspace/SpDev/SpDB/examples/data/FuYun/modules/physics/genray/template/g063982.04800",

@@ -1,7 +1,7 @@
 
 import sys
 
-from spdm.core.File import File
+from spdm.core.file import File
 from ..util.logger import logger
 
 if __name__ == '__main__':

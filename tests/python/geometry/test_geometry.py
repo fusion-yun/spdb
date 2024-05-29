@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from scipy import constants
 from spdm.utils.logger import logger
-from spdm.geometry.GeoObject import GeoObject
+from spdm.geometry.geo_object import GeoObject
 
 
 class TestMesh(unittest.TestCase):
@@ -14,11 +14,11 @@ class TestMesh(unittest.TestCase):
         p1 = (1, 1)
         gobj = GeoObject(p0, p1, type="line")
         self.assertEqual(type(gobj).__name__, "Line")
-        from spdm.geometry.Line import Line
+        from spdm.geometry.line import Line
         self.assertIsInstance(gobj, Line)
 
     def test_line2(self):
-        from spdm.geometry.Line import Line
+        from spdm.geometry.line import Line
         p0 = (4, 5, 6)
         p1 = (1, 2, 3)
         gobj = Line(p0, p1)
@@ -28,7 +28,7 @@ class TestMesh(unittest.TestCase):
         self.assertTrue(np.all(np.isclose(gobj.p1[:], p1)))
 
     def test_coordinates(self):
-        from spdm.geometry.Line import Line
+        from spdm.geometry.line import Line
         p0 = (4, 5, 6)
         p1 = (1, 2, 3)
 

@@ -4,8 +4,8 @@ import typing
 import pathlib
 import f90nml
 import numpy as np
-from spdm.core.File import File
-from spdm.core.Entry import Entry
+from spdm.core.file import File
+from spdm.core.entry import Entry
 from spdm.utils.tree_utils import normalize_data
 from spdm.utils.logger import logger
 

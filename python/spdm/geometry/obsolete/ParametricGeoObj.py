@@ -10,7 +10,7 @@ from ..utils.misc import builtin_types
 from ..utils.plugin import Pluggable
 from ..utils.typing import (ArrayLike, ArrayType, NumericType, ScalarType,
                             nTupleType, numeric_type)
-from .GeoObject import GeoObject
+from .geo_object import GeoObject
 
 
 class ParametricGeoObj(GeoObject):

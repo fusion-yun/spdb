@@ -4,8 +4,8 @@ import json
 import numpy as np
 from spdm.utils.logger import logger
 
-from spdm.core.Collection import FileCollection
-from spdm.core.Document import Document
+from spdm.core.collection import FileCollection
+from spdm.core.document import Document
 
 
 class NumpyEncoder(json.NumPyEncoder):

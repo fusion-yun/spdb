@@ -1,6 +1,6 @@
 
 
-from .Surface import Surface
+from .surface import Surface
 
 
 @Surface.register("bspline_surface")

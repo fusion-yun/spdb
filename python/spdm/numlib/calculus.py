@@ -1,5 +1,5 @@
-from ..core.Functor import Functor
-from ..core.Expression import Expression
+from ..core.functor import Functor
+from ..core.expression import Expression
 from ..utils.typing import NumericType, as_array
 import typing
 from .interpolate import interpolate

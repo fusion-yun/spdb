@@ -4,7 +4,7 @@ from io import BytesIO
 
 import matplotlib.pyplot as plt
 import numpy as np
-from spdm.core.Path import update_tree, merge_tree
+from spdm.core.path import update_tree, merge_tree
 from spdm.core.Expression import Expression
 from spdm.core.Signal import Signal
 from spdm.core.Field import Field
@@ -16,7 +16,7 @@ from spdm.geometry.GeoObject import GeoObject
 from spdm.geometry.Line import Line
 from spdm.geometry.Point import Point
 from spdm.geometry.PointSet import PointSet
-from spdm.geometry.Polygon import Polygon, Rectangle
+from spdm.geometry.polygon import Polygon, Rectangle
 from spdm.geometry.Polyline import Polyline
 from spdm.utils.envs import SP_DEBUG
 from spdm.utils.logger import SP_DEBUG, logger

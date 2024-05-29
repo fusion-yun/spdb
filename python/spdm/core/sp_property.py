@@ -49,11 +49,11 @@ from _thread import RLock
 from enum import Enum
 from typing_extensions import Self
 
-from .Entry import Entry
+from .entry import Entry
 from .AoS import AoS
-from .HTree import HTree, Dict, List, HTreeNode
-from .Path import update_tree, merge_tree, Path
-from .Expression import Expression
+from .htree import HTree, Dict, List, HTreeNode
+from .path import update_tree, merge_tree, Path
+from .expression import Expression
 from ..utils.envs import SP_DEBUG
 from ..utils.logger import logger, deprecated
 from ..utils.tags import _not_found_, _undefined_

@@ -2,8 +2,8 @@ import collections
 import typing
 import numpy
 import yaml
-from spdm.core.Entry import Entry
-from spdm.core.File import File
+from spdm.core.entry import Entry
+from spdm.core.file import File
 from spdm.utils.logger import logger
 from spdm.utils.typing import as_native
 

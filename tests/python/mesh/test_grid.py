@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from scipy import constants
 from spdm.utils.logger import logger
-from spdm.Mesh.Mesh import Mesh
+from spdm.mesh.mesh import Mesh
 
 
 class TestMesh(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestMesh(unittest.TestCase):
         self.assertEqual(Mesh.geometry, None)
 
     def test_structured_Mesh(self):
-        from spdm.Mesh.StructuredMesh import StructuredMesh
+        from spdm.mesh.mesh_structured import StructuredMesh
 
         self.assertRaisesRegexp(
             TypeError, "Can't instantiate abstract class StructuredMesh with abstract method geometry", StructuredMesh, [10, 10])
