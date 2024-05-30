@@ -30,8 +30,7 @@ def merge_xml(first, second):
     elif second is None:
         return first
     elif first.tag != second.tag:
-        raise ValueError(
-            f"Try to merge tree to different tag! {first.tag}<={second.tag}")
+        raise ValueError(f"Try to merge tree to different tag! {first.tag}<={second.tag}")
 
     for child in second:
         if child.tag is _XMLComment:
@@ -47,7 +46,7 @@ def merge_xml(first, second):
             first.append(child)
 
 
-def load_xml(path: str | list | pathlib.Path, *args,  mode: File.Mode | str = "r", **kwargs):
+def load_xml(path: str | list | pathlib.Path, *args, mode: File.Mode | str = "r", **kwargs):
     # TODO: add handler non-local request ,like http://a.b.c.d/babalal.xml
 
     if isinstance(path, list):
@@ -79,7 +78,7 @@ def load_xml(path: str | list | pathlib.Path, *args,  mode: File.Mode | str = "r
 
     if root is not None:
         for child in root.findall("{http://www.w3.org/2001/XInclude}include"):
-            fp = path.parent/child.attrib["href"]
+            fp = path.parent / child.attrib["href"]
             root.insert(0, load_xml(fp))
             root.remove(child)
 
@@ -100,7 +99,7 @@ def tree_to_xml(root: str | Element, d, *args, **kwargs) -> _XMLElement:
                 child.set("id", str(i))
                 root.append(child)
 
-        elif isinstance(val,   np.ndarray):
+        elif isinstance(val, np.ndarray):
             child = Element(key)
             if np.issubdtype(val.dtype, np.floating):
                 child.set("dtype", "float")
@@ -140,7 +139,7 @@ class XMLEntry(Entry):
 
     def __repr__(self) -> str:
         # return f"<{self.__class__.__name__} root={self._root} path={self._path} />"
-        return f"<{self._data.tag}  path=\"{self._path}\" />"
+        return f'<{self._data.tag}  path="{self._path}" />'
 
     def __copy__(self) -> Entry:
         other: XMLEntry = super().__copy__()  # type:ignore
@@ -164,7 +163,7 @@ class XMLEntry(Entry):
             # elif isinstance(p, (tuple, set)):
             #     raise NotImplementedError(f"XML DO NOT SUPPORT TUPLE OR SET!{path}")
             elif isinstance(p, str) and len(p) > 0:
-                if p[0] == '@':
+                if p[0] == "@":
                     res += f"[{p}]"
                 else:
                     res += f"/{p}"
@@ -180,25 +179,30 @@ class XMLEntry(Entry):
         p, e = self._xpath(path)
         return _XPath(p), e
 
-    def _convert(self, element: _XMLElement | list, path=[], lazy=False, envs=None, only_one=False, default_value: typing.Any = _not_found_, **kwargs):
-        if not isinstance(element, list):
-            pass
+    def _dump(
+        self,
+        element: _XMLElement | list,
+        path=[],
+        lazy=False,
+        envs=None,
+        only_one=False,
+        **kwargs,
+    ):
+        if isinstance(element, list):
+            return [self._dump(e, path=path, lazy=lazy, envs=envs, **kwargs) for e in element]
 
-        elif len(element) == 0:
-            return default_value
+        # elif len(path) > 0 and isinstance(path[-1], slice):
+        #     raise NotImplementedError(f"{path}")
 
-        elif len(path) > 0 and isinstance(path[-1], slice):
-            raise NotImplementedError(f"{path}")
+        # else:
+        #     res = [self._dump(e, path=path, lazy=lazy, envs=envs, **kwargs) for e in element]
 
-        else:
-            res = [self._convert(e, path=path, lazy=lazy, envs=envs, **kwargs) for e in element]
+        #     if isinstance(res[0], dict) and res[0].get("@id", None) is not None:
+        #         pass
+        #     elif only_one or len(res) == 1:
+        #         res = res[0]
 
-            if only_one:
-                res = res[0]
-            elif len(res) == 1:
-                res = res[0]
-
-            return res
+        #     return res
 
         res = None
         text = element.text.strip() if element.text is not None else None
@@ -208,13 +212,13 @@ class XMLEntry(Entry):
                 if dtype == "string" or dtype is None:
                     res = [text]
                 elif dtype == "int":
-                    res = [int(v.strip()) for v in text.strip(',').split(',')]
+                    res = [int(v.strip()) for v in text.strip(",").split(",")]
                 elif dtype == "float":
-                    res = [float(v.strip()) for v in text.strip(',').split(',')]
+                    res = [float(v.strip()) for v in text.strip(",").split(",")]
                 else:
                     raise NotImplementedError(f"Not supported dtype {dtype}!")
 
-                dims = [int(v) for v in element.attrib.get("dims", "").split(',') if v != '']
+                dims = [int(v) for v in element.attrib.get("dims", "").split(",") if v != ""]
                 if len(dims) == 0 and len(res) == 1:
                     res = res[0]
                 elif len(dims) > 0 and len(res) != 0:
@@ -234,8 +238,7 @@ class XMLEntry(Entry):
             for child in element:
                 if child.tag is _XMLComment:
                     continue
-                obj = self._convert(
-                    child, path=path+[child.tag], envs=envs, lazy=lazy, **kwargs)
+                obj = self._dump(child, path=path + [child.tag], envs=envs, lazy=lazy, **kwargs)
                 tmp = res.setdefault(child.tag, obj)
                 if tmp is obj:
                     continue
@@ -253,7 +256,7 @@ class XMLEntry(Entry):
             if text is not None and len(text) != 0:
                 query = {}
                 prev = None
-                for p in self._prefix+path:
+                for p in self._prefix + path:
                     if type(p) is int:
                         query[f"{prev}"] = p
                     prev = p
@@ -264,27 +267,26 @@ class XMLEntry(Entry):
                 #     fstr = collections.ChainMap(query, self.envs.fragment.__data__, self.envs.query.__data__ or {})
                 # format_string_recursive(text, fstr)  # text.format_map(fstr)
                 res["@text"] = text
+
         else:
             res = XMLEntry(element, prefix=[], envs=envs)
 
         if envs is not None and isinstance(res, (str, collections.abc.Mapping)):
             res = format_string_recursive(res, collections.ChainMap(envs, self._envs))
 
-        if not isinstance(path[-1], int) and isinstance(res, dict) and res.get("@id", None) == "*":
-            logger.debug((res.get("@id", None), path))
-            if not isinstance(path[-1], int):
-                res = [res]
-
         return res
 
     #############################
     # API
 
-    def insert(self,  *args, **kwargs) -> XMLEntry: raise NotImplementedError(f"")
+    def insert(self, *args, **kwargs) -> XMLEntry:
+        raise NotImplementedError(f"")
 
-    def update(self,  *args, **kwargs) -> XMLEntry: raise NotImplementedError(f"")
+    def update(self, *args, **kwargs) -> XMLEntry:
+        raise NotImplementedError(f"")
 
-    def remove(self,  *args, **kwargs) -> int: raise NotImplementedError(f"")
+    def remove(self, *args, **kwargs) -> int:
+        raise NotImplementedError(f"")
 
     def find(self, op=None, *args, **kwargs) -> typing.Any:
 
@@ -312,13 +314,14 @@ class XMLEntry(Entry):
             return len(obj) == 1
 
         elif op is None or op is Path.tags.find:
-            return self._convert(obj, path=path,   envs=envs, **kwargs)
+            return self._dump(obj, path=path, envs=envs, **kwargs)
+         
         else:
-            target = self._convert(obj, path=path,   envs=envs, **kwargs)
+            target = self._dump(obj, path=path, envs=envs, **kwargs)
 
             return Path._apply_op(target, op, [], *args)
 
-    def search_next(self,  start=None,  **kwargs) -> typing.Tuple[typing.Any, int | None]:
+    def search_next(self, start=None, **kwargs) -> typing.Tuple[typing.Any, int | None]:
 
         if len(self._path) > 0 and isinstance(self._path[-1], slice):
             start = self._path[-1].start or start or 0
@@ -344,13 +347,13 @@ class XMLEntry(Entry):
         if len(data) == 0:
             raise StopIteration(f"Can not search next element from {path}")
         elif len(data) == 1:
-            res = self._convert(data[0], lazy=True, path=path, envs=envs, **kwargs)
-            return res, start+step
+            res = self._dump(data[0], lazy=True, path=path, envs=envs, **kwargs)
+            return res, start + step
         else:
             raise RuntimeError(f"Invalid path {path}")
 
     def for_each(self, *args, **kwargs) -> typing.Generator[typing.Tuple[int, typing.Any], None, None]:
-        """ Return a generator of the results. """
+        """Return a generator of the results."""
         if len(self._path) > 0 and isinstance(self._path[-1], slice):
             start = self._path[-1].start or 0
             stop = self._path[-1].stop
@@ -371,14 +374,14 @@ class XMLEntry(Entry):
         while True:
             if stop is not None and next_id >= stop:
                 raise StopIteration(f"{next_id}>{stop}")
-            path = prefix+[next_id]
-            xp, envs = self.xpath(prefix+[next_id])
+            path = prefix + [next_id]
+            xp, envs = self.xpath(prefix + [next_id])
             data = xp.evaluate(self._data)
             if len(data) == 0:
                 # raise StopIteration(f"Can not search next element from {path}")
                 break
             elif len(data) == 1:
-                res = self._convert(data[0], lazy=True, path=path, envs=envs, **kwargs)
+                res = self._dump(data[0], lazy=True, path=path, envs=envs, **kwargs)
                 yield next_id, res
                 next_id += step
             else:
@@ -386,19 +389,19 @@ class XMLEntry(Entry):
 
     #############################
 
-    def _get_value(self,  path: PathLike = None, *args,  only_one=False, default_value=_not_found_, **kwargs):
+    def _get_value(self, path: PathLike = None, *args, only_one=False, default_value=_not_found_, **kwargs):
 
         if not only_one:
             return PathTraverser(path).apply(lambda p: self._get_value(p, only_one=True, **kwargs))
         else:
-            path = self._prefix+normalize_path(path)
+            path = self._prefix + normalize_path(path)
             xp, envs = self.xpath(path)
             obj = xp.evaluate(self._data)
             if isinstance(obj, collections.abc.Sequence) and len(obj) == 1:
                 obj = obj[0]
-            return self._convert(obj, lazy=False, path=path, envs=envs, **kwargs)
+            return self._dump(obj, lazy=False, path=path, envs=envs, **kwargs)
 
-    def search(self,  *args, envs={}, **kwargs):
+    def search(self, *args, envs={}, **kwargs):
         # path, s_envs = self._xpath(self._path[:])
         # TODO: PathTraverser(path):
         for s_path in self._path.traversal():
@@ -409,8 +412,7 @@ class XMLEntry(Entry):
                 break
             for child in res:
                 if child.tag is not _XMLComment:
-                    yield self._convert(child, path=s_path,
-                                        envs=collections.ChainMap(s_envs, envs))
+                    yield self._dump(child, path=s_path, envs=collections.ChainMap(s_envs, envs))
 
     def items(self, *args, envs={}, **kwargs):
         path = self._path
@@ -419,8 +421,7 @@ class XMLEntry(Entry):
             for child in xp.evaluate(self._data):
                 if child.tag is _XMLComment:
                     continue
-                res = self._convert(child, path=spath,
-                                    envs=collections.ChainMap(s_envs, envs))
+                res = self._dump(child, path=spath, envs=collections.ChainMap(s_envs, envs))
                 yield child.tag, res
 
     def values(self, *args, envs={}, **kwargs):
@@ -430,20 +431,21 @@ class XMLEntry(Entry):
             for child in xp.evaluate(self._data):
                 if child.tag is _XMLComment:
                     continue
-                res = self._convert(child, path=spath,
-                                    envs=collections.ChainMap(s_envs, envs))
+                res = self._dump(child, path=spath, envs=collections.ChainMap(s_envs, envs))
                 yield res
 
     @property
-    def attribute(self): return self._data.attrib
+    def attribute(self):
+        return self._data.attrib
 
-    def __serialize__(self): return serialize(self.find(default_value=_not_found_))
+    def __serialize__(self):
+        return serialize(self.find(default_value=_not_found_))
 
 
 @File.register(["xml"])
 class FILEPLUGINxml(File):
     def __init__(self, *args, root=None, **kwargs):
-        super().__init__(*args, ** kwargs)
+        super().__init__(*args, **kwargs)
         if self.mode == File.Mode.read:
             self._root = load_xml(self.url.path, mode=self.mode)
         else:
