@@ -14,7 +14,7 @@ from scipy.interpolate import (
 
 from ..core.functor import Functor
 from ..utils.logger import logger
-from ..utils.typing import array_type
+from ..core.typing import array_type
 
 
 class RectInterpolateOp(Functor):

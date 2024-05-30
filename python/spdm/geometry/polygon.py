@@ -3,7 +3,7 @@ import typing
 
 import numpy as np
 
-from ..utils.typing import ArrayType
+from ..core.typing import ArrayType
 from .bbox import BBox
 from .geo_object import GeoObject
 from .line import Segment

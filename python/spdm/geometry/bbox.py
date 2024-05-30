@@ -10,7 +10,7 @@ import numpy as np
 
 from ..core.htree import List
 from ..utils.logger import logger
-from ..utils.typing import ArrayLike, ArrayType, NumericType, ScalarType, array_type, nTupleType, numeric_type
+from ..core.typing import ArrayLike, ArrayType, NumericType, ScalarType, array_type, nTupleType, numeric_type
 
 
 class BBox:

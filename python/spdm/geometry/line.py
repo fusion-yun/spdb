@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 from ..utils.logger import logger
-from ..utils.typing import ArrayType
+from ..core.typing import ArrayType
 from .bbox import BBox
 from .geo_object import GeoObject
 from .point import Point

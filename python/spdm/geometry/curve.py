@@ -10,7 +10,7 @@ import scipy.constants
 from scipy.interpolate import CubicSpline, PPoly
 
 from ..utils.logger import logger
-from ..utils.typing import (ArrayLike, ArrayType, NumericType, array_type,
+from ..core.typing import (ArrayLike, ArrayType, NumericType, array_type,
                             nTupleType)
 from .bbox import BBox
 from .geo_object import GeoObject

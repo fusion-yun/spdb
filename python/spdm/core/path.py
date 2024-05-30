@@ -14,7 +14,7 @@ import numpy as np
 from ..utils.logger import deprecated, logger
 from ..utils.misc import serialize
 from ..utils.tags import _not_found_, _undefined_
-from ..utils.typing import array_type, isinstance_generic, is_int, is_tree
+from .typing import array_type, isinstance_generic, is_int, is_tree
 
 
 # fmt:off

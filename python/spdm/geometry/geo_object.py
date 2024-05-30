@@ -4,14 +4,12 @@ import collections.abc
 import typing
 import uuid
 from copy import copy
-from functools import cached_property
-
 import numpy as np
 
-from ..core.htree import List
+from ..core.pluggable import Pluggable
+from ..core.typing import array_type
 from ..utils.logger import logger
-from ..utils.plugin import Pluggable
-from ..utils.typing import ArrayLike, ArrayType, NumericType, ScalarType, array_type, nTupleType, numeric_type
+
 from .bbox import BBox
 
 
@@ -24,14 +22,16 @@ class GeoObject(Pluggable):
 
     """
 
-    _plugin_module_path_template = "spdm.geometry.{name}"
+    _plugin_prefix = "spdm.geometry"
     _plugin_registry = {}
 
-    @classmethod
-    def __dispatch_init__(cls, _geo_type, self, *args, **kwargs) -> None:
+    def __new__(cls, *args, **kwargs) -> None:
         """ """
-        if _geo_type is None or len(_geo_type) == 0:
-            _geo_type = kwargs.pop("type", None)
+
+        if len(args) > 0 and isinstance(args[0], dict):
+            geo_type = args[0].get("$class", None)
+        else:
+            geo_type = kwargs.pop("type", None)
 
         # if isinstance(_geo_type, str):
         #     _geo_type = [_geo_type,
@@ -41,23 +41,18 @@ class GeoObject(Pluggable):
         #                  f"spdm.geometry.{_geo_type.capitalize()}{cls.__name__}#{_geo_type.capitalize()}{cls.__name__}",
         #                  f"spdm.geometry.{cls.__name__}#{_geo_type}"
         #                  ]
-
-        super().__dispatch_init__(_geo_type, self, *args, **kwargs)
+        return super().__new__(cls, geo_type)
 
     def __init__(self, *args, ndim: int = 0, rank: int = -1, **kwargs) -> None:
-        if self.__class__ is GeoObject:
-            GeoObject.__dispatch_init__(None, self, *args, ndim=ndim, rank=rank, **kwargs)
-            return
-
-        self._metadata = kwargs.pop("metadata", {})
-        self._metadata.update(kwargs)
-        self._metadata.setdefault("name", f"{self.__class__.__name__}_{uuid.uuid1()}")
-
         self._ndim = ndim
         self._rank = rank if rank >= 0 else ndim
 
+        self._metadata: dict = kwargs.pop("metadata", {})
+        self._metadata.update(kwargs)
+        self._metadata.setdefault("name", f"{self.__class__.__name__}_{uuid.uuid1()}")
+
     def __copy__(self) -> GeoObject:
-        other: GeoObject = object.__new__(self.__class__)
+        other: GeoObject = super().__new__(self.__class__)
         other._metadata = copy(self._metadata)
         other._ndim = self._ndim
         other._rank = self._rank
@@ -72,7 +67,7 @@ class GeoObject(Pluggable):
     def _repr_svg_(self) -> str:
         """Jupyter 通过调用 _repr_html_ 显示对象"""
 
-        from ..view.View import display
+        from ..view.sp_view import display
 
         return display(self, schema="svg")
 
@@ -230,7 +225,7 @@ class GeoObjectSet(typing.List[GeoObject]):
 
     def _repr_svg_(self) -> str:
         """Jupyter 通过调用 _repr_html_ 显示对象"""
-        from ..view.View import display
+        from ..view.sp_view import display
 
         return display(self, schema="svg")
 

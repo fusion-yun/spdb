@@ -6,7 +6,7 @@ from copy import copy
 import numpy as np
 
 from ..utils.logger import logger
-from ..utils.typing import (ArrayLike, ArrayType, NumericType, array_type,
+from ..core.typing import (ArrayLike, ArrayType, NumericType, array_type,
                             nTupleType)
 from .geo_object import GeoObject
 from .point_set import PointSet

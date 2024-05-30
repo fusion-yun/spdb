@@ -11,7 +11,7 @@ from copy import copy, deepcopy
 from ..numlib.interpolate import interpolate
 from ..utils.logger import logger
 from ..utils.tags import _not_found_
-from ..utils.typing import ArrayType, NumericType, array_type, get_args, get_origin, as_array
+from .typing import ArrayType, NumericType, array_type, get_args, get_origin, as_array
 from .expression import Expression, zero
 from .functor import Functor
 from .path import update_tree, Path

@@ -1,5 +1,5 @@
 from .mesh import Mesh
-from ..utils.typing import ArrayType
+from ..core.typing import ArrayType
 from .mesh_rectilinear import RectilinearMesh
 
 

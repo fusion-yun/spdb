@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 from .geo_object import GeoObject
 from .bbox import BBox
-from ..utils.typing import array_type
+from ..core.typing import array_type
 from ..utils.logger import logger
 
 

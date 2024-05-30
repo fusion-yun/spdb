@@ -9,7 +9,7 @@ from copy import copy
 import numpy as np
 
 from ..utils.logger import logger
-from ..utils.typing import ArrayLike, ArrayType, NumericType, array_type, nTupleType
+from ..core.typing import ArrayLike, ArrayType, NumericType, array_type, nTupleType
 from .bbox import BBox
 from .geo_object import GeoObject
 from .point import Point
@@ -46,6 +46,8 @@ class PointSet(GeoObject):
     def set_coordinates(self, *args):
         if len(args) == 0:
             args = self._metadata.get("coordinates", [])
+            if isinstance(args, str):
+                args = args.split(" ")
 
         if len(args) == 0:
             return

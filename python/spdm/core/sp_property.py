@@ -132,6 +132,12 @@ class SpTree(Dict[HTreeNode]):
 
 
 class PropertyTree(SpTree):
+    def __new__(cls, value, *args, **kwargs):
+        if isinstance(value, dict):
+            return super().__new__(cls)
+        else:
+            return value
+
     def __getattr__(self, key: str, *args, **kwargs) -> PropertyTree | AoS:
         if key.startswith("_"):
             return super().__getattribute__(key)
@@ -338,7 +344,7 @@ class SpProperty:
                     **self.metadata,
                 )
 
-            if self.strict and value is _undefined_:
+            if self.strict and (value is _undefined_ or value is _not_found_):
                 raise AttributeError(
                     f"The value of property '{owner_cls.__name__ if owner_cls is not None else 'none'}.{self.property_name}' is not assigned!"
                 )

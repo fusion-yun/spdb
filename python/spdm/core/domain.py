@@ -8,8 +8,8 @@ import collections
 
 from copy import deepcopy
 
-from ..utils.typing import ArrayType, array_type
-from ..utils.numeric import float_nan, meshgrid, bitwise_and
+from .typing import ArrayType, array_type
+from ..numlib.numeric import float_nan, meshgrid, bitwise_and
 from ..numlib.interpolate import interpolate
 
 from .functor import Functor

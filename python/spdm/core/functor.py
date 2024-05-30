@@ -6,7 +6,7 @@ from copy import copy
 import numpy as np
 
 from ..utils.logger import logger
-from ..utils.typing import NumericType, as_array, numeric_type, scalar_type
+from .typing import NumericType, as_array, numeric_type, scalar_type
 
 ExprOpLike = typing.Callable | None
 

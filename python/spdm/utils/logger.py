@@ -75,7 +75,7 @@ class CustomFormatter(logging.Formatter):
 class SpLogger(logging.Logger):
 
     def verbose(self, msg, *args, **kwargs):
-        # 继承 logging.Logger ， logging.Logger.findCaller 无法正确找到调用函数位置 
+        # 继承 logging.Logger ， logging.Logger.findCaller 无法正确找到调用函数位置
         if self.isEnabledFor(logging.VERBOSE):
             self._log(logging.VERBOSE, msg, args, **kwargs)
 
@@ -185,4 +185,4 @@ def experimental(func):
         return _wrap(func)
 
 
-__all__ = ["logger", "register_logger"]
+__all__ = ["logger", "deprecated", "experimental"]

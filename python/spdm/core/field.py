@@ -8,15 +8,15 @@ from enum import Enum
 import numpy as np
 import numpy.typing as np_tp
 
-from spdm.utils.typing import array_type
+from spdm.core.typing import array_type
 
 from .domain import DomainBase
 from ..mesh.mesh import Mesh
 from ..utils.logger import logger
 from ..utils.misc import group_dict_by_prefix
 from ..utils.tags import _not_found_
-from ..utils.typing import ArrayType, array_type, as_array, is_array
-from ..utils.numeric import float_nan, meshgrid, bitwise_and
+from .typing import ArrayType, array_type, as_array, is_array
+from ..numlib.numeric import float_nan, meshgrid, bitwise_and
 
 from .expression import Expression
 from .functor import Functor

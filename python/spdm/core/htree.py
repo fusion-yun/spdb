@@ -1,18 +1,13 @@
 from __future__ import annotations
-from typing import Generator
-from typing_extensions import Self
 import collections.abc
 import abc
-import pathlib
 import typing
-import types
 from copy import copy, deepcopy
 
-
 from ..utils.misc import get_positional_argument_count
-from ..utils.logger import deprecated, logger
+from ..utils.logger import logger
 from ..utils.tags import _not_found_, _undefined_
-from ..utils.typing import (
+from .typing import (
     ArrayType,
     NumericType,
     array_type,
@@ -87,7 +82,7 @@ class HTreeNode:
     def __init__(self, *args, **kwargs) -> None:
         self._cache, self._entry, self._parent, self._metadata = self.__class__._parser_args(*args, **kwargs)
 
-    def __copy__(self) -> Self:
+    def __copy__(self) -> typing.Self:
         if isinstance(self._cache, dict):
             cache = {k: copy(value) for k, value in self._cache.items()}
         elif isinstance(self._cache, list):
@@ -254,7 +249,7 @@ class HTreeNode:
 
             # raise RuntimeError(f"Unknown argument {obj} {args} {kwargs}")
 
-    def fetch(self, *args, **kwargs) -> Self:
+    def fetch(self, *args, **kwargs) -> typing.Self:
         return self.__duplicate__(HTreeNode._do_fetch(self._cache, *args, **kwargs))
 
     def flush(self):
@@ -549,6 +544,15 @@ class HTree(HTreeNode, typing.Generic[_T]):
         if _type_hint is None:
             _type_hint = self._type_hint_(_key)
 
+        if value is not _not_found_:
+            pass
+        elif _entry is not None:
+            value = _entry.get(default_value=default_value)
+            _entry = None
+            default_value = _not_found_
+        else:
+            value = default_value
+
         if _type_hint is None:
             return value
 
@@ -559,17 +563,8 @@ class HTree(HTreeNode, typing.Generic[_T]):
             pass
         elif issubclass(get_origin(_type_hint), HTree):
             value = _type_hint(value, _entry=_entry, _parent=_parent, **kwargs)
-
         else:
-            if value is not _not_found_:
-                pass
-            elif _entry is not None:
-                value = _entry.get(default_value=default_value)
-            else:
-                value = default_value
-
-            if value is not _not_found_ and value is not _undefined_ and value is not None:
-                value = type_convert(_type_hint, value, **kwargs)
+            value = type_convert(_type_hint, value, **kwargs)
 
         if isinstance(value, HTreeNode):
             if value._parent is None and _parent is not _not_found_:

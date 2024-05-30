@@ -8,8 +8,8 @@ import types
 import numpy as np
 import numpy.typing as np_tp
 
-from .logger import logger, deprecated
-from .tags import _not_found_
+from ..utils.logger import logger, deprecated
+from ..utils.tags import _not_found_
 
 ArrayLike = np_tp.ArrayLike | None
 

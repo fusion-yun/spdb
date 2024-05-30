@@ -13,7 +13,7 @@ from ..core.path import update_tree
 from ..utils.logger import logger
 from ..utils.misc import group_dict_by_prefix
 from ..utils.plugin import Pluggable
-from ..utils.typing import ArrayType, NumericType, ScalarType, as_array
+from ..core.typing import ArrayType, NumericType, ScalarType, as_array
 from ..utils.tags import _not_found_
 
 

@@ -4,7 +4,7 @@ import typing
 import numpy as np
 from spdm.utils.logger import logger
 
-from ..utils.typing import ArrayType, NumericType
+from ..core.typing import ArrayType, NumericType
 from .geo_object import GeoObject
 
 
