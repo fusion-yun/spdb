@@ -5,17 +5,17 @@ from functools import cached_property
 
 import numpy as np
 
-from ..core.Function import Function
-from ..geometry.BBox import BBox
-from ..geometry.Box import Box
-from ..geometry.Curve import Curve
-from ..geometry.GeoObject import GeoObject
-from ..geometry.Line import Line
-from ..geometry.Point import Point
+from ..core.function import Function
+from ..geometry.bbox import BBox
+from ..geometry.box import Box
+from ..geometry.curve import Curve
+from ..geometry.geo_object import GeoObject
+from ..geometry.line import Line
+from ..geometry.point import Point
 from ..numlib.interpolate import interpolate
 from ..utils.logger import logger
-from ..utils.typing import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
-from .Mesh import Mesh
+from ..core.typing import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
+from .mesh import Mesh
 from .mesh_structured import StructuredMesh
 
 # from scipy.interpolate import (InterpolatedUnivariateSpline,

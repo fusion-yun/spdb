@@ -4,9 +4,9 @@ from operator import is_
 
 from spdm.numlib import interpolate, np
 
-from ..core.Function import Function
+from ..core.function import Function
 from spdm.utils.logger import logger
-from .Line import Line
+from .line import Line
 
 
 @Line.register("bspline_curve")

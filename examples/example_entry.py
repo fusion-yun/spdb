@@ -1,7 +1,7 @@
 import os
 
-from spdm.core.Entry import open_entry
-from spdm.core.File import File
+from spdm.core.entry import open_entry
+from spdm.core.file import File
 
 import matplotlib.pyplot as plt
 from sptask import EQTASK

@@ -1,26 +1,26 @@
 
 import os
 
-from spdm.core.AoS import AoS
-from spdm.core.Expression import Expression, Variable
-from spdm.core.Field import Field
-from spdm.core.Function import Function, function_like
-from spdm.core.HTree import List
+from spdm.core.aos import AoS
+from spdm.core.expression import Expression, Variable
+from spdm.core.field import Field
+from spdm.core.function import Function, function_like
+from spdm.core.htree import List
 from spdm.core.sp_property import sp_property
-from spdm.core.TimeSeries import TimeSeriesAoS
-from spdm.geometry.Curve import Curve
-from spdm.geometry.GeoObject import GeoObject, GeoObjectSet
-from spdm.geometry.Point import Point
-from spdm.mesh.Mesh import Mesh
+from spdm.core.time_series import TimeSeriesAoS
+from spdm.geometry.curve import Curve
+from spdm.geometry.geo_object import GeoObject, GeoObjectSet
+from spdm.geometry.point import Point
+from spdm.mesh.mesh import Mesh
 from spdm.mesh.mesh_curvilinear import CurvilinearMesh
 from spdm.numlib.contours import _find_contours
 from spdm.numlib.optimize import minimize_filter
 from spdm.utils.constants import *
 from spdm.utils.tags import _not_found_
 from spdm.utils.tree_utils import merge_tree_recursive
-from spdm.utils.typing import (ArrayLike, ArrayType, NumericType, array_type,
+from spdm.core.typing import (ArrayLike, ArrayType, NumericType, array_type,
                                scalar_type)
-from spdm.view.View import draw_profiles
+from spdm.view.sp_view import draw_profiles
 
 WORKSPACE = "/home/salmon/workspace"
 

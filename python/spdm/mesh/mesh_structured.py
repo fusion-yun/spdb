@@ -2,8 +2,8 @@ import typing
 
 import numpy as np
 
-from ..utils.typing import ArrayLike, ArrayType, as_array
-from .Mesh import Mesh
+from ..core.typing import ArrayLike, ArrayType, as_array
+from .mesh import Mesh
 
 
 class StructuredMesh(Mesh):

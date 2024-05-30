@@ -6,9 +6,9 @@ import typing
 
 import h5py
 import numpy
-from spdm.core.Entry import Entry
-from spdm.core.File import File
-from spdm.core.Path import Path
+from spdm.core.entry import Entry
+from spdm.core.file import File
+from spdm.core.path import Path
 from spdm.utils.logger import logger
 from spdm.utils.tags import _undefined_
 

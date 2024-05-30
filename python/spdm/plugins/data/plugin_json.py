@@ -1,9 +1,9 @@
 import json
 import typing
 
-from spdm.core.Entry import Entry
-from spdm.core.File import File
-from spdm.utils.typing import as_native
+from spdm.core.entry import Entry
+from spdm.core.file import File
+from spdm.core.typing import as_native
 from spdm.utils.logger import logger
 
 

@@ -49,11 +49,11 @@ from _thread import RLock
 from enum import Enum
 from typing_extensions import Self
 
-from .Entry import Entry
-from .AoS import AoS
-from .HTree import HTree, Dict, List, HTreeNode
-from .Path import update_tree, merge_tree, Path
-from .Expression import Expression
+from .entry import Entry
+from .aos import AoS
+from .htree import HTree, Dict, List, HTreeNode
+from .path import update_tree, merge_tree, Path
+from .expression import Expression
 from ..utils.envs import SP_DEBUG
 from ..utils.logger import logger, deprecated
 from ..utils.tags import _not_found_, _undefined_
@@ -132,6 +132,12 @@ class SpTree(Dict[HTreeNode]):
 
 
 class PropertyTree(SpTree):
+    def __new__(cls, value, *args, **kwargs):
+        if isinstance(value, dict):
+            return super().__new__(cls)
+        else:
+            return value
+
     def __getattr__(self, key: str, *args, **kwargs) -> PropertyTree | AoS:
         if key.startswith("_"):
             return super().__getattribute__(key)
@@ -195,9 +201,9 @@ class SpProperty:
         getter: typing.Callable[[typing.Any], typing.Any] = None,
         setter=None,
         deleter=None,
-        default_value: typing.Any = _not_found_,
-        alias=None,
         type_hint: typing.Type = None,
+        alias: str = None,
+        default_value: typing.Any = _not_found_,
         doc: str = None,
         strict: bool = True,
         **kwargs,
@@ -213,13 +219,16 @@ class SpProperty:
             用于定义属性的deleter操作，与@property.deleter类似
         type_hint : typing.Type
             用于指定属性的类型
+        alias:string
+            声明当前 property 是 alias 所指 path 下property的别名
+        default_value : typing.Any
+            用于指定属性的默认值
         doc : typing.Optional[str]
             用于指定属性的文档字符串
         strict : bool
             用于指定是否严格检查属性的值是否已经被赋值
-        metadata : typing.Any
-            用于传递给构建  Node.__init__ 的参数
-
+        kwargs : typing.Any
+            用于指定属性的元数据
 
         """
 
@@ -228,13 +237,16 @@ class SpProperty:
         self.getter = getter
         self.setter = setter
         self.deleter = deleter
-        self.default_value = default_value
+
         self.alias = alias
-        self.doc = doc or ""
         self.property_name: str = None
+
+        self.type_hint = type_hint
+        self.default_value = default_value
+        self.doc = doc or ""
+
         self.strict = strict
         self.metadata = kwargs
-        self.type_hint = type_hint
 
     def __call__(self, func: typing.Callable[..., _TR]) -> _TR:
         """用于定义属性的getter操作，与@property.getter类似"""
@@ -286,14 +298,13 @@ class SpProperty:
     def __set__(self, instance: SpTree, value: typing.Any) -> None:
         assert instance is not None
 
-        if self.alias is not None:
-            logger.warning(f"set proptery alias {self.property_name} => {self.alias}!")
-
-        if self.property_name is None:
-            logger.error("Can not use sp_property instance without calling __set_name__ on it.")
-
         with self.lock:
-            instance._update_(self.property_name, value, _setter=self.setter)
+            if self.alias is not None:
+                instance._update_(self.alias, value)
+            elif self.property_name is not None:
+                instance._update_(self.property_name, value, _setter=self.setter)
+            else:
+                logger.error("Can not use sp_property instance without calling __set_name__ on it.")
 
     def __get__(self, instance: SpTree, owner_cls=None) -> _T:
         if instance is None:
@@ -304,25 +315,26 @@ class SpProperty:
 
         with self.lock:
             if self.alias is not None:
-                try:
-                    value = instance._find_(
-                        self.property_name,  # property_name 必然是 identifier
-                        _type_hint=self.type_hint,
-                        _getter=self.getter,
-                        default_value=_undefined_,
-                        **self.metadata,
-                    )
-                except KeyError as error:
-                    value = _not_found_
-
-                if value is _not_found_ or value is _undefined_:
-                    # alias 不改变 _parent
-                    value = instance.get(
-                        self.alias,  # alias 可以是路径
-                        _type_hint=self.type_hint,
-                        default_value=deepcopy(self.default_value),
-                        _parent=_not_found_,
-                    )
+                # try:
+                #     value = instance._find_(
+                #         self.property_name,  # property_name 必然是 identifier
+                #         _type_hint=self.type_hint,
+                #         _getter=self.getter,
+                #         default_value=_undefined_,
+                #         **self.metadata,
+                #     )
+                # except KeyError as error:
+                #     value = _not_found_
+                # if value is _not_found_ or value is _undefined_:
+                # alias 不改变 _parent
+                # FIXME: 对 alias 创建/访问需要double check
+                value = instance.get(
+                    self.alias,  # alias 可以是路径
+                    _type_hint=self.type_hint,
+                    _parent=_not_found_,
+                    default_value=deepcopy(self.default_value),
+                    **self.metadata,
+                )
             else:
                 value = instance._find_(
                     self.property_name,
@@ -332,7 +344,7 @@ class SpProperty:
                     **self.metadata,
                 )
 
-            if self.strict and value is _undefined_:
+            if self.strict and (value is _undefined_ or value is _not_found_):
                 raise AttributeError(
                     f"The value of property '{owner_cls.__name__ if owner_cls is not None else 'none'}.{self.property_name}' is not assigned!"
                 )

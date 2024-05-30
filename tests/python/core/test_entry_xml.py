@@ -3,8 +3,8 @@ from copy import deepcopy
 import pathlib
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.core.Entry import Entry, as_value
-from spdm.core.File import File
+from spdm.core.entry import Entry, as_value
+from spdm.core.file import File
 xml_file = pathlib.Path(__file__).parent.joinpath("pf_active.xml")
 
 

@@ -4,7 +4,7 @@ from logging import log
 
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.core.Entry import Entry
+from spdm.core.entry import Entry
 from spdm.core.Mapper import MapperPath
 
 

@@ -14,8 +14,8 @@ from spdm.geometry.GeoObject import GeoObject
 
 from ..utils.logger import logger
 from ..utils.typing import ArrayType, array_type, nTupleType
-from .BBox import BBox
-from .Curve import Curve
+from .bbox import BBox
+from .curve import Curve
 
 TWOPI = 2.0*scipy.constants.pi
 

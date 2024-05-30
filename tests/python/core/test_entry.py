@@ -3,7 +3,7 @@ from copy import deepcopy
 
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.core.Entry import Entry, as_value
+from spdm.core.entry import Entry, as_value
 
 
 class TestEntry(unittest.TestCase):

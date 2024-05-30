@@ -1,7 +1,7 @@
 import os
 import pathlib
-from spdm.core.File import File
-from spdm.core.Entry import open_entry
+from spdm.core.file import File
+from spdm.core.entry import open_entry
 from spdm.utils.logger import logger
 
 WORKSPACE = "/home/salmon/workspace"  # "/ssd01/salmon_work/workspace/"

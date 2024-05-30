@@ -5,13 +5,13 @@ from functools import cached_property
 import numpy as np
 from scipy import interpolate
 
-from ..geometry.Curve import Curve
-from ..geometry.GeoObject import GeoObject, GeoObjectSet
-from ..geometry.Point import Point
-from ..geometry.Surface import Surface
+from ..geometry.curve import Curve
+from ..geometry.geo_object import GeoObject, GeoObjectSet
+from ..geometry.point import Point
+from ..geometry.surface import Surface
 from ..utils.logger import logger
-from ..utils.typing import ArrayType, ScalarType
-from .Mesh import Mesh
+from ..core.typing import ArrayType, ScalarType
+from .mesh import Mesh
 from .mesh_rectilinear import RectilinearMesh
 
 

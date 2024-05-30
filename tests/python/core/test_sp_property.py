@@ -1,9 +1,9 @@
 import unittest
 
 import numpy as np
-from spdm.core.HTree import AoS, Dict, List
+from spdm.core.htree import AoS, Dict, List
 from spdm.core.sp_property import SpTree, sp_property
-from spdm.core.TimeSeries import TimeSeriesAoS
+from spdm.core.time_series import TimeSeriesAoS
 from spdm.utils.logger import logger
 
 

@@ -1,8 +1,8 @@
 import typing
 import numpy as np
-from .Mesh import Mesh
+from .mesh import Mesh
 from .mesh_structured import StructuredMesh
-from ..utils.typing import ArrayType
+from ..core.typing import ArrayType
 
 
 @Mesh.register("uniform")

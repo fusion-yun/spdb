@@ -5,8 +5,8 @@ import typing
 import numpy as np
 from scipy.interpolate import CubicSpline, PPoly
 
-from .Mesh import Mesh
-from .RectilinearMesh import RectilinearMesh
+from .mesh import Mesh
+from .mesh_rectilinear import RectilinearMesh
 
 
 @Mesh.register('ppoly')
