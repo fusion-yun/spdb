@@ -1,5 +1,7 @@
 import os
 
+SP_LOG = os.environ.get("SP_LOG", True)
+
 SP_DEBUG = os.environ.get("SP_DEBUG", True)
 
 SP_LABEL = os.environ.get("SP_LABEL", __package__[: __package__.find(".")])

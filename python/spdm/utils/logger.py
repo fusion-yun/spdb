@@ -1,15 +1,20 @@
 import atexit
 import collections.abc
 import inspect
-import logging
-import logging.handlers
+import os
+
 import pathlib
 import pprint
 import sys
 from datetime import datetime
 from inspect import getframeinfo, stack
 
-from .envs import SP_DEBUG, SP_MPI, SP_LABEL, SP_MPI_RANK, SP_MPI_SIZE
+
+import logging
+import logging.handlers
+
+
+from .envs import SP_LOG, SP_DEBUG, SP_MPI, SP_LABEL, SP_MPI_RANK, SP_MPI_SIZE
 
 default_formater = logging.Formatter(
     "%(asctime)s [%(name)8s] %(levelname)8s:" "%(pathname)s:%(lineno)d:%(funcName)s: " "%(message)s"
@@ -20,6 +25,9 @@ MPI_MSG = ""
 
 if SP_MPI is not None and SP_MPI_RANK > 0:
     MPI_MSG = f"[{SP_MPI_RANK}/{SP_MPI_SIZE}]"
+
+logging.VERBOSE = int((logging.INFO + logging.DEBUG) / 2)
+logging.addLevelName(logging.VERBOSE, "VERBOSE")
 
 
 class CustomFormatter(logging.Formatter):
@@ -49,6 +57,7 @@ class CustomFormatter(logging.Formatter):
 
     FORMATS = {
         logging.DEBUG: grey + format_normal + reset,
+        logging.VERBOSE: grey + "%(asctime)s [%(name)8s] %(levelname)8s: " + MPI_MSG + "%(message)s" + reset,
         logging.INFO: blue + "%(asctime)s [%(name)8s] %(levelname)8s: " + MPI_MSG + "%(message)s" + reset,
         logging.WARNING: brown + format_normal + reset,
         logging.ERROR: red + format_normal + reset,
@@ -63,7 +72,19 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 
+class SpLogger(logging.Logger):
+
+    def verbose(self, msg, *args, **kwargs):
+        # 继承 logging.Logger ， logging.Logger.findCaller 无法正确找到调用函数位置 
+        if self.isEnabledFor(logging.VERBOSE):
+            self._log(logging.VERBOSE, msg, args, **kwargs)
+
+
+logging.setLoggerClass(SpLogger)
+
+
 def sp_enable_logging(name, /, handler=None, prefix=None, formater=None):
+
     m_logger = logging.getLogger(name)
 
     formater = formater or CustomFormatter()
@@ -85,28 +106,31 @@ def sp_enable_logging(name, /, handler=None, prefix=None, formater=None):
     else:
         raise NotImplementedError()
 
+    log_level = SP_LOG if SP_DEBUG is not False else "debug"
+
+    match log_level:
+        case "2" | "verbose":
+            level = logging.VERBOSE
+        case "1" | "true" | "debug" | True:
+            level = logging.DEBUG
+        case "0" | "warning":
+            level = logging.WARNING
+        case "-2" | "quiet":
+            level = logging.CRITICAL
+        case "false" | "False" | False:
+            level = logging.INFO
+        case _:
+            level = logging.DEBUG
+
+    if SP_MPI_RANK == 0:
+        m_logger.setLevel(level)
+    else:
+        m_logger.setLevel(logging.ERROR)
+
     return m_logger
 
 
 logger = sp_enable_logging(SP_LABEL, handler="STDOUT")
-
-
-match SP_DEBUG:
-    # case "1" | "true" | "verbose" | "debug" | True:
-    #     level = logging.DEBUG
-    case "0" | "warning":
-        level = logging.WARNING
-    case "-2" | "quiet":
-        level = logging.CRITICAL
-    case "false" | "False" | False:
-        level = logging.INFO
-    case _:
-        level = logging.DEBUG
-
-if SP_MPI_RANK == 0:
-    logger.setLevel(level)
-else:
-    logger.setLevel(logging.ERROR)
 
 
 def _at_end():
