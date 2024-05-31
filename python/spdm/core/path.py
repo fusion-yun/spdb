@@ -577,7 +577,7 @@ class Path(list):
 
         elif isinstance(path, Path.tags):
             yield path
-            
+
         elif isinstance(path, (int, slice, set)):
             yield path
 
@@ -807,7 +807,7 @@ class Path(list):
                 key = path[idx]
 
                 if not is_tree(obj):
-                    raise TypeError(f" {obj} is not a Tree! key= {key}")
+                    raise TypeError(f" {obj} is not a Tree! key= {key} idx={idx} path={path}")
 
                 elif key is Path.tags.current or key is None:
                     pass
@@ -849,8 +849,8 @@ class Path(list):
                     # FIXME：更改好的实现，但需要 debug
                     if idx == path_length - 1:
                         obj._update_(key, value, _op, *args, **kwargs)
-                    else:
-                        obj._update_(key, _not_found_, _idempotent=_op)
+                    else:                        
+                        obj._update_(key, _not_found_ if not  isinstance(path[idx+1],str) else {}, _idempotent=_op)
 
                     obj = obj._find_(key, default_value=_not_found_)
                     # old_value = obj._find_(key, default_value=_not_found_)
@@ -1021,7 +1021,7 @@ class Path(list):
                     if not isinstance(obj, collections.abc.Sequence):
                         tmp = Path._do_find(obj, path[idx + 1 :], *args, default_value=_not_found_, **kwargs)
                         if tmp is not _not_found_:
-                            obj=tmp
+                            obj = tmp
                             break
                     obj = getattr(obj, "_parent", _not_found_)
                     # Path._do_find(obj, [Path.tags.parent], default_value=_not_found_)

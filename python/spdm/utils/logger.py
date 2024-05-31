@@ -14,7 +14,7 @@ import logging
 import logging.handlers
 
 
-from .envs import SP_LOG, SP_DEBUG, SP_MPI, SP_LABEL, SP_MPI_RANK, SP_MPI_SIZE
+from .envs import SP_VERBOSE, SP_DEBUG, SP_MPI, SP_LABEL, SP_MPI_RANK, SP_MPI_SIZE
 
 default_formater = logging.Formatter(
     "%(asctime)s [%(name)8s] %(levelname)8s:" "%(pathname)s:%(lineno)d:%(funcName)s: " "%(message)s"
@@ -106,19 +106,17 @@ def sp_enable_logging(name, /, handler=None, prefix=None, formater=None):
     else:
         raise NotImplementedError()
 
-    log_level = SP_LOG if SP_DEBUG is not False else "debug"
-
-    match log_level:
-        case "2" | "verbose":
-            level = logging.VERBOSE
-        case "1" | "true" | "debug" | True:
-            level = logging.DEBUG
-        case "0" | "warning":
-            level = logging.WARNING
-        case "-2" | "quiet":
+    match SP_VERBOSE:
+        case "50" | 50 | "quiet" | "critical" | "fatal" | "false" | "False" | False:
             level = logging.CRITICAL
-        case "false" | "False" | False:
+        case "40" | "true" | "error" | True:
+            level = logging.ERROR
+        case "30" | "warning":
+            level = logging.WARNING
+        case "20" | "info":
             level = logging.INFO
+        case "15" | "verbose":
+            level = logging.VERBOSE
         case _:
             level = logging.DEBUG
 

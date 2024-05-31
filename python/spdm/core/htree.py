@@ -306,7 +306,10 @@ class HTree(HTreeNode, typing.Generic[_T]):
 
     @typing.final
     def __getitem__(self, path) -> _T:
-        return self.get(path, default_value=_undefined_)
+        value = self.get(path, default_value=_undefined_)
+        if value is _undefined_:
+            value = self.__missing__(path)
+        return value
 
     @typing.final
     def __setitem__(self, path, value) -> None:
@@ -476,20 +479,18 @@ class HTree(HTreeNode, typing.Generic[_T]):
                 value = default_value
                 default_value = _not_found_
 
-            if value is _undefined_:
-                value = self.__missing__(key)
+            if _entry is not None or value is not _undefined_:
+                value = self._type_convert(value, key, _entry=_entry, default_value=default_value, **kwargs)
 
-            value = self._type_convert(value, key, _entry=_entry, default_value=default_value, **kwargs)
-
-            if key is None and isinstance(self._cache, collections.abc.MutableSequence):
-                self._cache.append(value)
-            elif isinstance(key, str) and isinstance(self._cache, collections.abc.MutableSequence):
-                self._cache = Path._do_update(self._cache, key, value)
-            elif isinstance(key, int) and key <= len(self._cache):
-                self._cache.extend([_not_found_] * (key - len(self._cache) + 1))
-                self._cache[key] = value
-            else:
-                self._cache[key] = value
+                if key is None and isinstance(self._cache, collections.abc.MutableSequence):
+                    self._cache.append(value)
+                elif isinstance(key, str) and isinstance(self._cache, collections.abc.MutableSequence):
+                    self._cache = Path._do_update(self._cache, key, value)
+                elif isinstance(key, int) and key <= len(self._cache):
+                    self._cache.extend([_not_found_] * (key - len(self._cache) + 1))
+                    self._cache[key] = value
+                else:
+                    self._cache[key] = value
 
         return value
 

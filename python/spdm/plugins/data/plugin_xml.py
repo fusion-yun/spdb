@@ -188,9 +188,16 @@ class XMLEntry(Entry):
         only_one=False,
         **kwargs,
     ):
-        if isinstance(element, list):
-            return [self._dump(e, path=path, lazy=lazy, envs=envs, **kwargs) for e in element]
-
+        if not isinstance(element, list):
+            pass
+        elif len(element) == 0:
+            return _not_found_
+        else:
+            res = [self._dump(e, path=path, lazy=lazy, envs=envs, **kwargs) for e in element]
+            if len(res) == 1 and not (isinstance(res, dict) and res[0].get("@id", None) is not None):
+                return res[0]
+            else:
+                return res
         # elif len(path) > 0 and isinstance(path[-1], slice):
         #     raise NotImplementedError(f"{path}")
 
@@ -239,13 +246,16 @@ class XMLEntry(Entry):
                 if child.tag is _XMLComment:
                     continue
                 obj = self._dump(child, path=path + [child.tag], envs=envs, lazy=lazy, **kwargs)
-                tmp = res.setdefault(child.tag, obj)
-                if tmp is obj:
-                    continue
-                elif isinstance(tmp, list):
-                    tmp.append(obj)
+                old = res.get(child.tag, None)
+                if old is None:
+                    if isinstance(obj, dict) and obj.get("@id", None) is not None:
+                        res[child.tag] = [obj]
+                    else:
+                        res[child.tag] = obj
+                elif isinstance(old, list):
+                    old.append(obj)
                 else:
-                    res[child.tag] = [tmp, obj]
+                    res[child.tag] = [old, obj]
 
             # res = {child.tag: self._convert(child, path=path+[child.tag], envs=envs, lazy=lazy, **kwargs)
             #        for child in element if child.tag is not _XMLComment}
@@ -315,7 +325,7 @@ class XMLEntry(Entry):
 
         elif op is None or op is Path.tags.find:
             return self._dump(obj, path=path, envs=envs, **kwargs)
-         
+
         else:
             target = self._dump(obj, path=path, envs=envs, **kwargs)
 

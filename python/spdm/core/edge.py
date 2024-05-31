@@ -26,6 +26,9 @@ class Port:
 
         path = as_path(path)
 
+        if len(path) == 0:
+            raise RuntimeError(f"Empty path!")
+
         self.identifier = path[0]
 
         self.fragment = as_path(path[1:])
@@ -86,7 +89,10 @@ class Port:
 
     def fetch(self, *args, **kwargs):
         node = self.fragment.find(self.node)
-        return HTreeNode._do_fetch(node, *args, **kwargs)
+        res = HTreeNode._do_fetch(node, *args, **kwargs)
+        if res is _not_found_:
+            raise RuntimeError(f"Fetch result from  {self.fragment} failed!")
+        return res
 
     @property
     def is_changed(self) -> bool:
@@ -107,16 +113,16 @@ class Ports(Dict[Port]):
         super().__init__(*args, **kwargs)
         self._holder = holder
 
-    def get(self, key: str, *args, **kwargs) -> Port:
-        port: Port = super().find(key, *args, **kwargs)
-        if (port.node is _not_found_ or port.node is None) and len(port.fragment) > 0:
-            port0 = super().get(port.identifier, _not_found_)
-            if isinstance(port0, Port):
-                port.node = port0.node
-        return port
+    # def get(self, key: str, *args, **kwargs) -> Port:
+    #     port: Port = super().find(key, *args, **kwargs)
+    #     if (port.node is _not_found_ or port.node is None) and len(port.fragment) > 0:
+    #         port0 = super().get(port.identifier, _not_found_)
+    #         if isinstance(port0, Port):
+    #             port.node = port0.node
+    #     return port
 
     def put(self, key: str, value, *args, **kargs) -> None:
-        return self.get(key).update(value)
+        return self.get(key).update(value, *args, **kargs)
 
     def connect(self, **kwargs):
         for k, v in kwargs.items():

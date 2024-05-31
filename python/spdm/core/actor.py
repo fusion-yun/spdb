@@ -30,7 +30,7 @@ class Actor(SpObject):
         self._inports = InPorts(self)
         self._outports = OutPorts(self)
 
-    time_slice: TimeSeriesAoS[TimeSlice] = sp_property()
+    time_slice: TimeSeriesAoS[TimeSlice] = sp_property(default_value=[])
     """时间片序列，保存 Actor 历史状态。
         @note: TimeSeriesAoS 长度为 n(=3) 循环队列。当压入序列的 TimeSlice 数量超出 n 时，会调用 TimeSeriesAoS.__full__(first_slice)
         """

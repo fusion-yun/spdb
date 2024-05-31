@@ -416,7 +416,7 @@ def type_convert(tp: typing.Type, value: typing.Any, *args, **kwargs) -> typing.
         try:
             value = tp(value, *args, **kwargs)
         except Exception as error:
-            raise TypeError(f"Can not convert {type(value)} to {tp}") from error
+            raise TypeError(f"Can not convert {value}({type(value)}) to {tp}") from error
 
     return value
 

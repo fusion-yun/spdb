@@ -1,8 +1,12 @@
 import os
 
-SP_LOG = os.environ.get("SP_LOG", True)
+SP_DEBUG = os.environ.get("SP_DEBUG", False)
 
-SP_DEBUG = os.environ.get("SP_DEBUG", True)
+SP_VERBOSE = os.environ.get("SP_VERBOSE", "info")
+
+if SP_DEBUG in (True, "true", "on"):
+    SP_VERBOSE = "debug"
+
 
 SP_LABEL = os.environ.get("SP_LABEL", __package__[: __package__.find(".")])
 
@@ -36,6 +40,3 @@ def is_notebook():
             return False  # Other type (?)
     except NameError:
         return False  # Probably standard Python interpreter
-
-
-SP_QUIET = os.environ.get("SP_QUIET", is_notebook())
