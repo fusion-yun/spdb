@@ -772,8 +772,8 @@ class EntryProxy(Entry):
         return entry
 
     def _op_find(self, request: typing.Any, *args, **kwargs) -> typing.Any:
-        if isinstance(request, str) and "://" in request:
-            request = uri_split_as_dict(request)
+        # if isinstance(request, str) and "://" in request:
+        #     request = uri_split_as_dict(request)
 
         if request is _not_found_ or request is None:
             defaultentry = self._get_entry_by_name("*", None)

@@ -9,12 +9,11 @@ from enum import Enum
 from ..geometry.geo_object import GeoObject, GeoObjectSet, as_geo_object
 from ..core.domain import DomainBase
 from ..core.path import update_tree
-
-from ..utils.logger import logger
-from ..utils.misc import group_dict_by_prefix
-from ..utils.plugin import Pluggable
+from ..core.pluggable import Pluggable
 from ..core.typing import ArrayType, NumericType, ScalarType, as_array
+
 from ..utils.tags import _not_found_
+from ..utils.logger import logger
 
 
 class Mesh(DomainBase, Pluggable):
@@ -28,70 +27,52 @@ class Mesh(DomainBase, Pluggable):
     _plugin_registry = {}
     _plugin_prefix = "spdm.mesh.mesh_"
 
-    def __init__(self, *args, **kwargs) -> None:
-        if self.__class__ is Mesh:
-            if len(args) == 1:
-                if isinstance(args[0], (list, tuple)):
-                    args = tuple(args[0])
-                elif isinstance(args[0], dict):
-                    kwargs = update_tree(args[0], kwargs)
-                    args = tuple([])
+    def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
+        if cls is not Mesh:
+            return super().__new__(cls)
 
-            mesh_type = kwargs.pop("type", None)
+        mesh_type = kwargs.pop("type", None)
 
-            if mesh_type is not _not_found_ or mesh_type is None or not mesh_type:
+        if mesh_type is not _not_found_ or mesh_type is None or not mesh_type:
+            pass
+        elif isinstance(mesh_type, Enum):
+            mesh_type = mesh_type.name
+
+        if len(args) == 0:
+            dims, kwargs = group_dict_by_prefix(kwargs, prefixes="dim", sep=None)
+            if dims is None:
                 pass
-            elif isinstance(mesh_type, Enum):
-                mesh_type = mesh_type.name
-
-            if len(args) == 0:
-                dims, kwargs = group_dict_by_prefix(kwargs, prefixes="dim", sep=None)
-                if dims is None:
-                    pass
-                elif len(dims) == 1 and "s" in dims:
-                    dims = dims["s"]
-                else:
-                    dims = {int(k): v for k, v in dims.items() if k.isdigit()}
-                    dims = dict(sorted(dims.items(), key=lambda x: x[0]))
-                    dims = tuple([as_array(d) for d in dims.values()])
+            elif len(dims) == 1 and "s" in dims:
+                dims = dims["s"]
             else:
-                dims = args
-
-            if mesh_type is None or mesh_type is _not_found_ and dims is not None:
-                ndim = len(dims)
-
-                if all([isinstance(d, np.ndarray) for d in dims]):
-                    if all([d.ndim == 1 for d in dims]):
-                        mesh_type = "rectilinear"
-                    elif all([d.ndim == ndim for d in dims]):
-                        mesh_type = "rectangular"
-                    else:
-                        raise RuntimeError(f"illegal dims {dims}")
-
-            if mesh_type is not None:
-                super().__dispatch_init__(mesh_type, self, *dims, **kwargs)
-            else:
-                logger.warning(f"Can not determint mesh type!")
-
-            return
-
-        geometry, kwargs = group_dict_by_prefix(kwargs, "geometry")
-
-        if isinstance(geometry, Enum):
-            geometry = {"type": geometry.name}
-        elif isinstance(geometry, str):
-            geometry = {"type": geometry}
-
-        if isinstance(geometry, (GeoObject, GeoObjectSet)):
-            self._geometry = geometry
-        elif isinstance(geometry, collections.abc.Mapping):
-            self._geometry = GeoObject(*args, **geometry)
+                dims = {int(k): v for k, v in dims.items() if k.isdigit()}
+                dims = dict(sorted(dims.items(), key=lambda x: x[0]))
+                dims = tuple([as_array(d) for d in dims.values()])
         else:
-            raise RuntimeError(f"Mesh.__init__(): geometry={geometry} is not found")
+            dims = args
 
-        self._shape: ArrayType = np.asarray(self._metadata.get("shape", []), dtype=int)
+        if mesh_type is None or mesh_type is _not_found_ and dims is not None:
+            ndim = len(dims)
+
+            if all([isinstance(d, np.ndarray) for d in dims]):
+                if all([d.ndim == 1 for d in dims]):
+                    mesh_type = "rectilinear"
+                elif all([d.ndim == ndim for d in dims]):
+                    mesh_type = "rectangular"
+                else:
+                    raise RuntimeError(f"illegal dims {dims}")
+        if mesh_type is not _not_found_:
+            return super().__new__(cls, mesh_type)
+        else:
+            return super().__new__(cls)
+
+    def __init__(self, *args, **kwargs) -> None:
+
+        self._geometry = as_geo_object(kwargs.pop("geometry", None))
 
         DomainBase.__init__(self, *args, **kwargs)
+
+        self._shape: ArrayType = np.asarray(self._metadata.get("shape", []), dtype=int)
 
     @property
     def axis_label(self) -> typing.Tuple[str]:

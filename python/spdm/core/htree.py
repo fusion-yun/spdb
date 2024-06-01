@@ -30,6 +30,7 @@ from .path import Path, PathLike, Query, as_path, update_tree, merge_tree, path_
 class HTreeNode:
     @classmethod
     def _parser_args(cls, *args, _parent=None, _entry=None, **kwargs):
+
         if len(args) == 0:
             _cache = _not_found_
         elif isinstance(args[0], (collections.abc.MutableMapping, collections.abc.MutableSequence)):
