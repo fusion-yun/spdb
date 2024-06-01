@@ -4,9 +4,11 @@ import abc
 import typing
 from copy import copy, deepcopy
 
-from ..utils.misc import get_positional_argument_count
 from ..utils.logger import logger
-from ..utils.tags import _not_found_, _undefined_
+
+
+from ..utils.misc import get_positional_argument_count
+from ..utils.tags import _not_found_
 from .typing import (
     ArrayType,
     NumericType,
@@ -306,10 +308,8 @@ class HTree(HTreeNode, typing.Generic[_T]):
 
     @typing.final
     def __getitem__(self, path) -> _T:
-        value = self.get(path, default_value=_undefined_)
-        if value is _undefined_:
-            value = self.__missing__(path)
-        return value
+        value = self.get(path, default_value=_not_found_)
+        return value if value is not _not_found_ else self.__missing__(path)
 
     @typing.final
     def __setitem__(self, path, value) -> None:
@@ -322,7 +322,7 @@ class HTree(HTreeNode, typing.Generic[_T]):
     @typing.final
     def get_cache(self, path, default_value: _T = _not_found_) -> _T:
         path = as_path(path)
-        res = path.get(self._cache, _not_found_)
+        res = path.get(self._cache, default_value=_not_found_)
 
         if res is _not_found_ and self._entry is not None:
             res = self._entry.get(path, _not_found_)
@@ -428,69 +428,46 @@ class HTree(HTreeNode, typing.Generic[_T]):
         return self
 
     def __missing__(self, key: str | int) -> typing.Any:
-        raise KeyError(f"{self.__class__.__name__}.{key} is not assigned! ")
+        # raise KeyError(f"{self.__class__.__name__}.{key} is not assigned! ")
+        return _not_found_
 
-    def _find_(self, key, *args, _getter=None, default_value=_undefined_, **kwargs) -> _T:
+    def _find_(self, key, *args, _getter=None, default_value=_not_found_, **kwargs) -> _T:
         """获取子节点/或属性
         搜索子节点的优先级  cache > getter > entry > default_value
-        当 default_value 为 _undefined_ 时，若 cache 中找不到节点，则从 entry 中获得
+        当 default_value 为 _not_found_ 时，若 cache 中找不到节点，则从 entry 中获得
 
         """
 
         if isinstance(key, str) and key.startswith("@"):
-            value = Path._do_find(self._metadata, key[1:], *args, default_value=_not_found_)
-            if value is not _not_found_:
-                return value
+            return Path._do_find(self._metadata, key[1:], *args, default_value=_not_found_)
 
-        if len(args) > 0:
-            value = Path._do_find(self._cache, key, *args, default_value=_not_found_, **kwargs)
-            if value is _not_found_:
-                if self._entry is not None:
-                    value = self._entry.child([key]).find(*args, default_value=default_value, **kwargs)
-                else:
-                    value = default_value
-
-        else:
-            if isinstance(key, int):
-                if key < len(self._cache):
-                    value = self._cache[key]
-                else:
-                    value = _not_found_
+        if isinstance(key, int):
+            if key < len(self._cache):
+                value = self._cache[key]
             else:
-                value = Path._do_find(self._cache, key, default_value=_not_found_)
+                value = _not_found_
+        else:
+            value = Path._do_find(self._cache, key, default_value=_not_found_)
 
-            # if isinstance(default_value, dict):
-            #     value = update_tree(deepcopy(default_value), value)
-            #     default_value = _not_found_
+        if value is _not_found_ and callable(_getter):
+            if get_positional_argument_count(_getter) == 2:
+                value = _getter(self, key)
+            else:
+                value = _getter(self)
 
-            _entry = self._entry.child(key) if self._entry is not None else None
+        _entry = self._entry.child(key) if self._entry is not None else None
 
-            if value is _not_found_ and callable(_getter):
-                if get_positional_argument_count(_getter) == 2:
-                    value = _getter(self, key)
-                else:
-                    value = _getter(self)
+        value = self._type_convert(value, key, _entry=_entry, default_value=default_value, **kwargs)
 
-            if value is _not_found_ and _entry is not None and default_value is _undefined_:
-                value = _entry.get(default_value=_not_found_)
-                _entry = None
-
-            if value is _not_found_ and _entry is None:
-                value = default_value
-                default_value = _not_found_
-
-            if _entry is not None or value is not _undefined_:
-                value = self._type_convert(value, key, _entry=_entry, default_value=default_value, **kwargs)
-
-                if key is None and isinstance(self._cache, collections.abc.MutableSequence):
-                    self._cache.append(value)
-                elif isinstance(key, str) and isinstance(self._cache, collections.abc.MutableSequence):
-                    self._cache = Path._do_update(self._cache, key, value)
-                elif isinstance(key, int) and key <= len(self._cache):
-                    self._cache.extend([_not_found_] * (key - len(self._cache) + 1))
-                    self._cache[key] = value
-                else:
-                    self._cache[key] = value
+        if key is None and isinstance(self._cache, collections.abc.MutableSequence):
+            self._cache.append(value)
+        elif isinstance(key, str) and isinstance(self._cache, collections.abc.MutableSequence):
+            self._cache = Path._do_update(self._cache, key, value)
+        elif isinstance(key, int) and key <= len(self._cache):
+            self._cache.extend([_not_found_] * (key - len(self._cache) + 1))
+            self._cache[key] = value
+        else:
+            self._cache[key] = value
 
         return value
 

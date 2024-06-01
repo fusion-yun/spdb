@@ -2,7 +2,6 @@ import collections
 import os
 import typing
 
-import MDSplus as mds
 import numpy as np
 from spdm.core.collection import Collection
 from spdm.core.entry import Entry
@@ -10,6 +9,11 @@ from spdm.core.file import File
 from spdm.utils.logger import logger
 from spdm.utils.uri_utils import URITuple
 from spdm.utils.tags import _not_found_
+
+try:
+    import MDSplus as mds
+except ModuleNotFoundError as error:
+    logger.error(f"Can not load MDSplus", exc_info=error)
 
 
 @File.register(["mdsplus", "mds", "mds+"])
@@ -22,7 +26,9 @@ class MDSplusTree(File):
         File.Mode.write | File.Mode.create: "New",
     }
 
-    def __init__(self, *args, fid=None, shot: typing.Optional[int] = None, tree_name: typing.Optional[str] = None, **kwargs):
+    def __init__(
+        self, *args, fid=None, shot: typing.Optional[int] = None, tree_name: typing.Optional[str] = None, **kwargs
+    ):
         super().__init__(*args, **kwargs)
 
         self._envs = {}
@@ -65,8 +71,7 @@ class MDSplusTree(File):
                     self._old_env[env_path] = None
                     os.environ[f"{p}_path"] = path
 
-        self._shot = (shot if shot is not None
-                      else (fid if fid is not None else query.get("shot", self.url.fragment)))
+        self._shot = shot if shot is not None else (fid if fid is not None else query.get("shot", self.url.fragment))
 
         self._trees = {}
 
@@ -90,10 +95,11 @@ class MDSplusTree(File):
     def entry(self, lazy=True) -> Entry:
         return self._entry
 
-    def get_tree(self,
-                 tree_name: typing.Optional[str] = None,
-                 tree_path: typing.Optional[str] = None,
-                 ):
+    def get_tree(
+        self,
+        tree_name: typing.Optional[str] = None,
+        tree_path: typing.Optional[str] = None,
+    ):
         if tree_name is None:
             tree_name = self._default_tree_name
 
@@ -111,7 +117,8 @@ class MDSplusTree(File):
             tree = mds.Tree(tree_name, shot, mode=mode, path=tree_path)
         except mds.mdsExceptions.TreeFOPENR as error:
             raise FileNotFoundError(
-                f"Can not open mdsplus tree! tree_name={tree_name} shot={shot} tree_path={tree_path} mode={mode} \n {error}")
+                f"Can not open mdsplus tree! tree_name={tree_name} shot={shot} tree_path={tree_path} mode={mode} \n {error}"
+            )
         except mds.mdsExceptions.TreeNOPATH as error:
             raise FileNotFoundError(f"{tree_name}_path is not defined! tree_name={tree_name} shot={shot}  \n {error}")
         else:
@@ -178,11 +185,7 @@ class MDSplusTree(File):
 @Collection.register(["mdsplus", "mds", "mds+", "MDSplus"])
 class MDSplusCollection(Collection):
     def insert_one(self, fid=None, *args, query=None, mode=None, **kwargs):
-        fid = (
-            fid
-            or self.guess_id(*args, **collections.ChainMap((query or {}), kwargs))
-            or self.next_id
-        )
+        fid = fid or self.guess_id(*args, **collections.ChainMap((query or {}), kwargs)) or self.next_id
         return MDSplusTree(self.url, fid=fid, mode=mode or "w", **kwargs)
 
     def search_one(self, predicate, projection=None, only_one=False, **kwargs) -> Entry:
@@ -236,7 +239,7 @@ class MDSplusCollection(Collection):
 
 @Entry.register(["mdsplus", "mds"])
 class MDSplusEntry(Entry):
-    def __init__(self, cache:  MDSplusTree | str | URITuple, *args, **kwargs):
+    def __init__(self, cache: MDSplusTree | str | URITuple, *args, **kwargs):
         if isinstance(cache, (str, URITuple)):
             cache: MDSplusTree = MDSplusTree(cache)
         if not isinstance(cache, MDSplusTree):
@@ -258,9 +261,7 @@ def open_mdstree(tree_name, shot, mode="NORMAL", path=None):
         raise ValueError(f"Treename is empty!")
     try:
         shot = int(shot)
-        logger.info(
-            f"Open MDSTree: tree_name={tree_name} shot={shot} mode=\"{mode}\" path='{path}'"
-        )
+        logger.info(f"Open MDSTree: tree_name={tree_name} shot={shot} mode=\"{mode}\" path='{path}'")
         tree = mds.Tree(tree_name, shot, mode=mode, path=path)
     except mds.mdsExceptions.TreeFOPENR as error:
         # tree_path = os.environ.get(f"{tree_name}_path", None)
@@ -268,10 +269,7 @@ def open_mdstree(tree_name, shot, mode="NORMAL", path=None):
             f"Can not open mdsplus tree! tree_name={tree_name} shot={shot} tree_path={path} mode={mode} \n {error}"
         )
     except mds.mdsExceptions.TreeNOPATH as error:
-        raise FileNotFoundError(
-            f"{tree_name}_path is not defined! tree_name={tree_name} shot={shot}  \n {error}"
-        )
+        raise FileNotFoundError(f"{tree_name}_path is not defined! tree_name={tree_name} shot={shot}  \n {error}")
     return tree
 
 
-__SP_EXPORT__ = MDSplusTree

@@ -26,12 +26,12 @@ class Port:
 
         path = as_path(path)
 
-        if len(path) == 0:
-            raise RuntimeError(f"Empty path!")
-
-        self.identifier = path[0]
-
-        self.fragment = as_path(path[1:])
+        if len(path) > 0:
+            self.identifier = path[0]
+            self.fragment = as_path(path[1:])
+        else:
+            self.identifier = None
+            self.fragment = None
 
         self.type_hint: typing.Type = type_hint
 

@@ -194,7 +194,7 @@ class XMLEntry(Entry):
             return _not_found_
         else:
             res = [self._dump(e, path=path, lazy=lazy, envs=envs, **kwargs) for e in element]
-            if len(res) == 1 and not (isinstance(res, dict) and res[0].get("@id", None) is not None):
+            if len(res) == 1 and not (isinstance(res[0], collections.abc.Mapping) and res[0].get("@id", None) is not None):
                 return res[0]
             else:
                 return res

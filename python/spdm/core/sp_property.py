@@ -132,25 +132,27 @@ class SpTree(Dict[HTreeNode]):
 
 
 class PropertyTree(SpTree):
-    def __new__(cls, value, *args, **kwargs):
-        if isinstance(value, dict):
-            return super().__new__(cls)
-        else:
-            return value
 
     def __getattr__(self, key: str, *args, **kwargs) -> PropertyTree | AoS:
         if key.startswith("_"):
             return super().__getattribute__(key)
-        else:
-            res = Path._do_find(self._cache, [key], *args, **kwargs)
-            if isinstance(res, dict):
-                return PropertyTree(res, _parent=self)
-            elif isinstance(res, list) and (len(res) == 0 or isinstance(res[0], (dict, HTree))):
-                return AoS[PropertyTree](res, _parent=self)
-            elif res is _not_found_:
-                return self.__missing__(key)
+
+        _entry = self._entry.child(key) if self._entry is not None else None
+        value = Path._do_find(self._cache, [key], *args, **kwargs)
+        if value is _not_found_ and _entry is not None:
+            value = _entry.get(default_value=_not_found_)
+            _entry = None
+        if isinstance(value, dict):
+            return PropertyTree(value, _entry=_entry, _parent=self)
+        elif isinstance(value, list) and (len(value) == 0 or isinstance(value[0], (dict, HTree))):
+            return AoS[PropertyTree](value, _entry=_entry, _parent=self)
+        elif value is _not_found_:
+            if _entry is not None:
+                return PropertyTree(value, _entry=_entry, _parent=self)
             else:
-                return res
+                return self.__missing__(key)
+        else:
+            return value
 
     def __missing__(self, key) -> typing.Any:
         return _not_found_
