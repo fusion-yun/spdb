@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import typing
 import functools
-from typing_extensions import Self
 import collections
 import numpy as np
 import numpy.typing as np_tp
@@ -45,7 +44,6 @@ class Function(Expression):
             * if ext=0  or 'extrapolate', return the extrapolated value. 等于 定义域无限
             * if ext=1  or 'nan', return nan
         """
-
        
         if len(xy) == 1 and isinstance(xy[0], tuple):
             xy = xy[0]
@@ -67,7 +65,7 @@ class Function(Expression):
 
         self._cache = y
 
-    def __copy__(self) -> Self:
+    def __copy__(self) -> typing.Self:
         """copy from other"""
         other: Function = super().__copy__()
         other._cache = self._cache

@@ -15,7 +15,14 @@ class Pluggable:
     @classmethod
     def _complete_path(cls, plugin_name) -> str | None:
         """Return the complete name of the plugin."""
-        return getattr(cls, "_plugin_prefix", cls.__module__) + f".{plugin_name}" if plugin_name is not None else None
+        if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
+            return None
+        else:
+            prefix = getattr(cls, "_plugin_prefix", None)
+            if prefix is None:
+                prefix = cls.__module__ + "."
+
+            return prefix + f"{plugin_name}"
 
     @classmethod
     def register(cls, plugin_name: str | list | None = None, plugin_cls=None):
@@ -40,8 +47,7 @@ class Pluggable:
             return decorator
 
     def __new__(cls, plugin_name=None) -> typing.Type[typing.Self]:
-        if plugin_name is None:
-            # default __new__
+        if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
             return super().__new__(cls)
 
         elif cls is Pluggable:
@@ -66,10 +72,11 @@ class Pluggable:
         if n_cls is None:
             # Plugin not found in the registry
             # 尝试从 PYTHON_PATH 中查找 module, 如果找到，将其注册到 _plugin_registry
-            path = plugin_path.split(".")
-            path = path[0:1] + ["plugins"] + path[1:]
 
-            sp_load_module(".".join(path))
+            if sp_load_module(plugin_path) is None:
+                s_path = plugin_path.split(".")
+                s_path = s_path[0:1] + ["plugins"] + s_path[1:]
+                sp_load_module(".".join(s_path))
 
             # 重新检查
             n_cls = cls._plugin_registry.get(plugin_path, None)

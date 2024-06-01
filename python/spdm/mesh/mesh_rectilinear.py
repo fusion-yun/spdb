@@ -25,7 +25,7 @@ from .mesh_structured import StructuredMesh
 
 @Mesh.register("rectilinear")
 class RectilinearMesh(StructuredMesh):
-    """    A `rectilinear Mesh` is a tessellation by rectangles or rectangular cuboids (also known as rectangular parallelepipeds)
+    """A `rectilinear Mesh` is a tessellation by rectangles or rectangular cuboids (also known as rectangular parallelepipeds)
     that are not, in general, all congruent to each other. The cells may still be indexed by integers as above, but the
     mapping from indexes to vertex coordinates is less uniform than in a regular Mesh. An example of a rectilinear Mesh
     that is not regular appears on logarithmic scale graph paper.
@@ -39,30 +39,12 @@ class RectilinearMesh(StructuredMesh):
 
     """
 
-    def __init__(self, *args: ArrayType, geometry=None, periods=None, dims=None, **kwargs) -> None:
-        if dims is None:
-            dims = args
-        elif len(args) > 0:
-            raise RuntimeError(f"ignore args {args}")
+    def __init__(self, *args: ArrayType, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
-        if geometry is None:
-            geometry = Box([min(d) for d in dims], [max(d) for d in dims])
+        if self._geometry is None:
+            self._geometry = Box([min(d) for d in self._dims], [max(d) for d in self._dims])
 
-        for idx in range(len(dims)):
-            if (
-                isinstance(periods, collections.abc.Sequence)
-                and periods[idx] is not None
-                and not np.isclose(dims[idx][-1] - dims[idx][0], periods[idx])
-            ):
-                raise RuntimeError(
-                    f"idx={idx} periods {periods[idx]} is not compatible with dims [{dims[idx][0]},{dims[idx][-1]}] "
-                )
-            if not np.all(dims[idx][1:] > dims[idx][:-1]):
-                raise RuntimeError(f"dims[{idx}] is not increasing")
-
-        super().__init__(shape=[len(d) for d in dims], geometry=geometry, **kwargs)
-        self._dims = dims
-        self._periods = periods
         self._aixs = [Function(self._dims[i], np.linspace(0, 1.0, self.shape[i])) for i in range(self.rank)]
 
     @property
@@ -127,4 +109,4 @@ class RectilinearMesh(StructuredMesh):
         if np.any(tuple(value.shape) != tuple(self.shape)):
             raise ValueError(f"{value} {self.shape}")
 
-        return interpolate(*self._dims, value, periods=self._periods, **kwargs)
+        return interpolate(*self._dims, value, periods=self._cycles, **kwargs)

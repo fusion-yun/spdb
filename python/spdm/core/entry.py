@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing_extensions import Self
 import numpy as np
 import collections
 import collections.abc
@@ -45,7 +44,7 @@ class Entry(Pluggable):
         self._data = data
         self._path = as_path(path)
 
-    def __copy__(self) -> Self:
+    def __copy__(self) -> typing.Self:
         other = object.__new__(self.__class__)
         other._data = self._data
         other._path = deepcopy(self._path)
@@ -719,7 +718,7 @@ class EntryProxy(Entry):
         else:
             self._mapper, self._entry_list = self.__class__.load(*args, **kwargs)
 
-    def __copy__(self) -> Self:
+    def __copy__(self) -> typing.Self:
         other = super().__copy__()
         other._mapper = self._mapper
         other._entry_list = self._entry_list
@@ -728,15 +727,15 @@ class EntryProxy(Entry):
     def __str__(self) -> str:
         return ",".join([str(e) for e in self._entry_list.values() if isinstance(e, str)])
 
-    def child(self, *args, **kwargs) -> Self:
+    def child(self, *args, **kwargs) -> typing.Self:
         res: EntryProxy = super().child(*args, **kwargs)
         res._entry_list = self._entry_list
         return res
 
-    def insert(self, value, **kwargs) -> Self:
+    def insert(self, value, **kwargs) -> typing.Self:
         raise NotImplementedError(f"")
 
-    def update(self, value, **kwargs) -> Self:
+    def update(self, value, **kwargs) -> typing.Self:
         raise NotImplementedError(f"")
 
     def remove(self, **kwargs) -> int:

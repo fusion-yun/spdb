@@ -92,16 +92,12 @@ class Field(Expression):
 
     Domain = Mesh
 
-    def __init__(self, *xy, **kwargs):
-        mesh, kwargs = group_dict_by_prefix(kwargs, prefixes="mesh")
-
-        super().__init__(None, **kwargs)
+    def __init__(self, *xy, mesh: Mesh | dict = None, **kwargs):
 
         if len(xy) == 0:
             raise RuntimeError(f"illegal x,y {xy} ")
 
         value = xy[-1]
-
         dims = xy[:-1]
 
         if isinstance(value, (Functor, Expression)) or callable(value):
@@ -111,65 +107,29 @@ class Field(Expression):
             func = None
             value = as_array(value)
 
-        if mesh is not None:
-            if len(dims) == 0:
-                pass
-            elif isinstance(mesh, dict):
-                mesh["dims"] = dims
-            else:
-                raise RuntimeError(f"'mesh' is defined, ignore dims={dims} {mesh}")
-
-        elif "domain" in kwargs:
-            mesh = kwargs["domain"]
-            if len(dims) > 0:
-                raise RuntimeError(f"'mesh' is defined, ignore dims={dims}")
+        if isinstance(mesh, dict):
+            mesh["dims"] = dims
         else:
             mesh = dims
 
         self._op = func
-        self._mesh = mesh
-        self._cache = value
         self._ppoly = None
 
-    def __geometry__(self, view_point="RZ", **kwargs):
-        """
-        plot o-point,x-point,lcfs,separatrix and contour of psi
-        """
+        super().__init__(None, domain=mesh, **kwargs)
+        
+        self._cache = value
 
-        geo = {}
-
-        match view_point.lower():
-            case "rz":
-                geo["$data"] = (*self.mesh.points, self.__array__())
-                geo["$styles"] = {
-                    "label": self.__label__,
-                    "axis_label": self.mesh.axis_label,
-                    "$matplotlib": {"levels": 40, "cmap": "jet"},
-                }
-        return geo
+    def __geometry__(self, *args, **kwargs):
+        return self.domain.display(self.__array__(), *args, label=self.__label__, **kwargs)
 
     def _repr_svg_(self) -> str:
-        from ..view.View import display
+        from ..view.sp_view import display
 
         return display(self.__geometry__(), output="svg")
 
     @property
     def mesh(self) -> Mesh:
-        if isinstance(self._mesh, Mesh):
-            return self._mesh
-
-        if self._mesh is None or self._mesh is _not_found_ or len(self._mesh) == 0:
-            self._mesh = guess_mesh(self, prefix="mesh")
-
-        if not isinstance(self._mesh, Mesh):
-            mesh_desc, *_ = group_dict_by_prefix(self._metadata, prefixes="mesh", sep="_")
-            self._mesh = Mesh(self._mesh, parent=self, **(mesh_desc or {}))
-
-        return self._mesh
-
-    @property
-    def domain(self) -> DomainBase:
-        return self.mesh
+        return self.domain
 
     def __call__(self, *args, **kwargs) -> typing.Callable[..., ArrayType]:
         if all([isinstance(a, (array_type, float, int)) for a in args]):
@@ -220,9 +180,9 @@ class Field(Expression):
             x = self.domain.points
             if len(x) == 0:
                 raise RuntimeError(f"Domain is not defined!")
-            
+
             self._cache = self._op(*x)
-            
+
         return self._cache
 
     def __ppoly__(self):

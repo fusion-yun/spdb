@@ -6,17 +6,15 @@ import numpy as np
 from functools import cached_property
 from enum import Enum
 
-from ..geometry.geo_object import GeoObject, GeoObjectSet, as_geo_object
+from ..geometry.geo_object import GeoObject,  as_geo_object
 from ..core.domain import DomainBase
 from ..core.path import update_tree
-from ..core.pluggable import Pluggable
 from ..core.typing import ArrayType, NumericType, ScalarType, as_array
-
 from ..utils.tags import _not_found_
 from ..utils.logger import logger
 
 
-class Mesh(DomainBase, Pluggable):
+class Mesh(DomainBase):
     """Mesh  网格
 
     @NOTE: In general, a mesh provides more flexibility in representing complex geometries and
@@ -30,78 +28,25 @@ class Mesh(DomainBase, Pluggable):
     def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
         if cls is not Mesh:
             return super().__new__(cls)
-
-        mesh_type = kwargs.pop("type", None)
-
-        if mesh_type is not _not_found_ or mesh_type is None or not mesh_type:
-            pass
-        elif isinstance(mesh_type, Enum):
-            mesh_type = mesh_type.name
-
-        if len(args) == 0:
-            dims, kwargs = group_dict_by_prefix(kwargs, prefixes="dim", sep=None)
-            if dims is None:
-                pass
-            elif len(dims) == 1 and "s" in dims:
-                dims = dims["s"]
-            else:
-                dims = {int(k): v for k, v in dims.items() if k.isdigit()}
-                dims = dict(sorted(dims.items(), key=lambda x: x[0]))
-                dims = tuple([as_array(d) for d in dims.values()])
         else:
-            dims = args
+            mesh_type = kwargs.pop("type", None)
+            if mesh_type is None and len(args) > 0 and isinstance(args[0], dict):
+                mesh_type = args[0].get("@type", None)
 
-        if mesh_type is None or mesh_type is _not_found_ and dims is not None:
-            ndim = len(dims)
+            if isinstance(mesh_type, Enum):
+                mesh_type = mesh_type.name
 
-            if all([isinstance(d, np.ndarray) for d in dims]):
-                if all([d.ndim == 1 for d in dims]):
-                    mesh_type = "rectilinear"
-                elif all([d.ndim == ndim for d in dims]):
-                    mesh_type = "rectangular"
-                else:
-                    raise RuntimeError(f"illegal dims {dims}")
-        if mesh_type is not _not_found_:
+            if mesh_type is _not_found_ or mesh_type is None or not mesh_type:
+                raise ModuleNotFoundError(f"Can not determind the mesh type! {args},{kwargs}")
+
             return super().__new__(cls, mesh_type)
-        else:
-            return super().__new__(cls)
 
     def __init__(self, *args, **kwargs) -> None:
-
-        self._geometry = as_geo_object(kwargs.pop("geometry", None))
-
-        DomainBase.__init__(self, *args, **kwargs)
-
-        self._shape: ArrayType = np.asarray(self._metadata.get("shape", []), dtype=int)
+        super().__init__(*args, **kwargs)
 
     @property
     def axis_label(self) -> typing.Tuple[str]:
         return self._metadata.get("axis_label", ["[-]"] * self.ndim)
-
-    @property
-    def name(self) -> str:
-        return self._metadata.get("name", "unamed")
-
-    @property
-    def type(self) -> str:
-        return self._metadata.get("type", "unknown")
-
-    @property
-    def units(self) -> typing.Tuple[str, ...]:
-        return tuple(self._metadata.get("units", ["-"]))
-
-    @property
-    def geometry(self) -> GeoObject:
-        """Geometry of the Mesh  网格的几何形状"""
-        return self._geometry
-
-    @property
-    def ndim(self) -> int:
-        return self.geometry.ndim
-
-    @property
-    def rank(self) -> int:
-        return self.geometry.rank
 
     @property
     def shape(self) -> typing.Tuple[int, ...]:
@@ -137,8 +82,7 @@ class Mesh(DomainBase, Pluggable):
 
     def uvw(self) -> ArrayType:
         return self.parametric_coordinates(*xyz)
-
-    """ alias of parametric_coordiantes"""
+        """ alias of parametric_coordiantes"""
 
     @cached_property
     def vertices(self) -> ArrayType:
@@ -174,6 +118,20 @@ class Mesh(DomainBase, Pluggable):
 
     def eval(self, func, *args, **kwargs) -> ArrayType:
         return func(*self.points)
+
+    def display(self, obj, *args, view_point="rz", label=None, **kwargs):
+        # view_point = ("RZ",)
+        geo = {}
+
+        match view_point.lower():
+            case "rz":
+                geo["$data"] = (*self.points, obj.__array__())
+                geo["$styles"] = {
+                    "label": label,
+                    "axis_label": self.axis_label,
+                    "$matplotlib": {"levels": 40, "cmap": "jet"},
+                }
+        return geo
 
 
 @Mesh.register(["null", None])

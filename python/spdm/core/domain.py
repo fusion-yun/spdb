@@ -5,49 +5,59 @@ import numpy as np
 import numpy.typing as np_tp
 import functools
 import collections
+from enum import Enum
 
 from copy import deepcopy
-
+from .pluggable import Pluggable
 from .typing import ArrayType, array_type
+from .functor import Functor
+from .path import update_tree
+from ..geometry.geo_object import GeoObject, as_geo_object
+
 from ..numlib.numeric import float_nan, meshgrid, bitwise_and
 from ..numlib.interpolate import interpolate
 
-from .functor import Functor
-from .path import update_tree
+from ..utils.tags import _not_found_
 
 
-class DomainBase:
+class DomainBase(Pluggable):
     """函数定义域"""
 
     _metadata = {"fill_value": float_nan}
 
-    def __init__(self, *args, **kwargs) -> None:
-        if len(args) == 1:
-            if isinstance(args[0], dict):
-                kwargs = collections.ChainMap(args[0], kwargs)
-                args = args[1:]
-            elif isinstance(args[0], (list,tuple)):
-                args = args[0]
+    def __init__(self, *args, geometry=None, dims=None, **kwargs) -> None:
+        self._dims = dims if dims is not None or len(args) == 0 else args
+        self._geometry = as_geo_object(geometry)
+        self._metadata = update_tree(deepcopy(self.__class__._metadata), kwargs)
 
-        if len(args) > 0:
-            self._dims = args
-        else:
-            self._dims = kwargs.pop("dims", [])
-
-        if len(kwargs) > 0:
-            self._metadata = update_tree(deepcopy(self.__class__._metadata), kwargs)
+    @property
+    def geometry(self) -> GeoObject:
+        """Geometry of the Mesh  网格的几何形状"""
+        return self._geometry
 
     @property
     def label(self) -> str:
         return self._metadata.get("label", "unnamed")
 
     @property
+    def name(self) -> str:
+        return self._metadata.get("name", "unamed")
+
+    @property
+    def type(self) -> str:
+        return self._metadata.get("type", "unknown")
+
+    @property
+    def units(self) -> typing.Tuple[str, ...]:
+        return tuple(self._metadata.get("units", ["-"]))
+
+    @property
     def is_simple(self) -> bool:
-        return len(self._dims) > 0
+        return self._dims is not None and len(self._dims) > 0
 
     @property
     def is_empty(self) -> bool:
-        return len(self._dims) == 0 or any([d == 0 for d in self._dims])
+        return self._dims is None or len(self._dims) == 0 or any([d == 0 for d in self._dims])
 
     @property
     def is_full(self) -> bool:
@@ -59,8 +69,12 @@ class DomainBase:
         return self._dims
 
     @property
-    def ndims(self) -> int:
-        return len(self._dims)
+    def ndim(self) -> int:
+        return self.geometry.ndim
+
+    @property
+    def rank(self) -> int:
+        return self.geometry.rank
 
     @property
     def shape(self) -> typing.Tuple[int]:

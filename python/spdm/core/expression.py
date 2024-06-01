@@ -101,6 +101,28 @@ class Expression(HTreeNode):
         else:
             return tuple(coords)
 
+    def __new__(cls, *args, **kwargs):
+
+        if cls is not Expression or len(args) == 0:
+            pass
+        elif is_scalar(args[0]):  # 常量/标量表达式
+            match args[0]:
+                case 0:
+                    TP = ConstantZero
+                case 1:
+                    TP = ConstantOne
+                case _:
+                    TP = Scalar
+
+            return super().__new__(TP)
+
+        elif isinstance(args[0], array_type):  # 构建插值函数
+            from .function import Function
+
+            return super().__new__(Function)
+
+        return super().__new__(cls)
+
     @staticmethod
     def guess_domain(obj, **kwargs):
         holder = obj
@@ -124,8 +146,6 @@ class Expression(HTreeNode):
     def __init__(self, op, *args, domain=_not_found_, **kwargs) -> None:
         """
         Parameters
-
-
         op : typing.Callable  | ExprOp
             运算符，可以是函数，也可以是类的成员函数
         args : typing.Any
@@ -135,37 +155,10 @@ class Expression(HTreeNode):
 
         """
 
-        if self.__class__ is not Expression:
-            super().__init__(**kwargs)
-            self._op = op
-            self._children = args
-            self._domain = domain
-
-        elif is_scalar(op):  # 常量/标量表达式
-            match op:
-                case 0:
-                    TP = ConstantZero
-                case 1:
-                    TP = ConstantOne
-                case _:
-                    TP = Scalar
-
-            self.__class__ = TP
-            TP.__init__(self, op, *args, domain=domain, **kwargs)
-
-        elif isinstance(op, array_type):  # 构建插值函数
-            from .function import Function
-
-            TP = Function
-
-            self.__class__ = TP
-            TP.__init__(self, op, *args, domain=domain, **kwargs)
-
-        else:  # 一般表达式
-            super().__init__(**kwargs)
-            self._op = op
-            self._children = args
-            self._domain = domain
+        super().__init__(**kwargs)
+        self._op = op
+        self._children = args
+        self._domain = domain
 
     def __copy__(self) -> Expression:
         """复制一个新的 Expression 对象"""

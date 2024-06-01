@@ -1,6 +1,6 @@
 import os
 
-SP_DEBUG = os.environ.get("SP_DEBUG", False)
+SP_DEBUG = os.environ.get("SP_DEBUG", True)
 
 SP_VERBOSE = os.environ.get("SP_VERBOSE", "info")
 
