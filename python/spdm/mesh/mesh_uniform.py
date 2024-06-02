@@ -1,6 +1,6 @@
 import typing
 import numpy as np
-from .mesh import Mesh
+from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
 from ..core.typing import ArrayType
 

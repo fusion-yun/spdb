@@ -5,7 +5,7 @@ import numpy as np
 from spdm.utils.logger import logger
 
 from ..core.typing import ArrayType, NumericType
-from .geo_object import GeoObject
+from ..core.geo_object import GeoObject,BBox
 
 
 class Point(GeoObject):

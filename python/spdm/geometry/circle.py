@@ -1,13 +1,14 @@
 import typing
 
 from ..core.typing import ArrayType
-from .geo_object import GeoObject
+from ..core.geo_object import GeoObject,BBox
+
 from .line import Line
 from .plane import Plane
 from .point import Point
 from .solid import Solid
 from .surface import Surface
-from .bbox import BBox
+
 
 
 @GeoObject.register("circle")

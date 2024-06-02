@@ -9,7 +9,7 @@ from skimage import measure
 from ..core.field import Field
 from ..core.expression import Variable
 from ..geometry.curve import Curve
-from ..geometry.geo_object import GeoObject
+from ..core.geo_object import GeoObject
 from ..geometry.point import Point
 from ..utils.logger import deprecated, logger
 from .optimize import minimize_filter

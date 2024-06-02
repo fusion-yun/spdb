@@ -8,8 +8,8 @@ import numpy as np
 
 from ..utils.logger import logger
 from ..core.typing import ArrayType
-from .bbox import BBox
-from .geo_object import GeoObject
+
+from ..core.geo_object import GeoObject,BBox
 from .point import Point
 from .vector import Vector
 

@@ -14,7 +14,7 @@ from ..core.function import Function
 from ..geometry.bbox import BBox
 from ..geometry.circle import Circle
 from ..geometry.curve import Curve
-from ..geometry.geo_object import GeoObject
+from ..core.geo_object import GeoObject
 from ..geometry.line import Line
 from ..geometry.point import Point
 from ..geometry.point_set import PointSet

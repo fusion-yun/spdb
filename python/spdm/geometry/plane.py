@@ -3,7 +3,7 @@ import typing
 
 import numpy as np
 
-from .geo_object import GeoObject
+from ..core.geo_object import GeoObject,BBox
 from .line import Line
 
 

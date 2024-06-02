@@ -5,7 +5,7 @@ import typing
 import numpy as np
 from scipy.interpolate import CubicSpline, PPoly
 
-from .mesh import Mesh
+from ..core.mesh import Mesh
 from .mesh_rectilinear import RectilinearMesh
 
 

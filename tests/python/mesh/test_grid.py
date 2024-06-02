@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from scipy import constants
 from spdm.utils.logger import logger
-from spdm.mesh.mesh import Mesh
+from spdm.core.mesh import Mesh
 
 
 class TestMesh(unittest.TestCase):

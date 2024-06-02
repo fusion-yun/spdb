@@ -16,7 +16,7 @@ from ..numlib.interpolate import interpolate
 from .functor import Functor
 from .entry import Entry
 from .htree import HTreeNode, HTree, HTreeNode, List
-from .domain import DomainBase
+from .domain import Domain
 from .path import update_tree, Path
 from .functor import Functor, DerivativeOp
 from .expression import Expression

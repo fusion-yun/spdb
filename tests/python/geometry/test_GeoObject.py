@@ -7,7 +7,7 @@ import numpy as np
 
 from spdm.utils.logger import logger
 
-from spdm.geometry.geo_object import GeoObject, GeoObject1D, GeoObject2D, GeoObject3D
+from spdm.core.geo_object import GeoObject, GeoObject1D, GeoObject2D, GeoObject3D
 
 
 class TestGeoObject(unittest.TestCase):

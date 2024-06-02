@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import abc
 import typing
 import numpy as np
 import numpy.typing as np_tp
@@ -12,16 +12,17 @@ from .pluggable import Pluggable
 from .typing import ArrayType, array_type
 from .functor import Functor
 from .path import update_tree
-from ..geometry.geo_object import GeoObject, as_geo_object
+from .geo_object import GeoObject, as_geo_object
 
 from ..numlib.numeric import float_nan, meshgrid, bitwise_and
 from ..numlib.interpolate import interpolate
 
+
 from ..utils.tags import _not_found_
 
 
-class DomainBase(Pluggable):
-    """函数定义域"""
+class Domain(Pluggable):
+    """函数/场的定义域，用以描述函数/场所在流形的离散网格等。可用以构建插值函数，"""
 
     _metadata = {"fill_value": float_nan}
 
@@ -29,6 +30,14 @@ class DomainBase(Pluggable):
         self._dims = dims if dims is not None or len(args) == 0 else args
         self._geometry = as_geo_object(geometry)
         self._metadata = update_tree(deepcopy(self.__class__._metadata), kwargs)
+
+    def display(self, obj):
+        from ..view import sp_view
+        return sp_view.display(self.view_geometry(obj), output="svg")
+
+    @abc.abstractmethod
+    def view_geometry(self, value, *args, **kwargs):
+        return (*self.points, value)
 
     @property
     def geometry(self) -> GeoObject:
@@ -64,11 +73,6 @@ class DomainBase(Pluggable):
         return all([d is None for d in self._dims])
 
     @property
-    def dims(self) -> typing.Tuple[ArrayType]:
-        """函数的网格，即定义域的网格"""
-        return self._dims
-
-    @property
     def ndim(self) -> int:
         return self.geometry.ndim
 
@@ -78,23 +82,28 @@ class DomainBase(Pluggable):
 
     @property
     def shape(self) -> typing.Tuple[int]:
-        return tuple([len(d) for d in self.dims])
+        return None
 
-    @functools.cached_property
+    @property
+    @abc.abstractmethod
     def points(self) -> typing.Tuple[ArrayType]:
-        if len(self.dims) == 1:
-            return self.dims
+        return None
+
+    def interpolate(self, func) -> typing.Callable[..., array_type]:
+        xargs = self.points
+        if callable(func):
+            value = func(*xargs)
+        elif isinstance(func, array_type):
+            value = func
         else:
-            return meshgrid(*self.dims, indexing="ij")
+            raise TypeError(f"{type(func)} is not array or callable!")
+
+        return interpolate(*xargs, value)
 
     @functools.cached_property
     def bbox(self) -> typing.Tuple[typing.List[float], typing.List[float]]:
         """函数的定义域"""
         return tuple(([d[0], d[-1]] if not isinstance(d, float) else [d, d]) for d in self.dims)
-
-    @property
-    def periods(self):
-        return None
 
     def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
         # or self._metadata.get("extrapolate", 0) != 1:
@@ -166,11 +175,3 @@ class DomainBase(Pluggable):
             res = np.full_like(mask, self.fill_value, dtype=self._type_hint())
             res[mask] = value
         return res
-
-    def interpolate(self, y: array_type, *args, **kwargs):
-        x = self.points
-
-        periods = self._metadata.get("periods", None)
-        extrapolate = self._metadata.get("extrapolate", 0)
-
-        return interpolate(*x, y, periods=periods, extrapolate=extrapolate)

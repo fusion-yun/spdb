@@ -9,9 +9,9 @@ from spdm.core.htree import List
 from spdm.core.sp_property import sp_property
 from spdm.core.time_series import TimeSeriesAoS
 from spdm.geometry.curve import Curve
-from spdm.geometry.geo_object import GeoObject, GeoObjectSet
+from spdm.core.geo_object import GeoObject, GeoObjectSet
 from spdm.geometry.point import Point
-from spdm.mesh.mesh import Mesh
+from spdm.core.mesh import Mesh
 from spdm.mesh.mesh_curvilinear import CurvilinearMesh
 from spdm.numlib.contours import _find_contours
 from spdm.numlib.optimize import minimize_filter

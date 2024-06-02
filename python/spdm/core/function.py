@@ -7,15 +7,43 @@ import numpy as np
 import numpy.typing as np_tp
 from copy import copy, deepcopy
 
-from ..numlib.interpolate import interpolate
-from ..utils.logger import logger
-from ..utils.tags import _not_found_
 from .typing import ArrayType, NumericType, array_type, get_args, get_origin, as_array
 from .expression import Expression, zero
 from .functor import Functor
 from .path import update_tree, Path
-from .domain import DomainBase
+from .domain import Domain
 from .htree import List
+
+from ..utils.logger import logger
+from ..utils.tags import _not_found_
+from ..numlib.interpolate import interpolate
+
+
+class PPolyDomain(Domain):
+    """多项式定义域。
+    根据离散网格点构建插值
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(**kwargs)
+        if len(args) == 1 and isinstance(args[0], tuple):
+            args = args[0]
+
+        if all([isinstance(d, np.ndarray) for d in args]):
+            self._points = args
+        else:
+            raise RuntimeError(f"Invalid points {args}")
+
+    @property
+    def points(self) -> typing.Tuple[ArrayType]:
+        return self._points
+
+    def interpolate(self, y: array_type, **kwargs):
+
+        periods = self._metadata.get("periods", None)
+        extrapolate = self._metadata.get("extrapolate", 0)
+
+        return interpolate(*self.points, y, periods=periods, extrapolate=extrapolate, **kwargs)
 
 
 class Function(Expression):
@@ -29,7 +57,9 @@ class Function(Expression):
     函数定义域为多维空间时，网格采用rectlinear mesh，即每个维度网格表示为一个数组 _dims_ 。
     """
 
-    def __init__(self, *xy: array_type, domain=_not_found_, **kwargs):
+    Domain = PPolyDomain
+
+    def __init__(self, *args, **kwargs):
         """
         Parameters
         ----------
@@ -44,64 +74,46 @@ class Function(Expression):
             * if ext=0  or 'extrapolate', return the extrapolated value. 等于 定义域无限
             * if ext=1  or 'nan', return nan
         """
-       
-        if len(xy) == 1 and isinstance(xy[0], tuple):
-            xy = xy[0]
+        op = None
 
-        if len(xy) == 0:
-            raise RuntimeError(f"illegal x,y {xy} ")
-        elif any([x is _not_found_ for x in xy]):
-            raise ValueError(f"Illegal arguments {xy}")
+        if len(args) > 0:
+            domain = args[:-1]
+            value = args[-1]
+            if callable(value):
+                op = value
+                value = None
+        else:
+            domain = kwargs.pop("domain", None)
+            value = kwargs.pop("value", None)
 
-        x = xy[:-1]
-        y = xy[-1]
-
-        if domain is _not_found_ and len(x) > 0:
-            domain = x
-        elif len(x) > 0 and domain is not _not_found_:
-            raise RuntimeError(f"Redefined domain {domain} {x}")
-
-        super().__init__(None, domain=domain, **kwargs)
-
-        self._cache = y
-
-    def __copy__(self) -> typing.Self:
-        """copy from other"""
-        other: Function = super().__copy__()
-        other._cache = self._cache
-        return other
+        super().__init__(op, domain=domain, value=value, **kwargs)
 
     def __getitem__(self, idx) -> NumericType:
-        return self._cache[idx]
+        assert self._value is not None, "Function is not indexable!"
+        return self._value[idx]
 
     def __setitem__(self, idx, value) -> None:
-        self._ppoly = None
-        self._cache[idx] = value
+        assert self._value is not None, "Function is not changable!"
+        self._op = None
+        self._value[idx] = value
 
-    def __array__(self) -> array_type:
-        return self._cache
+    @property
+    def domain(self) -> Function.Domain:
+        return super().domain
 
-    def __eval__(self, *args, **kwargs):
+    def __compile__(self) -> typing.Callable[..., array_type]:
+        """对函数进行编译，用插值函数替代原始表达式，提高运算速度
+        - 由 points，value  生成插值函数，并赋值给 self._op
+        插值函数相对原始表达式的优势是速度快，缺点是精度低。
         """
-        对函数进行编译，用插值函数替代原始表达式，提高运算速度
+        if callable(self._op):
+            pass
+        elif isinstance(self._value, np.ndarray):
+            self._op = self.domain.interpolate(self._value)
+        else:
+            raise RuntimeError(f"Function is not evaluable! {self._op} {self._value}")
 
-        NOTE：
-            - 由 points，value  生成插值函数，并赋值给 self._ppoly。 插值函数相对原始表达式的优势是速度快，缺点是精度低。
-            - 当函数为expression时，调用 value = self.__call__(*points) 。
-        TODO:
-            - 支持 JIT 编译, support JIT compile
-            - 优化缓存
-            - 支持多维插值
-            - 支持多维求导，自动微分 auto diff
-
-        Parameters
-        ----------
-        d : typing.Any
-            order of function
-        force : bool
-            if force 强制返回多项式ppoly ，否则 可能返回 Expression or callable
-        """
-        return self.__ppoly__()(*args, **kwargs)
+        return self._op
 
     def validate(self, value=None, strict=False) -> bool:
         """检查函数的定义域和值是否匹配"""
@@ -111,7 +123,7 @@ class Function(Expression):
         v_shape = ()
 
         if value is None:
-            value = self._cache
+            value = self._value
 
         if value is None:
             raise RuntimeError(f" value is None! {self.__str__()}")

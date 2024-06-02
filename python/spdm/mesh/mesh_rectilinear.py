@@ -6,24 +6,20 @@ from functools import cached_property
 import numpy as np
 
 from ..core.function import Function
-from ..geometry.bbox import BBox
+from ..core.geo_object import BBox, GeoObject
+
 from ..geometry.box import Box
 from ..geometry.curve import Curve
-from ..geometry.geo_object import GeoObject
 from ..geometry.line import Line
 from ..geometry.point import Point
 from ..numlib.interpolate import interpolate
 from ..utils.logger import logger
 from ..core.typing import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
-from .mesh import Mesh
+from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
 
-# from scipy.interpolate import (InterpolatedUnivariateSpline,
-#                                RectBivariateSpline, RegularGridInterpolator,
-#                                UnivariateSpline, interp1d, interp2d)
 
-
-@Mesh.register("rectilinear")
+@Mesh.register(["rectilinear", "rectangular", "rect"])
 class RectilinearMesh(StructuredMesh):
     """A `rectilinear Mesh` is a tessellation by rectangles or rectangular cuboids (also known as rectangular parallelepipeds)
     that are not, in general, all congruent to each other. The cells may still be indexed by integers as above, but the
@@ -39,8 +35,15 @@ class RectilinearMesh(StructuredMesh):
 
     """
 
-    def __init__(self, *args: ArrayType, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+
+        assert all([d.ndim == 1 for d in self._dims]), f"Illegal dims shape! {self._dims}"
+        assert all(
+            [np.all(d[1:] > d[:-1]) for d in self._dims]
+        ), f"'dims' must be monotonically increasing.! {self._dims}"
+
+        self._shape = np.asarray([d.size for d in self._dims])
 
         if self._geometry is None:
             self._geometry = Box([min(d) for d in self._dims], [max(d) for d in self._dims])
@@ -54,18 +57,6 @@ class RectilinearMesh(StructuredMesh):
     @property
     def dim2(self) -> ArrayType:
         return self._dims[1].__array__()
-
-    @property
-    def dims(self) -> typing.List[ArrayType]:
-        return self._dims
-
-    @property
-    def dimensions(self) -> typing.List[ArrayType]:
-        return self._dims
-
-    @property
-    def rank(self) -> int:
-        return len(self._dims)
 
     @cached_property
     def dx(self) -> ArrayType:
@@ -95,16 +86,21 @@ class RectilinearMesh(StructuredMesh):
         else:
             return np.meshgrid(*self._dims, indexing="ij")
 
-    def interpolate(self, value: ArrayType, **kwargs):
+    def interpolate(self, func: ArrayType | typing.Callable[..., array_type], **kwargs):
         """生成插值器
         method: "linear",   "nearest", "slinear", "cubic", "quintic" and "pchip"
         """
 
-        if not isinstance(value, np.ndarray):
-            raise ValueError(f"value must be np.ndarray, but {type(value)} {value}")
+        if not isinstance(func, np.ndarray):
+            value = getattr(func, "_value", None)
+        else:
+            value = func
 
+        if not isinstance(func, np.ndarray):
+            raise ValueError(f"value must be np.ndarray, but {type(func)} {func}")
+        
         elif tuple(value.shape) != tuple(self.shape):
-            raise NotImplementedError(f"{value.shape}!={self.shape}")
+            raise NotImplementedError(f"{func.shape}!={self.shape}")
 
         if np.any(tuple(value.shape) != tuple(self.shape)):
             raise ValueError(f"{value} {self.shape}")

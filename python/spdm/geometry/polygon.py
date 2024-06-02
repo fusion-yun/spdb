@@ -4,8 +4,8 @@ import typing
 import numpy as np
 
 from ..core.typing import ArrayType
-from .bbox import BBox
-from .geo_object import GeoObject
+
+from ..core.geo_object import GeoObject,BBox
 from .line import Segment
 from .point import Point
 from .point_set import PointSet

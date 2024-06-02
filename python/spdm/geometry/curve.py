@@ -12,8 +12,8 @@ from scipy.interpolate import CubicSpline, PPoly
 from ..utils.logger import logger
 from ..core.typing import (ArrayLike, ArrayType, NumericType, array_type,
                             nTupleType)
-from .bbox import BBox
-from .geo_object import GeoObject
+
+from ..core.geo_object import GeoObject,BBox
 from .point_set import PointSet
 
 

@@ -32,7 +32,7 @@ class TestField(unittest.TestCase):
 
         z = np.sin(g_x) * np.cos(g_y)
 
-        fun = Field(x, y, np.sin(_x) * np.cos(_y), mesh_periods=[TWOPI, 2 * TWOPI])
+        fun = Field(x, y, np.sin(_x) * np.cos(_y), mesh={"periods": [TWOPI, 2 * TWOPI]})
 
         z2 = fun(g_x, g_y)
 

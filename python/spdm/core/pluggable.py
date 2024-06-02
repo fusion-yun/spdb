@@ -1,13 +1,13 @@
 import inspect
 import typing
 
-from abc import ABC, abstractmethod
+import abc # Abstract Base Classes
 
 from ..utils.logger import logger
 from ..utils.sp_export import sp_load_module, walk_namespace_modules
 
 
-class Pluggable:
+class Pluggable(abc.ABC):
     """Factory class to create objects from a registry."""
 
     _plugin_registry = {}

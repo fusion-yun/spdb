@@ -4,7 +4,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from ..core.container import Container
 from ..core.function import Function
-from .mesh import Mesh
+from ..core.mesh import Mesh
 
 
 class MultiBlockMesh(Container[Mesh]):

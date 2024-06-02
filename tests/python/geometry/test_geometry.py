@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from scipy import constants
 from spdm.utils.logger import logger
-from spdm.geometry.geo_object import GeoObject
+from spdm.core.geo_object import GeoObject
 
 
 class TestMesh(unittest.TestCase):

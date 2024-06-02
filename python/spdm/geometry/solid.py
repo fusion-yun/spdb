@@ -1,6 +1,6 @@
 import typing
 import abc
-from .geo_object import GeoObject
+from ..core.geo_object import GeoObject,BBox
 from .plane import Plane
 
 

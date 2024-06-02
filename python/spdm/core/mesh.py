@@ -6,15 +6,72 @@ import numpy as np
 from functools import cached_property
 from enum import Enum
 
-from ..geometry.geo_object import GeoObject,  as_geo_object
-from ..core.domain import DomainBase
-from ..core.path import update_tree
-from ..core.typing import ArrayType, NumericType, ScalarType, as_array
+from .geo_object import GeoObject, as_geo_object
+from .domain import Domain
+from .path import update_tree
+from .typing import ArrayType, NumericType, ScalarType, as_array
 from ..utils.tags import _not_found_
+from ..utils.misc import group_dict_by_prefix
 from ..utils.logger import logger
+from .path import update_tree, Path
+from ..numlib.numeric import float_nan, meshgrid, bitwise_and
 
 
-class Mesh(DomainBase):
+def guess_mesh(holder, prefix="mesh", **kwargs):
+    if holder is None or holder is _not_found_:
+        return None
+
+    metadata = getattr(holder, "_metadata", {})
+
+    mesh, *_ = group_dict_by_prefix(metadata, prefix, sep=None)
+
+    if mesh is None:
+        coordinates, *_ = group_dict_by_prefix(metadata, "coordinate", sep=None)
+
+        if coordinates is not None:
+            coordinates = {int(k): v for k, v in coordinates.items() if k.isdigit()}
+            coordinates = dict(sorted(coordinates.items(), key=lambda x: x[0]))
+            coordinates = [Path(c).find(holder) for c in coordinates.values()]
+            if all([is_array(c) for c in coordinates]):
+                mesh = {"dims": coordinates}
+
+    elif isinstance(mesh, str) and mesh.isidentifier():
+        mesh = getattr(holder, mesh, _not_found_)
+    elif isinstance(mesh, str):
+        mesh = Path(mesh).get(holder, _not_found_)
+    elif isinstance(mesh, Enum):
+        mesh = {"type": mesh.name}
+
+    elif isinstance(mesh, collections.abc.Sequence) and all(isinstance(d, array_type) for d in mesh):
+        mesh = {"dims": mesh}
+
+    elif isinstance(mesh, collections.abc.Mapping):
+        pass
+
+    if mesh is None or mesh is _not_found_:
+        return guess_mesh(getattr(holder, "_parent", None), prefix=prefix, **kwargs)
+    else:
+        return mesh
+
+    # if all([isinstance(c, str) and c.startswith("../grid") for c in coordinates.values()]):
+    #     o_mesh = getattr(holder, "grid", None)
+    #     if isinstance(o_mesh, Mesh):
+    #         # if self._mesh is not None and len(self._mesh) > 0:
+    #         #     logger.warning(f"Ignore {self._mesh}")
+    #         self._domain = o_mesh
+    #     elif isinstance(o_mesh, collections.abc.Sequence):
+    #         self._domain = update_tree_recursive(self._domain, {"dims": o_mesh})
+    #     elif isinstance(o_mesh, collections.abc.Mapping):
+    #         self._domain = update_tree_recursive(self._domain, o_mesh)
+    #     elif o_mesh is not None:
+    #         raise RuntimeError(f"holder.grid is not a Mesh, but {type(o_mesh)}")
+    # else:
+    #     dims = tuple([(holder.get(c) if isinstance(c, str) else c) for c in coordinates.values()])
+    #     self._domain = update_tree_recursive(self._domain, {"dims": dims})
+
+
+
+class Mesh(Domain):
     """Mesh  网格
 
     @NOTE: In general, a mesh provides more flexibility in representing complex geometries and
@@ -25,21 +82,61 @@ class Mesh(DomainBase):
     _plugin_registry = {}
     _plugin_prefix = "spdm.mesh.mesh_"
 
+    @classmethod
+    def _guess_mesh_type(cls, *args, **kwargs):
+
+        dims = []
+
+        mesh_type = kwargs.get("type", None)
+        
+        if len(args) > 0 and not isinstance(args[0], dict):
+            dims = args
+        else:
+            if len(args) == 0:
+                dims, kwargs = group_dict_by_prefix(kwargs, prefixes="dim", sep=None)
+            elif len(args) == 1 and isinstance(args[0], dict):
+                dims, kwargs = group_dict_by_prefix(args[0], prefixes="dim", sep=None)
+
+            if isinstance(dims, dict):
+                dims = {int(k): v for k, v in dims.items() if k.isdigit()}
+                dims = dict(sorted(dims.items(), key=lambda x: x[0]))
+                dims = tuple([as_array(d) for d in dims.values()])
+        if mesh_type is None:
+
+            match len(args):
+                case 0:
+                    dims = group_dict_by_prefix(args[0], "dim")
+                case 1:
+                    if isinstance(args[0], dict):
+                        mesh_type = args[0].get("@type", args[0].get("type", None))
+                        dims = group_dict_by_prefix(args[0], "dim")
+                    elif isinstance(args[0], tuple):
+                        mesh_type = None
+                        dims = args[0]
+                case _:
+                    dims = args
+            if all([isinstance(a, np.ndarray) for a in dims]):
+                ndim = len(args)
+                if all([d.ndim == 1 for d in dims]):
+                    mesh_type = "rectilinear"
+                elif all([d.ndim == ndim for d in dims]):
+                    mesh_type = "rectangular"
+
+        if isinstance(mesh_type, Enum):
+            mesh_type = mesh_type.name
+
+        return mesh_type, dims
+
     def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
         if cls is not Mesh:
             return super().__new__(cls)
-        else:
-            mesh_type = kwargs.pop("type", None)
-            if mesh_type is None and len(args) > 0 and isinstance(args[0], dict):
-                mesh_type = args[0].get("@type", None)
 
-            if isinstance(mesh_type, Enum):
-                mesh_type = mesh_type.name
+        mesh_type, *_ = cls._guess_mesh_type(*args, **kwargs)
 
-            if mesh_type is _not_found_ or mesh_type is None or not mesh_type:
-                raise ModuleNotFoundError(f"Can not determind the mesh type! {args},{kwargs}")
+        if not (isinstance(mesh_type, str) and mesh_type.isidentifier()):
+            raise ModuleNotFoundError(f"Can not determind the mesh type! {mesh_type},{args},{kwargs}")
 
-            return super().__new__(cls, mesh_type)
+        return super().__new__(cls, mesh_type)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
