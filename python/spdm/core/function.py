@@ -28,14 +28,31 @@ class PPolyDomain(Domain):
         super().__init__(**kwargs)
         if len(args) == 1 and isinstance(args[0], tuple):
             args = args[0]
+        ndim = len(args)
 
-        if all([isinstance(d, np.ndarray) for d in args]):
+        if all([isinstance(d, np.ndarray) and d.ndim == ndim for d in args]):
             self._points = args
+        elif all([isinstance(d, np.ndarray) and d.ndim == 1 for d in args]):
+            self._dims = args
+            self._points = None
         else:
             raise RuntimeError(f"Invalid points {args}")
 
     @property
-    def points(self) -> typing.Tuple[ArrayType]:
+    def shape(self) -> typing.Tuple[int, ...]:
+        if self._dims is not None:
+            return tuple([d.size for d in self._dims])
+        elif self._points is not None:
+            return self._points[0].shape
+        else:
+            raise RuntimeError(f"illegal domain!")
+
+    @property
+    def points(self) -> typing.Tuple[array_type, ...]:
+        if self._points is not None:
+            pass
+        elif self._dims is not None:
+            self._points = np.meshgrid(*self._dims, indexing="ij")
         return self._points
 
     def interpolate(self, y: array_type, **kwargs):
@@ -75,19 +92,15 @@ class Function(Expression):
             * if ext=1  or 'nan', return nan
         """
         func = None
+        value = None
         if len(args) > 0:
-            if domain is None:
-                domain = args[:-1]
-            elif len(args) > 1:
-                if isinstance(domain, dict):
-                    domain["dims"] = args[:-1]
-                else:
-                    raise RuntimeError(f"Redefine domain {args[:-1]} or {domain}")
 
             if callable(args[-1]):
                 func = args[-1]
             else:
                 value = args[-1]
+
+        domain = Function.Domain(*args[:-1], **kwargs.pop("", {}))
 
         super().__init__(func, domain=domain, value=value, **kwargs)
 

@@ -22,23 +22,20 @@ from ..utils.tags import _not_found_
 
 
 class Domain(Pluggable):
-    """函数/场的定义域，用以描述函数/场所在流形的离散网格等。可用以构建插值函数，"""
+    """函数/场的定义域，用以描述函数/场所在流形
+    - geometry  ：几何边界
+    - shape     ：网格所对应数组形状， 例如，均匀网格 的形状为 （n,m) 其中 n,m 都是整数
+    - points    ：网格顶点坐标，例如 (x,y) ，其中，x，y 都是形状为 （n,m) 的数组
+
+
+    """
 
     _metadata = {"fill_value": float_nan}
 
-    def __init__(self, *args, **kwargs) -> None:
-        if len(args) == 1 and isinstance(args[0], dict):
-            metadata = collections.ChainMap(args[0], kwargs, self.__class__._metadata)
-            args = []
-        else:
-            metadata = collections.ChainMap(kwargs, self.__class__._metadata)
-        self._dims = metadata.pop("dims", None)
-        self._geometry = as_geo_object(metadata.pop("geometry", None))
-        self._metadata = deepcopy(metadata)
+    def __init__(self, geometry=None, **kwargs) -> None:
 
-    @property
-    def geometry(self) -> GeoObject:
-        return self._geometry
+        self._geometry = as_geo_object(geometry)
+        self._metadata = collections.ChainMap(kwargs, self.__class__._metadata)
 
     @property
     def label(self) -> str:
@@ -69,30 +66,28 @@ class Domain(Pluggable):
         return all([d is None for d in self._dims])
 
     @property
-    def ndim(self) -> int:
-        return self.geometry.ndim
-
-    @property
-    def rank(self) -> int:
-        return self.geometry.rank
-
-    @property
-    def shape(self) -> typing.Tuple[int]:
-        return None
+    def geometry(self) -> typing.Type[GeoObject]:
+        return self._geometry
 
     @property
     @abc.abstractmethod
-    def points(self) -> typing.Tuple[ArrayType]:
-        return None
+    def shape(self) -> typing.Tuple[int, ...]:
+        """domain 内网格对应的数组形状。"""
+        pass
+
+    @property
+    @abc.abstractmethod
+    def points(self) -> typing.Tuple[ArrayType, ...]:
+        pass
 
     def view(self, obj, **kwargs):
         return {
             "$type": "contour",
-            "$data": (*self.points, obj.__array__()),
+            "$data": (*self.points, np.asarray(obj)),
             "style": kwargs,
         }
 
-    def interpolate(self, func) -> typing.Callable[..., array_type]:
+    def interpolate(self, func: typing.Callable | array_type) -> typing.Callable[..., array_type]:
         xargs = self.points
         if callable(func):
             value = func(*xargs)
@@ -102,11 +97,6 @@ class Domain(Pluggable):
             raise TypeError(f"{type(func)} is not array or callable!")
 
         return interpolate(*xargs, value)
-
-    @functools.cached_property
-    def bbox(self) -> typing.Tuple[typing.List[float], typing.List[float]]:
-        """函数的定义域"""
-        return tuple(([d[0], d[-1]] if not isinstance(d, float) else [d, d]) for d in self.dims)
 
     def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
         # or self._metadata.get("extrapolate", 0) != 1:
@@ -140,7 +130,7 @@ class Domain(Pluggable):
     def eval(self, func, *xargs, **kwargs):
         """根据 __domain__ 函数的返回值，对输入坐标进行筛选"""
 
-        mask = self.__domain__().mask(*xargs)
+        mask = self.mask(*xargs)
 
         mask_size = mask.size if isinstance(mask, array_type) else 1
         masked_num = np.sum(mask)
