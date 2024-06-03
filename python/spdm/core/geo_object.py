@@ -12,6 +12,7 @@ from .typing import array_type
 from .typing import ArrayLike, ArrayType, NumericType, ScalarType, array_type, nTupleType, numeric_type
 from ..utils.logger import logger
 
+
 class BBox:
     def __init__(self, origin: ArrayLike, dimensions: ArrayLike, transform=None, shift=None) -> None:
         self._origin = np.asarray(origin)
@@ -387,7 +388,9 @@ class GeoObjectSet(typing.List[GeoObject]):
 
 
 def as_geo_object(*args, **kwargs) -> GeoObject | GeoObjectSet:
-    if len(kwargs) > 0 or len(args) != 1:
+    if len(args) == 1 and args[0] is None:
+        return None
+    elif len(kwargs) > 0 or len(args) != 1:
         return GeoObject(*args, **kwargs)
     elif isinstance(args[0], GeoObject):
         return args[0]

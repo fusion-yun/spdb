@@ -82,7 +82,7 @@ class Mesh(Domain):
     _plugin_prefix = "spdm.mesh.mesh_"
 
     @classmethod
-    def _guess_mesh_type(cls, *args, **kwargs):
+    def _guess_mesh(cls, *args, **kwargs) -> dict:
 
         if len(args) == 0:
             desc = kwargs
@@ -98,40 +98,42 @@ class Mesh(Domain):
 
         mesh_type = desc.get("@type", desc.get("type", None))
 
-        if mesh_type is None:
-            dims = desc.get("dims", None)
-            if dims is None:
-                dims, desc = group_dict_by_prefix(desc, prefixes="dim", sep=None)
-                if isinstance(dims, dict):
-                    dims = {int(k): v for k, v in dims.items() if k.isdigit()}
-                    dims = dict(sorted(dims.items(), key=lambda x: x[0]))
-                    dims = tuple([as_array(d) for d in dims.values()])
+        dims = desc.get("dims", None)
 
-            if dims is not None and all([isinstance(a, np.ndarray) for a in dims]):
-                ndim = len(args)
-                if all([d.ndim == 1 for d in dims]):
-                    mesh_type = "rectilinear"
-                elif all([d.ndim == ndim for d in dims]):
-                    mesh_type = "rectangular"
+        if dims is None:
+            dims, desc = group_dict_by_prefix(desc, prefixes="dim", sep=None)
+            if isinstance(dims, dict):
+                dims = {int(k): v for k, v in dims.items() if k.isdigit()}
+                dims = dict(sorted(dims.items(), key=lambda x: x[0]))
+                dims = tuple([as_array(d) for d in dims.values()])
 
-        if isinstance(mesh_type, Enum):
-            mesh_type = mesh_type.name
+            elif dims is None and all([isinstance(d, np.ndarray) for d in args]):
+                dims = args
 
-        return mesh_type, dims
+            desc["dims"] = dims
+
+        if mesh_type is None and dims is not None and all([isinstance(a, np.ndarray) for a in dims]):
+            ndim = len(args)
+            if all([d.ndim == 1 for d in dims]):
+                mesh_type = "rectilinear"
+            elif all([d.ndim == ndim for d in dims]):
+                mesh_type = "curvilinear"
+
+        desc["@type"] = mesh_type
+
+        if not (isinstance(mesh_type, str) and mesh_type.isidentifier()):
+            raise ModuleNotFoundError(f"Can not determind the mesh type! {mesh_type},{args},{kwargs}")
+
+        return desc
 
     def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
         if cls is not Mesh:
             return super().__new__(cls)
 
-        mesh_type, *_ = cls._guess_mesh_type(*args, **kwargs)
-
-        if not (isinstance(mesh_type, str) and mesh_type.isidentifier()):
-            raise ModuleNotFoundError(f"Can not determind the mesh type! {mesh_type},{args},{kwargs}")
-
-        return super().__new__(cls, mesh_type)
+        return super().__new__(cls, cls._guess_mesh(*args, **kwargs).get("@type", None))
 
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(Mesh._guess_mesh(*args, **kwargs))
 
     @property
     def axis_label(self) -> typing.Tuple[str]:

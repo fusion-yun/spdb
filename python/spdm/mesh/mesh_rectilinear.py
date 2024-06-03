@@ -52,11 +52,11 @@ class RectilinearMesh(StructuredMesh):
 
     @property
     def dim1(self) -> ArrayType:
-        return self._dims[0].__array__()
+        return np.asarray(self._dims[0])
 
     @property
     def dim2(self) -> ArrayType:
-        return self._dims[1].__array__()
+        return np.asarray(self._dims[1])
 
     @cached_property
     def dx(self) -> ArrayType:

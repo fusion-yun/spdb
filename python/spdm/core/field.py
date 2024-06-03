@@ -45,12 +45,20 @@ class Field(Function):
                 domain = deep_merge_dict(domain, mesh)
             else:
                 raise RuntimeError(f"Redefine mesh or domain ! mesh={mesh}, domain={domain}")
-            
+
         super().__init__(*args, domain=domain, **kwargs)
 
     @property
     def mesh(self) -> Mesh:
         return self.domain
+
+    def __view__(self, **kwargs):
+        return self.domain.view(self, label=self.__label__, **kwargs)
+
+    def _repr_svg_(self) -> str:
+        from ..view import sp_view
+
+        return sp_view.display(self.__view__(), label=self.__label__, output="svg")
 
     def __call__(self, *args, **kwargs) -> typing.Callable[..., ArrayType]:
         # if all([isinstance(a, (array_type, float, int)) for a in args]):

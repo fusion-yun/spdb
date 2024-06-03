@@ -30,9 +30,9 @@ class SpObject(SpTree, Pluggable):
         self._uid = uuid.uuid3(uuid.uuid1(clock_seq=0), self.__class__.__name__)
 
     def _repr_svg_(self):
-        return sp_view.display(self.__geometry__(), output="svg")
+        return sp_view.display(self.__view__(), output="svg")
 
-    def __geometry__(self):
+    def __view__(self):
         return None
 
     @property

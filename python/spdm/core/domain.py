@@ -26,22 +26,18 @@ class Domain(Pluggable):
 
     _metadata = {"fill_value": float_nan}
 
-    def __init__(self, *args, geometry=None, dims=None, **kwargs) -> None:
-        self._dims = dims if dims is not None or len(args) == 0 else args
-        self._geometry = as_geo_object(geometry)
-        self._metadata = update_tree(deepcopy(self.__class__._metadata), kwargs)
-
-    def display(self, obj):
-        from ..view import sp_view
-
-        return sp_view.display(self.view_geometry(obj), output="svg")
-
-    def view_geometry(self, value, *args, **kwargs):
-        return (*self.points, value)
+    def __init__(self, *args, **kwargs) -> None:
+        if len(args) == 1 and isinstance(args[0], dict):
+            metadata = collections.ChainMap(args[0], kwargs, self.__class__._metadata)
+            args = []
+        else:
+            metadata = collections.ChainMap(kwargs, self.__class__._metadata)
+        self._dims = metadata.pop("dims", args)
+        self._geometry = as_geo_object(metadata.pop("geometry", None))
+        self._metadata = deepcopy(metadata)
 
     @property
     def geometry(self) -> GeoObject:
-        """Geometry of the Mesh  网格的几何形状"""
         return self._geometry
 
     @property
@@ -88,6 +84,13 @@ class Domain(Pluggable):
     @abc.abstractmethod
     def points(self) -> typing.Tuple[ArrayType]:
         return None
+
+    def view(self, obj, **kwargs):
+        return {
+            "$type": "contour",
+            "$data": (*self.points, obj.__array__()),
+            "style": kwargs,
+        }
 
     def interpolate(self, func) -> typing.Callable[..., array_type]:
         xargs = self.points

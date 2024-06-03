@@ -171,7 +171,7 @@ class Expression(HTreeNode):
 
         domain = self._domain
 
-        if domain is None:
+        if domain is None or not (domain):
             # 从祖辈节点查找 domain
             holder = self
 
@@ -272,11 +272,7 @@ class Expression(HTreeNode):
         """for jupyter notebook display"""
         return f"$${self._render_latex_()}$$"
 
-    def __geometry__(self, *args, label=None, **kwargs):
-        return self.domain.view_geometry(self.__array__(), *args, label=label or self.__label__, **kwargs)
 
-    def _repr_svg_(self) -> str:
-        return self.domain.display(self.__array__(), label=self.__label__, output="svg")
 
     @property
     def dtype(self):

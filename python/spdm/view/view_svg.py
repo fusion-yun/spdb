@@ -51,8 +51,8 @@ class SVGView(View):
         else:
             opts = {}
 
-        if hasattr(obj.__class__, "__geometry__"):
-            geo, *_ = obj.__geometry__(view=self.viewpoint)
+        if hasattr(obj.__class__, "__view__"):
+            geo, *_ = obj.__view__(view=self.viewpoint)
             contents.append(geo)
             bbox.append(geo.bbox)
         elif hasattr(obj, "bbox"):

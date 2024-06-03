@@ -3,10 +3,8 @@ import collections.abc
 import numpy as np
 
 from ..core.typing import ArrayLike, ArrayType, as_array
-
-from ..utils.tags import _not_found_
-
 from ..core.mesh import Mesh
+from ..utils.tags import _not_found_
 
 
 class StructuredMesh(Mesh):
@@ -14,11 +12,10 @@ class StructuredMesh(Mesh):
     结构化网格上的点可以表示为长度为n=rank的归一化ntuple，记作 uv，uv_r \\in [0,1]
     """
 
-    def __init__(self, *args, periods=None, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        _, self._dims = Mesh._guess_mesh_type(*args, **kwargs)
-
+        periods = self._metadata.get("periods", None)
         if isinstance(periods, collections.abc.Sequence):
             for idx, d in enumerate(self._dims):
                 if (
@@ -26,15 +23,13 @@ class StructuredMesh(Mesh):
                     and periods[idx] is not None
                     and not np.isclose(d[-1] - d[0], periods[idx])
                 ):
-                    raise RuntimeError(f"idx={idx} periods {periods[idx]} is not compatible with dims [{d[0]},{d[-1]}] ")
+                    raise RuntimeError(
+                        f"idx={idx} periods {periods[idx]} is not compatible with dims [{d[0]},{d[-1]}] "
+                    )
                 if not np.all(d[1:] > d[:-1]):
                     raise RuntimeError(f"dims[{idx}] is not increasing")
 
-        ndim = len(self._dims)
-
-        self._origin = np.asarray([0.0] * ndim)
-        self._scale = np.asarray([1.0] * ndim)
-        self._periods = tuple(periods) if periods is not None else tuple([1.0] * ndim)
+        self._periods = tuple(periods) if periods is not None else None
 
     @property
     def dims(self) -> typing.Tuple[ArrayType]:
