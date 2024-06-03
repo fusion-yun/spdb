@@ -185,8 +185,6 @@ class MatplotlibView(SpView):
 
             self._draw(canvas, None, s_styles, *styles, **kwargs)
 
-        elif obj.__class__ is GeoObject:
-            self._draw(canvas, obj.bbox, *styles)
         elif isinstance(obj, dict) and "$type" in obj:
             match view_type := obj.get("$type"):
                 case "contour":
@@ -244,8 +242,7 @@ class MatplotlibView(SpView):
             canvas.scatter(*obj.points, **s_styles)
 
         elif isinstance(obj, GeoObject):
-            bbox = obj.bbox
-            canvas.add_patch(plt.Rectangle(bbox.origin, *bbox.dimensions, fill=False, **s_styles))
+            self._draw(canvas, obj.bbox, *styles)
 
         elif isinstance(obj, BBox):
             canvas.add_patch(plt.Rectangle(obj.origin, *obj.dimensions, fill=False, **s_styles))

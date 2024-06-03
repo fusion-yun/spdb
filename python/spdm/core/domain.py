@@ -32,7 +32,7 @@ class Domain(Pluggable):
             args = []
         else:
             metadata = collections.ChainMap(kwargs, self.__class__._metadata)
-        self._dims = metadata.pop("dims", args)
+        self._dims = metadata.pop("dims", None)
         self._geometry = as_geo_object(metadata.pop("geometry", None))
         self._metadata = deepcopy(metadata)
 
