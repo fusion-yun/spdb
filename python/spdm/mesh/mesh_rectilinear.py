@@ -90,19 +90,20 @@ class RectilinearMesh(StructuredMesh):
         """生成插值器
         method: "linear",   "nearest", "slinear", "cubic", "quintic" and "pchip"
         """
-
-        if not isinstance(func, np.ndarray):
-            value = getattr(func, "_value", None)
+        if callable(func):
+            value = func(*self.points)
+        elif not isinstance(func, np.ndarray):
+            value = getattr(func, "_cache", None)
         else:
             value = func
 
-        if not isinstance(func, np.ndarray):
-            raise ValueError(f"value must be np.ndarray, but {type(func)} {func}")
-        
+        if not isinstance(value, np.ndarray):
+            raise ValueError(f"value must be np.ndarray, but {type(value)} {value}")
+
         elif tuple(value.shape) != tuple(self.shape):
             raise NotImplementedError(f"{func.shape}!={self.shape}")
 
         if np.any(tuple(value.shape) != tuple(self.shape)):
             raise ValueError(f"{value} {self.shape}")
 
-        return interpolate(*self._dims, value, periods=self._cycles, **kwargs)
+        return interpolate(*self._dims, value, periods=self._periods, **kwargs)

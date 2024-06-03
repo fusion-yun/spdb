@@ -59,7 +59,7 @@ class Function(Expression):
 
     Domain = PPolyDomain
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, domain=None, value=None, **kwargs):
         """
         Parameters
         ----------
@@ -74,28 +74,31 @@ class Function(Expression):
             * if ext=0  or 'extrapolate', return the extrapolated value. 等于 定义域无限
             * if ext=1  or 'nan', return nan
         """
-        op = None
-
+        func = None
         if len(args) > 0:
-            domain = args[:-1]
-            value = args[-1]
-            if callable(value):
-                op = value
-                value = None
-        else:
-            domain = kwargs.pop("domain", None)
-            value = kwargs.pop("value", None)
+            if domain is None:
+                domain = args[:-1]
+            elif len(args) > 1:
+                if isinstance(domain, dict):
+                    domain["dims"] = args[:-1]
+                else:
+                    raise RuntimeError(f"Redefine domain {args[:-1]} or {domain}")
 
-        super().__init__(op, domain=domain, value=value, **kwargs)
+            if callable(args[-1]):
+                func = args[-1]
+            else:
+                value = args[-1]
+
+        super().__init__(func, domain=domain, value=value, **kwargs)
 
     def __getitem__(self, idx) -> NumericType:
-        assert self._value is not None, "Function is not indexable!"
-        return self._value[idx]
+        assert self._cache is not None, "Function is not indexable!"
+        return self._cache[idx]
 
     def __setitem__(self, idx, value) -> None:
-        assert self._value is not None, "Function is not changable!"
+        assert self._cache is not None, "Function is not changable!"
         self._op = None
-        self._value[idx] = value
+        self._cache[idx] = value
 
     @property
     def domain(self) -> Function.Domain:
@@ -106,14 +109,15 @@ class Function(Expression):
         - 由 points，value  生成插值函数，并赋值给 self._op
         插值函数相对原始表达式的优势是速度快，缺点是精度低。
         """
-        if callable(self._op):
-            pass
-        elif isinstance(self._value, np.ndarray):
-            self._op = self.domain.interpolate(self._value)
-        else:
-            raise RuntimeError(f"Function is not evaluable! {self._op} {self._value}")
+        if not callable(self._ppoly):
+            if isinstance(self._cache, np.ndarray):
+                self._ppoly = self.domain.interpolate(self._cache)
+            elif callable(self._op):
+                self._ppoly = self.domain.interpolate(self._op)
+            else:
+                raise RuntimeError(f"Function is not evaluable! {self._op} {self._cache}")
 
-        return self._op
+        return self._ppoly
 
     def validate(self, value=None, strict=False) -> bool:
         """检查函数的定义域和值是否匹配"""
@@ -123,7 +127,7 @@ class Function(Expression):
         v_shape = ()
 
         if value is None:
-            value = self._value
+            value = self._cache
 
         if value is None:
             raise RuntimeError(f" value is None! {self.__str__()}")

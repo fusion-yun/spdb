@@ -45,7 +45,7 @@ class TestField(unittest.TestCase):
         y = np.linspace(0, 2 * TWOPI, 128)
         g_x, g_y = np.meshgrid(x, y)
 
-        Z = Field(x, y, np.sin(_x) * np.cos(_y), mesh_periods=[TWOPI, 2 * TWOPI])
+        Z = Field(x, y, np.sin(_x) * np.cos(_y), mesh={"periods": [TWOPI, 2 * TWOPI]})
 
         self.assertTrue(np.allclose(np.sin(g_x) * np.cos(g_y), Z(g_x, g_y), rtol=1.0e-4))
 

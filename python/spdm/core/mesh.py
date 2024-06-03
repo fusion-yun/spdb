@@ -70,7 +70,6 @@ def guess_mesh(holder, prefix="mesh", **kwargs):
     #     self._domain = update_tree_recursive(self._domain, {"dims": dims})
 
 
-
 class Mesh(Domain):
     """Mesh  网格
 
@@ -85,37 +84,30 @@ class Mesh(Domain):
     @classmethod
     def _guess_mesh_type(cls, *args, **kwargs):
 
-        dims = []
+        if len(args) == 0:
+            desc = kwargs
+        elif len(args) > 1:
+            desc = collections.ChainMap({"dims": args}, kwargs)
+            args = []
+        elif isinstance(args[0], collections.abc.Sequence):
+            desc = collections.ChainMap({"dims": args[0]}, kwargs)
+            args = []
+        elif isinstance(args[0], dict):
+            desc = collections.ChainMap(args[0], kwargs)
+            args = []
 
-        mesh_type = kwargs.get("type", None)
-        
-        if len(args) > 0 and not isinstance(args[0], dict):
-            dims = args
-        else:
-            if len(args) == 0:
-                dims, kwargs = group_dict_by_prefix(kwargs, prefixes="dim", sep=None)
-            elif len(args) == 1 and isinstance(args[0], dict):
-                dims, kwargs = group_dict_by_prefix(args[0], prefixes="dim", sep=None)
+        mesh_type = desc.get("@type", desc.get("type", None))
 
-            if isinstance(dims, dict):
-                dims = {int(k): v for k, v in dims.items() if k.isdigit()}
-                dims = dict(sorted(dims.items(), key=lambda x: x[0]))
-                dims = tuple([as_array(d) for d in dims.values()])
         if mesh_type is None:
+            dims = desc.get("dims", None)
+            if dims is None:
+                dims, desc = group_dict_by_prefix(desc, prefixes="dim", sep=None)
+                if isinstance(dims, dict):
+                    dims = {int(k): v for k, v in dims.items() if k.isdigit()}
+                    dims = dict(sorted(dims.items(), key=lambda x: x[0]))
+                    dims = tuple([as_array(d) for d in dims.values()])
 
-            match len(args):
-                case 0:
-                    dims = group_dict_by_prefix(args[0], "dim")
-                case 1:
-                    if isinstance(args[0], dict):
-                        mesh_type = args[0].get("@type", args[0].get("type", None))
-                        dims = group_dict_by_prefix(args[0], "dim")
-                    elif isinstance(args[0], tuple):
-                        mesh_type = None
-                        dims = args[0]
-                case _:
-                    dims = args
-            if all([isinstance(a, np.ndarray) for a in dims]):
+            if dims is not None and all([isinstance(a, np.ndarray) for a in dims]):
                 ndim = len(args)
                 if all([d.ndim == 1 for d in dims]):
                     mesh_type = "rectilinear"

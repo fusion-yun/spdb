@@ -5,13 +5,11 @@ from copy import copy, deepcopy
 import functools
 import collections.abc
 import numpy as np
-
-from .typing import ArrayType
-from ..utils.tags import _not_found_
 from .typing import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
+from ..utils.tags import _not_found_
 from ..utils.logger import logger
 from ..utils.misc import group_dict_by_prefix
-
+from ..numlib.interpolate import interpolate
 from .functor import Functor
 from .entry import Entry
 from .htree import HTreeNode, HTree, HTreeNode, List
@@ -103,7 +101,7 @@ class Expression(HTreeNode):
     def __new__(cls, *args, **kwargs):
 
         if cls is not Expression or len(args) == 0:
-            pass
+            return super().__new__(cls)
         elif is_scalar(args[0]):  # 常量/标量表达式
             match args[0]:
                 case 0:
@@ -115,30 +113,39 @@ class Expression(HTreeNode):
 
             return super().__new__(TP)
 
-        elif isinstance(args[0], array_type):  # 构建插值函数
-            from .function import Function
+        # elif kwargs.get("mesh", None) is not None:
+        #     from .field import Field
 
-            return super().__new__(Function)
+        #     return super().__new__(Field)
 
-        return super().__new__(cls)
+        # elif isinstance(args[0], array_type):
+        #     from .function import Function
 
-    def __init__(self, op, *args, domain=None, value=None, **kwargs) -> None:
+        #     return super().__new__(Function)
+
+        else:
+            return super().__new__(cls)
+
+    def __init__(
+        self,  ####
+        op,  ###
+        *children,  #####
+        domain: Domain | typing.Dict[str, typing.Any] = None,  ###
+        value: array_type = None,  ####
+        **kwargs,
+    ) -> None:
+        """初始化表达式
+
+        Args:
+            op (Callable): 算子，可执行对象
+            domain (Domain, optional): 定义域. Defaults to None.
+            value (array_type, optional): 值. Defaults to None.
         """
-        Parameters
-        op : typing.Callable  | ExprOp
-            运算符，可以是函数，也可以是类的成员函数
-        args : typing.Any
-            操作数
-        kwargs : typing.Any
-            命名参数， 用于传递给运算符的参数
 
-        """
-        super().__init__(**kwargs)
+        super().__init__(value, **kwargs)
         self._op = op  # 表达式算符
-        self._children = args  # 做成表达式的子节点
-
+        self._children = children  # 做成表达式的子节点
         self._domain = domain  # 定义域
-        self._value = value  # 表达式在 domain 的值， 缓存
         self._ppoly = None  # 表达式的近似多项式，缓存
 
     def __copy__(self) -> Expression:
@@ -146,10 +153,8 @@ class Expression(HTreeNode):
         other: Expression = super().__copy__()
         other._op = self._op
         other._children = self._children
-
-        other._ppoly = self._ppoly
         other._domain = self._domain
-        other._value = copy(self._value)
+        other._ppoly = self._ppoly
 
         return other
 
@@ -166,7 +171,7 @@ class Expression(HTreeNode):
 
         domain = self._domain
 
-        if domain is None or domain is _not_found_:
+        if domain is None:
             # 从祖辈节点查找 domain
             holder = self
 
@@ -178,7 +183,7 @@ class Expression(HTreeNode):
                         break
                 holder = getattr(holder, "_parent", None)
 
-        if domain is None or domain is _not_found_:
+        if domain is None:
             # 从构成表达式的子节点查找 domain
             for child in self._children:
                 if isinstance(child, Expression):
@@ -189,10 +194,7 @@ class Expression(HTreeNode):
             else:
                 domain = None
 
-        if domain is None:
-            raise RuntimeError(f"Can not get domain!")
-
-        elif not isinstance(domain, Domain):
+        if domain is not None and not isinstance(domain, Domain):
             domain = self.__class__.Domain(domain)
 
         self._domain = domain
@@ -270,6 +272,12 @@ class Expression(HTreeNode):
         """for jupyter notebook display"""
         return f"$${self._render_latex_()}$$"
 
+    def __geometry__(self, *args, label=None, **kwargs):
+        return self.domain.view_geometry(self.__array__(), *args, label=label or self.__label__, **kwargs)
+
+    def _repr_svg_(self) -> str:
+        return self.domain.display(self.__array__(), label=self.__label__, output="svg")
+
     @property
     def dtype(self):
         return float
@@ -296,11 +304,11 @@ class Expression(HTreeNode):
     def __array__(self, dtype=None) -> array_type:
         """在定义域上计算表达式，返回数组。"""
 
-        if self._value is None:
+        if self._cache is None:
             # 缓存表达式结果
-            self._value = self.__call__(*self.domain.points)
+            self._cache = self.__call__(*self.domain.points)
 
-        return self._value
+        return self._cache
 
     def __compile__(self) -> typing.Callable[..., array_type]:
         """返回编译后的表达式，如近似插值多项式
@@ -313,7 +321,7 @@ class Expression(HTreeNode):
         - support broadcasting?
         - support multiple meshes?
         """
-        if not callable(self._ppoly):
+        if not callable(self._ppoly) and self.domain is not None:
             # 构建插值多项式近似
             self._ppoly = self.domain.interpolate(self)
 
@@ -342,7 +350,7 @@ class Expression(HTreeNode):
         elif any([isinstance(a, Expression) for a in args]):  #  创建复合函数
             return Expression(self, *args)
 
-        elif self._ppoly is not None:
+        elif callable(self._ppoly):
             # 若有近似插值多项式，执行
             return self._ppoly(*args)
 
@@ -377,11 +385,11 @@ class Expression(HTreeNode):
     def antiderivative(self, order: int, **kwargs) -> Antiderivative:
         return Antiderivative(self, order=order, **kwargs)
 
-    def partial_derivative(self, order: typing.Tuple[int, ...], **kwargs) -> PartialDerivative:
+    def partial_derivative(self, *order: int, **kwargs) -> PartialDerivative:
         return PartialDerivative(self, order=order, **kwargs)
 
     def pd(self, *order, **kwargs) -> PartialDerivative:
-        return self.partial_derivative(order=order, **kwargs)
+        return self.partial_derivative(*order, **kwargs)
 
     def integral(self, *args, **kwargs) -> float:
         raise NotImplementedError(f"")
@@ -411,8 +419,8 @@ class Expression(HTreeNode):
 
     def fetch(self, *args, _parent=None, **kwargs):
         if len(args) + len(kwargs) == 0:
-            if self._value is not None:
-                return self._value
+            if self._cache is not None:
+                return self._cache
             else:
                 return self.__array__()
         else:
@@ -577,36 +585,36 @@ class Variable(Expression):
 
 
 class Scalar(Expression):
-    def __init__(self, *args, **kwargs) -> None:
-        if len(args) == 0 or not isinstance(args[0], (float, int, bool)):
+    def __init__(self, value, **kwargs) -> None:
+        if not isinstance(value, (float, int, bool)):
             raise ValueError(f"args should be float|int|bool")
-        super().__init__(None, *args, **kwargs)
+        super().__init__(None, value=value, **kwargs)
 
     @property
     def __label__(self):
-        return self._children[0]
+        return self._cache
 
     def __array__(self) -> ArrayType:
-        return np.array(self._children[0])
+        return np.array(self._cache)
 
     def __str__(self):
-        return str(self._children[0])
+        return str(self._cache)
 
     def __repr__(self) -> str:
-        return str(self._children[0])
+        return str(self._cache)
 
     def __equal__(self, other) -> bool:
-        return self._children[0] == other
+        return self._cache == other
 
     def __call__(self, *args, **kwargs):
-        return self._children[0]
+        return self._cache
 
     def derivative(self, *args, **kwargs):
         return ConstantZero(_parent=self._parent, **kwargs)
 
 
 class ConstantZero(Scalar):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(0, **kwargs)
 
     # fmt: off
@@ -693,19 +701,32 @@ class Derivative(Expression):
         expr_ppoly = expr.__compile__()
 
         if not hasattr(expr_ppoly.__class__, "derivative"):
-            raise RuntimeError(f"PPoly {expr_ppoly.__class__} has not derivative!")
-
-        if self.order > 0:
-            self._ppoly = expr_ppoly.derivative(self._order)
+            raise RuntimeError(f"Can not not derivative PPoly {expr_ppoly.__class__}!")
+        elif self.order > 0:
+            self._ppoly = expr_ppoly.derivative(self.order)
         elif self.order < 0:
-            self._ppoly = expr_ppoly.antiderivative(-self._order)
+            self._ppoly = expr_ppoly.antiderivative(-self.order)
         else:
             self._ppoly = expr_ppoly
 
         return self._ppoly
 
     def __call__(self, *args) -> array_type:
-        return super().__call__(*args, compile=True)
+        try:
+            ppoly = self.__compile__()
+        except RuntimeError as error:
+            ppoly = None
+
+        if not callable(ppoly):
+            ppoly_ = interpolate(*args, self._children[0](*args))
+            if self.order > 0:
+                ppoly = ppoly_.derivative(self.order)
+            elif self.order < 0:
+                ppoly = ppoly_.antiderivative(-self.order)
+            else:
+                ppoly = ppoly_
+
+        return ppoly(*args)
 
 
 class Antiderivative(Derivative):

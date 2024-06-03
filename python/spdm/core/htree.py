@@ -2,6 +2,7 @@ from __future__ import annotations
 import collections.abc
 import abc
 import typing
+import numpy as np
 from copy import copy, deepcopy
 
 from ..utils.logger import logger
@@ -33,6 +34,9 @@ class HTreeNode:
 
         if len(args) == 0:
             _cache = _not_found_
+        elif isinstance(args[0], (np.ndarray,int,float,complex)):
+            _cache = args[0]
+            args = args[1:]
         elif isinstance(args[0], (collections.abc.MutableMapping, collections.abc.MutableSequence)):
             _cache = args[0]
             args = args[1:]
@@ -83,15 +87,15 @@ class HTreeNode:
         return _cache, _entry, _parent, metadata
 
     def __init__(self, *args, **kwargs) -> None:
-        self._value, self._entry, self._parent, self._metadata = self.__class__._parser_args(*args, **kwargs)
+        self._cache, self._entry, self._parent, self._metadata = self.__class__._parser_args(*args, **kwargs)
 
     def __copy__(self) -> typing.Self:
-        if isinstance(self._value, dict):
-            cache = {k: copy(value) for k, value in self._value.items()}
-        elif isinstance(self._value, list):
-            cache = [copy(value) for k, value in self._value.items()]
+        if isinstance(self._cache, dict):
+            cache = {k: copy(value) for k, value in self._cache.items()}
+        elif isinstance(self._cache, list):
+            cache = [copy(value) for k, value in self._cache.items()]
         else:
-            cache = deepcopy(self._value)
+            cache = deepcopy(self._cache)
 
         res = self.__class__(cache, _entry=self._entry)
 
@@ -151,13 +155,13 @@ class HTreeNode:
         Returns:
             typing.Any: 若 target is None，返回原始数据，否则返回 target
         """
-        if self._value is _not_found_:
+        if self._cache is _not_found_:
             if self._entry is not None:
                 return self._entry.dump(dumper)
             else:
                 return self._do_serialize(self.__value__, dumper)
         else:
-            return self._do_serialize(self._value, dumper)
+            return self._do_serialize(self._cache, dumper)
 
     @classmethod
     def __deserialize__(cls, *args, **kwargs) -> typing.Type[HTree]:
@@ -170,7 +174,7 @@ class HTreeNode:
         cls = get_type(self)
 
         if len(args) == 0:
-            args = [deepcopy(self._value)]
+            args = [deepcopy(self._cache)]
 
         return cls(
             *args,
@@ -210,7 +214,7 @@ class HTreeNode:
 
     @property
     def __value__(self) -> typing.Any:
-        return self._value
+        return self._cache
 
     def __array__(self) -> ArrayType:  # for numpy
         return as_array(self.__value__)
@@ -219,19 +223,19 @@ class HTreeNode:
         """判断节点是否为空，若节点为空，返回 True，否则返回 False
         @NOTE 长度为零的 list 或 dict 不是空节点
         """
-        return self._value is None and self._entry is None
+        return self._cache is None and self._entry is None
 
     def __empty__(self) -> bool:
-        return (self._value is _not_found_ or len(self._value) == 0) and (self._entry is None)
+        return (self._cache is _not_found_ or len(self._cache) == 0) and (self._entry is None)
 
     def __bool__(self) -> bool:
         return self.__null__() or self.__empty__() or bool(self.__value__)
 
     def __equal__(self, other) -> bool:
         if isinstance(other, HTreeNode):
-            return other.__equal__(self._value)
+            return other.__equal__(self._cache)
         else:
-            return self._value == other
+            return self._cache == other
 
     @staticmethod
     def _do_fetch(obj, *args, **kwargs):
@@ -253,7 +257,7 @@ class HTreeNode:
             # raise RuntimeError(f"Unknown argument {obj} {args} {kwargs}")
 
     def fetch(self, *args, **kwargs) -> typing.Self:
-        return self.__duplicate__(HTreeNode._do_fetch(self._value, *args, **kwargs))
+        return self.__duplicate__(HTreeNode._do_fetch(self._cache, *args, **kwargs))
 
     def flush(self):
         """TODO: 将 cache 内容 push 入 entry"""

@@ -13,15 +13,15 @@ from spdm.core.typing import array_type
 from .domain import Domain
 from .typing import ArrayType, array_type, as_array, is_array
 from .mesh import Mesh
-
+from ..utils.tree_utils import deep_merge_dict
 from ..utils.logger import logger
 from ..utils.tags import _not_found_
 
-from .expression import Expression
+from .function import Function
 from .functor import Functor
 
 
-class Field(Expression):
+class Field(Function):
     """Field
 
     Field 是 Function 在流形（manifold/Mesh）上的推广， 用于描述流形上的标量场，矢量场，张量场等。
@@ -32,59 +32,34 @@ class Field(Expression):
 
     Field 与 Function的区别：
         - Function 的 mesh 是一维数组表示dimensions/axis
-        - Field 的 mesh 是 Mesh，可以表示复杂流形上的场等。
+        - Field 的 mesh 是 Mesh，用以表示复杂流形上的场。
     """
 
     Domain = Mesh
 
-    def __init__(self, *args, value=None, domain=None, **kwargs):
-
-        if len(args) == 0:
-            raise RuntimeError(f"illegal x,y {args} ")
-
+    def __init__(self, *args, mesh=None, domain=None, **kwargs):
         if domain is None:
-            domain = kwargs.pop("mesh", None)
-
-        if len(args) > 0:
-            value = args[-1]
-            dims = args[:-1]
-
-        if isinstance(value, (Functor, Expression)) or callable(value):
-            func = value
-            value = None
-        else:
-            func = None
-            value = as_array(value)
-
-        if isinstance(domain, dict):
-            domain["dims"] = dims
-        else:
-            domain = dims
-
-        super().__init__(func, domain=domain, value=value, **kwargs)
-
-    def __geometry__(self, *args, label=None, **kwargs):
-        return self.domain.view_geometry(self.__array__(), *args, label=label or self.__label__, **kwargs)
-
-    def _repr_svg_(self) -> str:
-        return self.domain.display(self.__array__(), label=self.__label__)
+            domain = mesh
+        elif mesh is not None:
+            if isinstance(mesh, dict) and isinstance(dict, dict):
+                domain = deep_merge_dict(domain, mesh)
+            else:
+                raise RuntimeError(f"Redefine mesh or domain ! mesh={mesh}, domain={domain}")
+            
+        super().__init__(*args, domain=domain, **kwargs)
 
     @property
     def mesh(self) -> Mesh:
         return self.domain
 
-    # def __call__(self, *args, **kwargs) -> typing.Callable[..., ArrayType]:
-    #     if all([isinstance(a, (array_type, float, int)) for a in args]):
-    #         return self.__compile__()(*args, **kwargs)
-    #     else:
-    #         return super().__call__(*args, **kwargs)
-    # def __compile__(self) -> typing.Callable[..., array_type]:
+    def __call__(self, *args, **kwargs) -> typing.Callable[..., ArrayType]:
+        # if all([isinstance(a, (array_type, float, int)) for a in args]):
+        #     return self.__compile__()(*args, **kwargs)
+        # else:
+        return super().__call__(*args, **kwargs)
 
-    #     if not callable(self._ppoly):
-    #         # 构建插值多项式近似
-    #         self._ppoly = self.domain.interpolate(self._value)
-
-    #     return self._ppoly
+    def __compile__(self) -> typing.Callable[..., array_type]:
+        return super().__compile__()
 
     def grad(self, n=1) -> Field:
         ppoly = self.__functor__()
@@ -122,24 +97,19 @@ class Field(Expression):
         else:
             raise NotImplemented(f"TODO: ndim={self.mesh.ndim} n={n}")
 
-    def __compile__(self):
-        if self._ppoly is None:
-            self._ppoly = self.domain.interpolate(self.__array__())
-        return self._ppoly
-
-    def derivative(self, order, *args, **kwargs) -> Field:
+    def derivative(self, order: int | typing.Tuple[int], **kwargs) -> Field:
         if isinstance(order, int) and order < 0:
             func = self.__compile__().antiderivative(*order)
-            return Field(func, domain=self.mesh, label=f"I_{{{order}}}{{{self._render_latex_()}}}")
+            return Field(func, domain=self.domain, label=f"I_{{{order}}}{{{self._render_latex_()}}}")
         elif isinstance(order, collections.abc.Sequence):
             func = self.__compile__().partial_derivative(*order)
-            return Field(func, domain=self.mesh, label=f"d_{{{order}}}{{{self._render_latex_()}}}")
+            return Field(func, domain=self.domain, label=f"d_{{{order}}}{{{self._render_latex_()}}}")
         else:
             func = self.__compile__().derivative(order)
-            return Field(func, domain=self.mesh, label=f"d_{{{order}}}{{{self._render_latex_()}}}")
+            return Field(func, domain=self.domain, label=f"d_{{{order}}}{{{self._render_latex_()}}}")
 
     def antiderivative(self, order: int, *args, **kwargs) -> Field:
         raise NotImplementedError(f"")
 
-    def partial_derivative(self, order: typing.Tuple[int, ...], *args, **kwargs) -> Field:
-        return self.derivative(order, *args, **kwargs)
+    def partial_derivative(self, *args, **kwargs) -> Field:
+        return self.derivative(args, **kwargs)

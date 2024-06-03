@@ -33,9 +33,9 @@ class Domain(Pluggable):
 
     def display(self, obj):
         from ..view import sp_view
+
         return sp_view.display(self.view_geometry(obj), output="svg")
 
-    @abc.abstractmethod
     def view_geometry(self, value, *args, **kwargs):
         return (*self.points, value)
 

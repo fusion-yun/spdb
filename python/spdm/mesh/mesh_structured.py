@@ -14,19 +14,19 @@ class StructuredMesh(Mesh):
     结构化网格上的点可以表示为长度为n=rank的归一化ntuple，记作 uv，uv_r \\in [0,1]
     """
 
-    def __init__(self, *args, cycles=None, **kwargs) -> None:
+    def __init__(self, *args, periods=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         _, self._dims = Mesh._guess_mesh_type(*args, **kwargs)
 
-        if isinstance(cycles, collections.abc.Sequence):
+        if isinstance(periods, collections.abc.Sequence):
             for idx, d in enumerate(self._dims):
                 if (
-                    isinstance(cycles, collections.abc.Sequence)
-                    and cycles[idx] is not None
-                    and not np.isclose(d[-1] - d[0], cycles[idx])
+                    isinstance(periods, collections.abc.Sequence)
+                    and periods[idx] is not None
+                    and not np.isclose(d[-1] - d[0], periods[idx])
                 ):
-                    raise RuntimeError(f"idx={idx} periods {cycles[idx]} is not compatible with dims [{d[0]},{d[-1]}] ")
+                    raise RuntimeError(f"idx={idx} periods {periods[idx]} is not compatible with dims [{d[0]},{d[-1]}] ")
                 if not np.all(d[1:] > d[:-1]):
                     raise RuntimeError(f"dims[{idx}] is not increasing")
 
@@ -34,7 +34,7 @@ class StructuredMesh(Mesh):
 
         self._origin = np.asarray([0.0] * ndim)
         self._scale = np.asarray([1.0] * ndim)
-        self._cycles = tuple(cycles) if cycles is not None else tuple([1.0] * ndim)
+        self._periods = tuple(periods) if periods is not None else tuple([1.0] * ndim)
 
     @property
     def dims(self) -> typing.Tuple[ArrayType]:
@@ -61,7 +61,7 @@ class StructuredMesh(Mesh):
     @property
     def cycles(self) -> typing.Tuple[float]:
         """Periodic boundary condition  周期性网格,  标识每个维度周期长度"""
-        return self._cycles
+        return self._periods
 
     @property
     def rank(self) -> int:
