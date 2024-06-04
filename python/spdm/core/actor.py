@@ -27,7 +27,7 @@ class Actor(SpObject):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._inports = InPorts(self)
+        self._inports = InPorts(self._parent)
         self._outports = OutPorts(self)
 
     time_slice: TimeSeriesAoS[TimeSlice] = sp_property(default_value=[])
@@ -44,11 +44,6 @@ class Actor(SpObject):
     def outports(self) -> OutPorts:
         """输出的 Edge，可视为对于引用（reference）的记录"""
         return self._outports
-
-    def connect(self, **kwargs):
-        return self._inports.connect(**kwargs)
-
-    # return self.get_cache("time_slice", TimeSeriesAoS[TimeSlice](self))
 
     @property
     def current(self) -> typing.Type[TimeSlice]:
@@ -77,21 +72,20 @@ class Actor(SpObject):
 
         self.time_slice.initialize(*args, **kwargs)
 
-        tp_hints = typing.get_type_hints(self.__class__.refresh)
+        # tp_hints = typing.get_type_hints(self.__class__.refresh)
+        # for name, tp in tp_hints.items():
+        #     if name == "return":
+        #         continue
+        #     elif getattr(tp, "_name", None) == "Optional":  # check typing.Optional
+        #         t_args = typing.get_args(tp)
+        #         if len(t_args) == 2 and t_args[1] is type(None):
+        #             tp = t_args[0]
 
-        for name, tp in tp_hints.items():
-            if name == "return":
-                continue
-            elif getattr(tp, "_name", None) == "Optional":  # check typing.Optional
-                t_args = typing.get_args(tp)
-                if len(t_args) == 2 and t_args[1] is type(None):
-                    tp = t_args[0]
+        #     self.inports[name].link(type_hint=tp)
 
-            self.inports[name].link(type_hint=tp)
-
-        # 查找父节点的输入 ，更新链接 Edge
-        self.inports.refresh()
-        self.outports.refresh()
+        # # 查找父节点的输入 ，更新链接 Edge
+        # self.inports.refresh()
+        # self.outports.refresh()
 
     def preprocess(self, *args, **kwargs) -> typing.Type[TimeSlice]:
         """Actor 的预处理，若需要，可以在此处更新 Actor 的状态树。"""
@@ -104,8 +98,7 @@ class Actor(SpObject):
         # self.inports.update(inputs)
 
         current = self.time_slice.current
-
-        current.refresh(*args, **kwargs)
+        # current.refresh(*args, **kwargs)
 
         return current
 

@@ -133,6 +133,12 @@ class SpTree(Dict[HTreeNode]):
 
 class PropertyTree(SpTree):
 
+    def __new__(cls, *args, **kwargs):
+        if cls is PropertyTree and len(args) == 1 and not isinstance(args[0], (dict, Entry)):
+            return args[0]
+        else:
+            return super().__new__(cls)
+
     def __getattr__(self, key: str, *args, **kwargs) -> PropertyTree | AoS:
         if key.startswith("_"):
             return super().__getattribute__(key)
@@ -160,11 +166,11 @@ class PropertyTree(SpTree):
     def _type_hint_(self, *args, **kwargs):
         return PropertyTree
 
-    def _type_convert(self, value: typing.Any, *args, _type_hint=None, **kwargs) -> _T:
-        if _type_hint is None or _type_hint is _not_found_:
-            return value
-        else:
-            return super()._type_convert(value, *args, _type_hint=_type_hint, **kwargs)
+    # def _type_convert(self, value: typing.Any, *args, _type_hint=None, **kwargs) -> _T:
+    #     if _type_hint is None or _type_hint is _not_found_:
+    #         return value
+    #     else:
+    #         return super()._type_convert(value, *args, _type_hint=_type_hint, **kwargs)
 
     def dump(self, entry: Entry | None = None, force=False, quiet=True) -> Entry:
         if entry is None:

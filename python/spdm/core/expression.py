@@ -17,7 +17,7 @@ from ..numlib.interpolate import interpolate
 from .functor import Functor
 from .path import Path
 from .htree import HTreeNode, HTree, HTreeNode, List
-from .domain import Domain
+from .domain import Domain,PPolyDomain
 from .functor import Functor, DerivativeOp
 
 _T = typing.TypeVar("_T", float, bool, array_type, HTreeNode)
@@ -112,6 +112,7 @@ class Expression(HTreeNode):
                 case _:
                     TP = Scalar
             return super().__new__(TP)
+
         else:
             return super().__new__(cls)
 

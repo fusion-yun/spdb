@@ -6,7 +6,7 @@ import numpy.typing as np_tp
 import functools
 from enum import Enum
 import collections.abc
-
+import collections
 from copy import deepcopy
 from .pluggable import Pluggable
 from ..utils.typing import ArrayType, array_type
@@ -32,6 +32,13 @@ class Domain(Pluggable):
     """
 
     _metadata = {"fill_value": float_nan}
+
+    def __new__(cls, *args, **kwargs):
+
+        if cls is Domain and all([isinstance(d, np.ndarray) for d in args]):
+            return super().__new__(PPolyDomain)
+        else:
+            return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, *args, geometry=None, **kwargs) -> None:
 

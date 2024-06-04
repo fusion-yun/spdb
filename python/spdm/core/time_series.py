@@ -161,6 +161,7 @@ class TimeSeriesAoS(List[_TSlice]):
                 entry_cursor = 0
                 entry = None
             value = self._type_convert(value, cache_pos, _entry=entry, _parent=self._parent)
+            self._cache[cache_pos]=value
 
         return value
 

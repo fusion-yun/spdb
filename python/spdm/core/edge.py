@@ -1,68 +1,48 @@
 from __future__ import annotations
 import collections
 import collections.abc
-import inspect
-import abc
 import typing
 import math
-import dataclasses
 from typing_extensions import Self
 from copy import deepcopy
 from .path import Path, as_path
-from .htree import HTree, HTreeNode, Dict
+from .htree import HTreeNode, Dict
 from .sp_property import PropertyTree, SpTree
-from ..utils.logger import logger
 from ..utils.tags import _not_found_, _undefined_
-from ..utils.typing import array_type, isinstance_generic
 
 
 class Port:
-    def __init__(self, node=_not_found_, path: str | Path = None, type_hint: typing.Type = None, **kwargs) -> None:
-        if isinstance(node, Port):
-            type_hint = type_hint or node.type_hint
-            node = node.node
+    def __init__(self, source: HTreeNode, fragment: Path | str = None, type_hint: typing.Type = None, **kwargs) -> None:
 
-        self.node: HTreeNode = _not_found_
-
-        path = as_path(path)
-
-        if len(path) > 0:
-            self.identifier = path[0]
-            self.fragment = as_path(path[1:])
-        else:
-            self.identifier = None
-            self.fragment = None
-
-        self.type_hint: typing.Type = type_hint
-
+        self._node = source
+        self._fragment: Path = as_path(fragment)
+        self._type_hint: typing.Type = type_hint
         self._metadata = kwargs
 
-        self.link(node)
+    @property
+    def node(self) -> HTreeNode:
+        return self._node
 
-    def link(self, node=_not_found_, type_hint: typing.Type = _not_found_):
-        if type_hint is not _not_found_:
-            self.type_hint = type_hint
+    @property
+    def type_hint(self) -> typing.Type:
+        return self._type_hint
 
-        if node is _not_found_:
-            pass
+    @property
+    def fragment(self) -> Path:
+        return self._fragment
 
-        elif isinstance(node, Port):
-            self.link(node.node)
-
-        elif node is not _not_found_ and node is not None and node is not _undefined_:
-            self.node = node
-
-        return self.node
-
-    def unlink(self):
-        self.node = _not_found_
-        self.fragment = Path()
+    @property
+    def metadata(self) -> typing.Dict:
+        return self._metadata
 
     def __copy__(self):
         other = Port()
         other._metadata = deepcopy(self._metadata)
         other.link(self.node, fragment=self.fragment, type_hint=self.type_hint)
         return other
+
+    def link(self, target, **kwargs) -> Edge:
+        return Edge(self, target, **kwargs)
 
     def __getitem__(self, key):
         return self.fragment.append(key).find(self.node)
@@ -109,27 +89,23 @@ class Ports(Dict[Port]):
         typing (_type_): _description_
     """
 
-    def __init__(self, holder, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
+        if len(args) > 0 and isinstance(args[0], HTreeNode):
+            holder = args[0]
+            args = args[1:]
+        else:
+            holder = None
         super().__init__(*args, **kwargs)
         self._holder = holder
 
-    # def get(self, key: str, *args, **kwargs) -> Port:
-    #     port: Port = super().find(key, *args, **kwargs)
-    #     if (port.node is _not_found_ or port.node is None) and len(port.fragment) > 0:
-    #         port0 = super().get(port.identifier, _not_found_)
-    #         if isinstance(port0, Port):
-    #             port.node = port0.node
-    #     return port
+    def put(self, path, value, *args, **kwargs):
+        return as_path(path).update(self._cache, value, *args, **kwargs)
 
-    def put(self, key: str, value, *args, **kargs) -> None:
-        return self.get(key).update(value, *args, **kargs)
+    def get(self, path, *args, **kwargs):
+        return as_path(path).find(self._cache, *args, **kwargs)
 
-    def connect(self, **kwargs):
-        for k, v in kwargs.items():
-            self.put(k, v)
-
-    def __missing__(self, key: str) -> Port:
-        self._cache[key] = port = Port(path=key)
+    def __missing__(self, path: str) -> Port:
+        self._cache[str(path)] = port = Port(self._holder, fragment=path)
         return port
 
     def refresh(self, *args, **kwargs) -> Self:
@@ -160,13 +136,17 @@ class Ports(Dict[Port]):
 
 
 class InPorts(Ports):
-    def edge(self, name, *args, **kwargs) -> Edge:
-        return Edge(self[name], self._holder, *args, **kwargs)
+    def edge(self, source: Port, name, **kwargs) -> Edge:
+        if not isinstance(source, Port):
+            source = Port(source)
+        return source.link(self[name], **kwargs)
 
 
 class OutPorts(Ports):
-    def edge(self, name, *args, **kwargs) -> Edge:
-        return Edge(self._holder, self[name], *args, **kwargs)
+    def edge(self, name: str, target: Port, **kwargs) -> Edge:
+        if not isinstance(target, Port):
+            target = Port(target)
+        return self[name].link(target, **kwargs)
 
 
 class Edge:

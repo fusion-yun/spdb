@@ -849,8 +849,8 @@ class Path(list):
                     # FIXME：更改好的实现，但需要 debug
                     if idx == path_length - 1:
                         obj._update_(key, value, _op, *args, **kwargs)
-                    else:                        
-                        obj._update_(key, _not_found_ if not  isinstance(path[idx+1],str) else {}, _idempotent=_op)
+                    else:
+                        obj._update_(key, _not_found_ if not isinstance(path[idx + 1], str) else {}, _idempotent=_op)
 
                     obj = obj._find_(key, default_value=_not_found_)
                     # old_value = obj._find_(key, default_value=_not_found_)
@@ -1069,6 +1069,16 @@ class Path(list):
                 else:
                     obj = []
                 break
+            elif key is Path.tags.root:
+                tmp = obj
+                while tmp is not None and tmp is not _not_found_:
+                    tmp = getattr(tmp, "_parent", _not_found_)
+                    if tmp is _not_found_ or tmp is None:
+                        break
+                    else:
+                        obj = tmp
+            
+
             elif isinstance(key, set):
                 obj = {k: Path._do_find(obj, as_path(k)[:] + path[idx + 1 :], *args, **kwargs) for k in key}
                 break

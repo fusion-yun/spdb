@@ -1,7 +1,7 @@
 import inspect
 import typing
-
-import abc # Abstract Base Classes
+import collections
+import abc  # Abstract Base Classes
 
 from ..utils.logger import logger
 from ..utils.sp_export import sp_load_module, walk_namespace_modules
@@ -46,7 +46,18 @@ class Pluggable(abc.ABC):
 
             return decorator
 
-    def __new__(cls, plugin_name=None) -> typing.Type[typing.Self]:
+    def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
+        if len(args) != 1:
+            desc = kwargs
+        elif isinstance(args[0], str) and args[0].isidentifier():
+            desc = collections.ChainMap({"$type": args[0]}, kwargs)
+        elif isinstance(args[0], dict):
+            desc = collections.ChainMap(args[0], kwargs)
+        else:
+            desc = kwargs
+
+        plugin_name = desc.get("$type", None) or desc.get("@type", None) or desc.get("type", None)
+
         if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
             return super().__new__(cls)
 

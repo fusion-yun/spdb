@@ -119,11 +119,11 @@ class Mesh(Domain):
 
     def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
         if cls is not Mesh:
-            return super().__new__(cls)
+            return super().__new__(cls, *args, **kwargs)
 
         desc = cls._guess_mesh(*args, **kwargs)
 
-        mesh_type = desc.get("@type", None) or desc.get("type", None)
+        mesh_type = desc.get("$type", None) or desc.get("@type", None) or desc.get("type", None)
 
         if not isinstance(mesh_type, str):
             raise RuntimeError(f"Unable to determine mesh type! {desc} ")
