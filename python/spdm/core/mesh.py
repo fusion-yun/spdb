@@ -125,7 +125,7 @@ class Mesh(Domain):
 
         mesh_type = desc.get("@type", None) or desc.get("type", None)
 
-        if mesh_type is None:
+        if not isinstance(mesh_type, str):
             raise RuntimeError(f"Unable to determine mesh type! {desc} ")
 
         return super().__new__(cls, mesh_type)
