@@ -9,7 +9,7 @@ import scipy.ndimage  # for maximum_filter,binary_erosion, generate_binary_struc
 
 from ..core.field import Field
 from ..utils.logger import logger
-from ..core.typing import ArrayType, NumericType, ScalarType
+from ..utils.typing import ArrayType, NumericType, ScalarType
 
 SP_EXPERIMENTAL = os.environ.get("SP_EXPERIMENTAL", False)
 

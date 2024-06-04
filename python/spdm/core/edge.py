@@ -13,7 +13,7 @@ from .htree import HTree, HTreeNode, Dict
 from .sp_property import PropertyTree, SpTree
 from ..utils.logger import logger
 from ..utils.tags import _not_found_, _undefined_
-from .typing import array_type, isinstance_generic
+from ..utils.typing import array_type, isinstance_generic
 
 
 class Port:

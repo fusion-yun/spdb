@@ -6,9 +6,9 @@ import functools
 import collections.abc
 import numpy as np
 
-from .typing import ArrayType
+from ..utils.typing import ArrayType
 from ..utils.tags import _not_found_
-from .typing import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
+from ..utils.typing import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
 from ..utils.logger import logger
 from ..utils.misc import group_dict_by_prefix
 from ..numlib.interpolate import interpolate

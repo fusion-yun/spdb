@@ -4,19 +4,21 @@ import typing
 from copy import copy, deepcopy
 import functools
 import collections.abc
+
 import numpy as np
-from .typing import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
+
 from ..utils.tags import _not_found_
 from ..utils.logger import logger
 from ..utils.misc import group_dict_by_prefix
+from ..utils.typing import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
+
 from ..numlib.interpolate import interpolate
+
 from .functor import Functor
-from .entry import Entry
+from .path import Path
 from .htree import HTreeNode, HTree, HTreeNode, List
 from .domain import Domain
-from .path import update_tree, Path
 from .functor import Functor, DerivativeOp
-
 
 _T = typing.TypeVar("_T", float, bool, array_type, HTreeNode)
 
@@ -34,8 +36,8 @@ class Expression(HTreeNode):
 
     例如：
         >>> import spdm
-        >>> x = spdm.core.Expression(op=np.sin)
-        >>> y = spdm.core.Expression(op=np.cos)
+        >>> x = spdm.core.Expression(np.sin)
+        >>> y = spdm.core.Expression(np.cos)
         >>> z = x + y
         >>> z
         <Expression   op="add" />
@@ -99,10 +101,9 @@ class Expression(HTreeNode):
             return tuple(coords)
 
     def __new__(cls, *args, **kwargs):
-
-        if cls is not Expression or len(args) == 0:
+        if cls is not Expression:
             return super().__new__(cls)
-        elif is_scalar(args[0]):  # 常量/标量表达式
+        elif len(args) == 1 and is_scalar(args[0]):  # 常量/标量表达式
             match args[0]:
                 case 0:
                     TP = ConstantZero
@@ -110,43 +111,30 @@ class Expression(HTreeNode):
                     TP = ConstantOne
                 case _:
                     TP = Scalar
-
             return super().__new__(TP)
-
-        # elif kwargs.get("mesh", None) is not None:
-        #     from .field import Field
-
-        #     return super().__new__(Field)
-
-        # elif isinstance(args[0], array_type):
-        #     from .function import Function
-
-        #     return super().__new__(Function)
-
         else:
             return super().__new__(cls)
 
-    def __init__(
-        self,  ####
-        op,  ###
-        *children,  #####
-        domain: Domain | typing.Dict[str, typing.Any] = None,  ###
-        value: array_type = None,  ####
-        **kwargs,
-    ) -> None:
+    def __init__(self, op_value, *children: Expression, domain: Domain = None, **metadata) -> None:
         """初始化表达式
 
         Args:
-            op (Callable): 算子，可执行对象
+            op (Callable|array_type): 值或者算子
             domain (Domain, optional): 定义域. Defaults to None.
-            value (array_type, optional): 值. Defaults to None.
         """
+        if not callable(op_value):
+            value = op_value
+            op = None
+        else:
+            value = None
+            op = op_value
 
-        super().__init__(value, **kwargs)
+        super().__init__(value, **metadata)
+
         self._op = op  # 表达式算符
-        self._children = children  # 做成表达式的子节点
+        self._children = children  # 构成表达式的子节点
         self._domain = domain  # 定义域
-        self._ppoly = None  # 表达式的近似多项式，缓存
+        self._ppoly = _not_found_  # 表达式的近似多项式，缓存
 
     def __copy__(self) -> Expression:
         """复制一个新的 Expression 对象"""
@@ -272,7 +260,13 @@ class Expression(HTreeNode):
         """for jupyter notebook display"""
         return f"$${self._render_latex_()}$$"
 
+    def _repr_svg_(self) -> str:
+        from ..view import sp_view
 
+        return sp_view.display(self.__view__(), label=self.__label__, output="svg")
+
+    def __view__(self, **kwargs):
+        return self.domain.view(self, label=self.__label__, **kwargs)
 
     @property
     def dtype(self):
@@ -581,10 +575,10 @@ class Variable(Expression):
 
 
 class Scalar(Expression):
-    def __init__(self, value, **kwargs) -> None:
-        if not isinstance(value, (float, int, bool)):
-            raise ValueError(f"args should be float|int|bool")
-        super().__init__(None, value=value, **kwargs)
+    def __init__(self, value: float | int | bool | complex, **kwargs) -> None:
+        if not isinstance(value, (float, int, bool, complex)):
+            raise ValueError(f"value should be float|int|bool|complex, but got {type(value)}!")
+        super().__init__(value, **kwargs)
 
     @property
     def __label__(self):
@@ -632,7 +626,7 @@ class ConstantZero(Scalar):
 
 
 class ConstantOne(Scalar):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(1, **kwargs)
 
     # fmt: off

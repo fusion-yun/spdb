@@ -10,7 +10,7 @@ from ..utils.logger import logger
 
 from ..utils.misc import get_positional_argument_count
 from ..utils.tags import _not_found_
-from .typing import (
+from ..utils.typing import (
     ArrayType,
     NumericType,
     array_type,
@@ -86,8 +86,8 @@ class HTreeNode:
 
         return _cache, _entry, _parent, metadata
 
-    def __init__(self, *args, **kwargs) -> None:
-        self._cache, self._entry, self._parent, self._metadata = self.__class__._parser_args(*args, **kwargs)
+    def __init__(self, *args, **metadata) -> None:
+        self._cache, self._entry, self._parent, self._metadata = self.__class__._parser_args(*args, **metadata)
 
     def __copy__(self) -> typing.Self:
         if isinstance(self._cache, dict):

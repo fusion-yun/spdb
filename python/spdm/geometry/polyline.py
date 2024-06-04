@@ -3,7 +3,7 @@ import typing
 
 import numpy as np
 
-from ..core.typing import ArrayType
+from ..utils.typing import ArrayType
 from ..core.geo_object import GeoObject,BBox
 from .point_set import PointSet
 

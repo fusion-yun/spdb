@@ -23,7 +23,7 @@ from ..geometry.polyline import Polyline
 from ..utils.envs import SP_DEBUG
 from ..utils.logger import SP_DEBUG, logger
 from ..utils.tags import _not_found_
-from ..core.typing import array_type, as_array, is_array, is_scalar
+from ..utils.typing import array_type, as_array, is_array, is_scalar
 
 from .sp_view import SpView
 

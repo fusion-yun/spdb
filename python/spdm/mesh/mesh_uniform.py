@@ -2,7 +2,7 @@ import typing
 import numpy as np
 from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
-from ..core.typing import ArrayType
+from ..utils.typing import ArrayType
 
 
 @Mesh.register("uniform")

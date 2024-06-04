@@ -6,7 +6,7 @@ from copy import deepcopy
 from spdm.core.htree import Dict, HTree, List, HTreeNode
 from spdm.utils.logger import logger
 from spdm.utils.tags import _undefined_
-from spdm.core.typing import as_value
+from spdm.utils.typing import as_value
 
 
 class Foo(Dict):

@@ -12,7 +12,7 @@ from copy import copy, deepcopy
 from ..utils.logger import deprecated, logger
 from ..utils.plugin import Pluggable
 from ..utils.tags import _not_found_, _undefined_
-from .typing import array_type, as_array, as_value, is_scalar
+from ..utils.typing import array_type, as_array, as_value, is_scalar
 from ..utils.uri_utils import URITuple, uri_split, uri_split_as_dict
 from .path import Path, PathLike, as_path, update_tree, update_tree
 

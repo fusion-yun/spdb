@@ -2,7 +2,7 @@ import typing
 import collections.abc
 import numpy as np
 
-from ..core.typing import ArrayLike, ArrayType, as_array
+from ..utils.typing import ArrayLike, ArrayType, as_array
 from ..core.mesh import Mesh
 from ..utils.tags import _not_found_
 
@@ -15,21 +15,21 @@ class StructuredMesh(Mesh):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        periods = self._metadata.get("periods", None)
-        if isinstance(periods, collections.abc.Sequence):
+        self._periods = self._metadata.get("periods", None)
+        self._dims = self._metadata.get("dims", None)
+        
+        if isinstance(self._periods, collections.abc.Sequence):
             for idx, d in enumerate(self._dims):
                 if (
-                    isinstance(periods, collections.abc.Sequence)
-                    and periods[idx] is not None
-                    and not np.isclose(d[-1] - d[0], periods[idx])
+                    isinstance(self._periods, collections.abc.Sequence)
+                    and self._periods[idx] is not None
+                    and not np.isclose(d[-1] - d[0], self._periods[idx])
                 ):
                     raise RuntimeError(
-                        f"idx={idx} periods {periods[idx]} is not compatible with dims [{d[0]},{d[-1]}] "
+                        f"idx={idx} periods {self._periods[idx]} is not compatible with dims [{d[0]},{d[-1]}] "
                     )
                 if not np.all(d[1:] > d[:-1]):
                     raise RuntimeError(f"dims[{idx}] is not increasing")
-
-        self._periods = tuple(periods) if periods is not None else None
 
     @property
     def dims(self) -> typing.Tuple[ArrayType]:

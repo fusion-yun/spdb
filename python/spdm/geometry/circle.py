@@ -1,6 +1,6 @@
 import typing
 
-from ..core.typing import ArrayType
+from ..utils.typing import ArrayType
 from ..core.geo_object import GeoObject,BBox
 
 from .line import Line

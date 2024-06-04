@@ -7,60 +7,15 @@ import numpy as np
 import numpy.typing as np_tp
 from copy import copy, deepcopy
 
-from .typing import ArrayType, NumericType, array_type, get_args, get_origin, as_array
 from .expression import Expression, zero
 from .functor import Functor
 from .path import update_tree, Path
-from .domain import Domain
+from .domain import Domain, PPolyDomain
 from .htree import List
 
 from ..utils.logger import logger
 from ..utils.tags import _not_found_
-from ..numlib.interpolate import interpolate
-
-
-class PPolyDomain(Domain):
-    """多项式定义域。
-    根据离散网格点构建插值
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
-        if len(args) == 1 and isinstance(args[0], tuple):
-            args = args[0]
-        ndim = len(args)
-
-        if all([isinstance(d, np.ndarray) and d.ndim == ndim for d in args]):
-            self._points = args
-        elif all([isinstance(d, np.ndarray) and d.ndim == 1 for d in args]):
-            self._dims = args
-            self._points = None
-        else:
-            raise RuntimeError(f"Invalid points {args}")
-
-    @property
-    def shape(self) -> typing.Tuple[int, ...]:
-        if self._dims is not None:
-            return tuple([d.size for d in self._dims])
-        elif self._points is not None:
-            return self._points[0].shape
-        else:
-            raise RuntimeError(f"illegal domain!")
-
-    @property
-    def points(self) -> typing.Tuple[array_type, ...]:
-        if self._points is not None:
-            pass
-        elif self._dims is not None:
-            self._points = np.meshgrid(*self._dims, indexing="ij")
-        return self._points
-
-    def interpolate(self, y: array_type, **kwargs):
-
-        periods = self._metadata.get("periods", None)
-        extrapolate = self._metadata.get("extrapolate", 0)
-
-        return interpolate(*self.points, y, periods=periods, extrapolate=extrapolate, **kwargs)
+from ..utils.typing import ArrayType, NumericType, array_type, get_args, get_origin, as_array
 
 
 class Function(Expression):
@@ -76,7 +31,7 @@ class Function(Expression):
 
     Domain = PPolyDomain
 
-    def __init__(self, *args, domain=None, value=None, **kwargs):
+    def __init__(self, *args, domain=None, **metadata):
         """
         Parameters
         ----------
@@ -86,44 +41,33 @@ class Function(Expression):
             变量
         kwargs : 命名参数，
                 *           : 用于传递给 Node 的参数
-        extrapolate: int |str
-            控制当自变量超出定义域后的值
-            * if ext=0  or 'extrapolate', return the extrapolated value. 等于 定义域无限
-            * if ext=1  or 'nan', return nan
         """
-        func = None
+
         value = None
         if len(args) > 0:
+            value = args[-1]
 
-            if callable(args[-1]):
-                func = args[-1]
-            else:
-                value = args[-1]
+            if domain is None:
+                domain = args[:-1]
 
-        domain = Function.Domain(*args[:-1], **kwargs.pop("", {}))
-
-        super().__init__(func, domain=domain, value=value, **kwargs)
+        super().__init__(value, domain=domain, **metadata)
 
     def __getitem__(self, idx) -> NumericType:
         assert self._cache is not None, "Function is not indexable!"
         return self._cache[idx]
 
     def __setitem__(self, idx, value) -> None:
-        assert self._cache is not None, "Function is not changable!"
-        self._op = None
+        assert self._op is not None, f"Function is not changable! op={self._op}"
+        self._ppoly = None
         self._cache[idx] = value
-
-    @property
-    def domain(self) -> Function.Domain:
-        return super().domain
 
     def __compile__(self) -> typing.Callable[..., array_type]:
         """对函数进行编译，用插值函数替代原始表达式，提高运算速度
         - 由 points，value  生成插值函数，并赋值给 self._op
         插值函数相对原始表达式的优势是速度快，缺点是精度低。
         """
-        if not callable(self._ppoly):
-            if isinstance(self._cache, np.ndarray):
+        if self._ppoly is _not_found_:  # not callable(self._ppoly):
+            if self._op is None and isinstance(self._cache, np.ndarray):
                 self._ppoly = self.domain.interpolate(self._cache)
             elif callable(self._op):
                 self._ppoly = self.domain.interpolate(self._op)

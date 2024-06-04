@@ -9,7 +9,7 @@ from enum import Enum
 
 from copy import deepcopy
 from .pluggable import Pluggable
-from .typing import ArrayType, array_type
+from ..utils.typing import ArrayType, array_type
 from .functor import Functor
 from .path import update_tree
 from .geo_object import GeoObject, as_geo_object
@@ -19,6 +19,7 @@ from ..numlib.interpolate import interpolate
 
 
 from ..utils.tags import _not_found_
+from ..utils.logger import logger
 
 
 class Domain(Pluggable):
@@ -32,10 +33,16 @@ class Domain(Pluggable):
 
     _metadata = {"fill_value": float_nan}
 
-    def __init__(self, geometry=None, **kwargs) -> None:
+    def __init__(self, *args, geometry=None, **kwargs) -> None:
 
         self._geometry = as_geo_object(geometry)
-        self._metadata = collections.ChainMap(kwargs, self.__class__._metadata)
+        if len(args) == 1 and isinstance(args[0], collections.abc.Mapping):
+            desc = args[0]
+        else:
+            if len(args) >= 1:
+                logger.warning(f"Ignore args {args}")
+            desc = {}
+        self._metadata = collections.ChainMap(desc, kwargs, self.__class__._metadata)
 
     @property
     def label(self) -> str:
@@ -168,3 +175,51 @@ class Domain(Pluggable):
             res = np.full_like(mask, self.fill_value, dtype=self._type_hint())
             res[mask] = value
         return res
+
+
+class PPolyDomain(Domain):
+    """多项式定义域。
+    根据离散网格点构建插值
+          extrapolate: int |str
+            控制当自变量超出定义域后的值
+            * if ext=0  or 'extrapolate', return the extrapolated value. 等于 定义域无限
+            * if ext=1  or 'nan', return nan
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(**kwargs)
+        if len(args) == 1 and isinstance(args[0], tuple):
+            args = args[0]
+        ndim = len(args)
+
+        if all([isinstance(d, np.ndarray) and d.ndim == ndim for d in args]):
+            self._points = args
+        elif all([isinstance(d, np.ndarray) and d.ndim == 1 for d in args]):
+            self._dims = args
+            self._points = None
+        else:
+            raise RuntimeError(f"Invalid points {args}")
+
+    @property
+    def shape(self) -> typing.Tuple[int, ...]:
+        if self._dims is not None:
+            return tuple([d.size for d in self._dims])
+        elif self._points is not None:
+            return self._points[0].shape
+        else:
+            raise RuntimeError(f"illegal domain!")
+
+    @property
+    def points(self) -> typing.Tuple[array_type, ...]:
+        if self._points is not None:
+            pass
+        elif self._dims is not None:
+            self._points = np.meshgrid(*self._dims, indexing="ij")
+        return self._points
+
+    def interpolate(self, y: array_type, **kwargs):
+
+        periods = self._metadata.get("periods", None)
+        extrapolate = self._metadata.get("extrapolate", 0)
+
+        return interpolate(*self.points, y, periods=periods, extrapolate=extrapolate, **kwargs)

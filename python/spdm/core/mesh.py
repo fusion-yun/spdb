@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import abc
 import collections.abc
 import typing
 import numpy as np
@@ -9,7 +10,7 @@ from enum import Enum
 from .geo_object import GeoObject, as_geo_object
 from .domain import Domain
 from .path import update_tree
-from .typing import ArrayType, NumericType, ScalarType, as_array
+from ..utils.typing import ArrayType, NumericType, ScalarType, as_array
 from ..utils.tags import _not_found_
 from ..utils.misc import group_dict_by_prefix
 from ..utils.logger import logger
@@ -130,16 +131,54 @@ class Mesh(Domain):
         if cls is not Mesh:
             return super().__new__(cls)
 
-        return super().__new__(cls, cls._guess_mesh(*args, **kwargs).get("@type", None))
+        if len(args) > 0 and isinstance(args[0], collections.abc.Mapping):
+            desc = collections.ChainMap(args[0], kwargs)
+            if len(args) > 1:
+                logger.warning(f"ignore args {args[1:]}")
+        else:
+            mesh_type = desc
+
+        mesh_type = desc.get("@type", None) or desc.get("type", None)
+
+        if mesh_type is None:
+            # 当没有明确指定 mesh_type 时，根据 dims 猜测 mesh_type
+            dims = desc.get("dims", None)
+            if dims is not None:
+                pass
+            elif all([isinstance(d, np.ndarray) for d in args]):
+                dims = args
+            else:
+                dims, desc = group_dict_by_prefix(desc, prefixes="dim", sep=None)
+                if isinstance(dims, dict):
+                    dims = {int(k): v for k, v in dims.items() if k.isdigit()}
+                    dims = dict(sorted(dims.items(), key=lambda x: x[0]))
+                    dims = tuple([as_array(d) for d in dims.values()])
+
+            if dims is not None and all([isinstance(a, np.ndarray) for a in dims]):
+                ndim = len(dims)
+                if all([d.ndim == 1 for d in dims]):
+                    mesh_type = "rectilinear"
+                elif all([d.ndim == ndim for d in dims]):
+                    mesh_type = "curvilinear"
+
+        if mesh_type is None:
+            raise RuntimeError(f"Unable to determine mesh type! {desc} ")
+
+        return super().__new__(cls, mesh_type)
 
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__(Mesh._guess_mesh(*args, **kwargs))
+        """
+        Usage:
+            Mesh(x,y) => Mesh(type="structured",dims=(x,y),**kwargs)
+        """
+        super().__init__(*args, **kwargs)
 
     @property
     def axis_label(self) -> typing.Tuple[str]:
         return self._metadata.get("axis_label", ["[-]"] * self.ndim)
 
     @property
+    @abc.abstractmethod
     def shape(self) -> typing.Tuple[int, ...]:
         """
         存储网格点数组的形状
@@ -147,7 +186,7 @@ class Mesh(Domain):
         结构化网格 shape   如 [n,m] n,m 为网格的长度dimension
         非结构化网格 shape 如 [<number of vertices>]
         """
-        return self._shape
+        pass
 
     def parametric_coordinates(self, *xyz) -> ArrayType:
         """parametric coordinates

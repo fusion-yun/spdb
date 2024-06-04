@@ -17,7 +17,7 @@ class TestField(unittest.TestCase):
 
         _x = Variable(0, "x")
         _y = Variable(1, "y")
-        fun = Field(x, y, np.sin(_x) * np.cos(_y), mesh_periods=[TWOPI, 2 * TWOPI])
+        fun = Field(x, y, np.sin(_x) * np.cos(_y), mesh={"periods": [TWOPI, 2 * TWOPI]})
 
         self.assertEqual(fun.mesh.ndim, 2)
         self.assertTrue(np.allclose(fun.mesh.dims[0], x))

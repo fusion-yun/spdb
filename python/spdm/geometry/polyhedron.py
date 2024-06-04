@@ -2,7 +2,7 @@ import abc
 import typing
 
 import numpy as np
-from ..core.typing import ArrayType
+from ..utils.typing import ArrayType
 from ..core.geo_object import GeoObject,BBox
 from .line import Line, Segment
 from .plane import Plane

@@ -9,7 +9,7 @@ from ..core.geo_object import GeoObject, GeoObjectSet, as_geo_object
 from ..geometry.point import Point
 from ..geometry.surface import Surface
 from ..utils.logger import logger
-from ..core.typing import ArrayType, ScalarType
+from ..utils.typing import ArrayType, ScalarType, array_type
 from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
 
@@ -47,6 +47,10 @@ class CurvilinearMesh(StructuredMesh):
     @property
     def uv(self) -> ArrayType:
         return self._uv
+
+    @property
+    def shape(self) -> array_type:
+        return np.asarray(self._dims[0].shape)
 
     @cached_property
     def points(self) -> typing.List[ArrayType]:

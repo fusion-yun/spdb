@@ -14,7 +14,7 @@ from ..geometry.line import Line
 from ..geometry.point import Point
 from ..numlib.interpolate import interpolate
 from ..utils.logger import logger
-from ..core.typing import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
+from ..utils.typing import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
 from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
 
@@ -61,6 +61,10 @@ class RectilinearMesh(StructuredMesh):
     @cached_property
     def dx(self) -> ArrayType:
         return np.asarray([(d[-1] - d[0]) / len(d) for d in self._dims])
+
+    @property
+    def shape(self) -> array_type:
+        return np.asarray([d.size for d in self._dims])
 
     def coordinates(self, *uvw) -> ArrayType:
         """网格点的 _空间坐标_

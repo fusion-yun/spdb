@@ -4,7 +4,7 @@ from copy import deepcopy
 from spdm.core.path import Path
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.core.typing import get_origin, get_args, isinstance_generic
+from spdm.utils.typing import get_origin, get_args, isinstance_generic
 import typing
 
 
