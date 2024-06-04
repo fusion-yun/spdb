@@ -370,11 +370,11 @@ class Expression(HTreeNode):
 
             return self._op(*xargs)
 
-        elif len(self._children) == 0 and isinstance(self._cache, np.ndarray):
+        else:
             return self.__compile__()(*args)
 
-        else:
-            raise RuntimeError(f"Illegal expression! {self._render_latex_()} _op={self._op} children={self._children}")
+        # else:
+        #     raise RuntimeError(f"Illegal expression! {self._render_latex_()} _op={self._op} children={self._children}")
 
     def derivative(self, order: int, **kwargs) -> Derivative:
         return Derivative(self, order=order, **kwargs)
