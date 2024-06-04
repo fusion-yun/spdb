@@ -5,6 +5,7 @@ import functools
 import collections
 import numpy as np
 import numpy.typing as np_tp
+import collections.abc
 from copy import copy, deepcopy
 
 from .expression import Expression, zero

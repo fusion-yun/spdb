@@ -13,6 +13,7 @@ from ..utils.typing import ArrayType, array_type, as_array, is_array
 
 from .mesh import Mesh
 from .expression import Expression
+from .domain import Domain
 
 
 class Field(Expression):
@@ -31,7 +32,7 @@ class Field(Expression):
 
     Domain = Mesh
 
-    def __init__(self, *args, mesh=None, **kwargs):
+    def __init__(self, *args, mesh=_not_found_, **kwargs):
         """
         Usage:
             default:
@@ -70,6 +71,17 @@ class Field(Expression):
     def mesh(self) -> Mesh:
         return self.domain
 
+    def _repr_svg_(self) -> str:
+        from ..view import sp_view
+
+        return sp_view.display(self.__view__(), label=self.__label__, output="svg")
+
+    def __view__(self, **kwargs):
+        if self.domain is None:
+            return {}
+        else:
+            return self.domain.view(self, label=self.__label__, **kwargs)
+
     def __compile__(self) -> typing.Callable[..., array_type]:
         """对函数进行编译，用插值函数替代原始表达式，提高运算速度
         - 由 points，value  生成插值函数，并赋值给 self._op
@@ -86,13 +98,10 @@ class Field(Expression):
         return self._ppoly
 
     def __call__(self, *args, **kwargs) -> typing.Callable[..., ArrayType]:
-        # if all([isinstance(a, (array_type, float, int)) for a in args]):
-        #     return self.__compile__()(*args, **kwargs)
-        # else:
-        return super().__call__(*args, **kwargs)
-
-    def __compile__(self) -> typing.Callable[..., array_type]:
-        return super().__compile__()
+        if all([isinstance(a, (array_type, float, int)) for a in args]):
+            return self.__compile__()(*args, **kwargs)
+        else:
+            return super().__call__(*args, **kwargs)
 
     def grad(self, n=1) -> Field:
         ppoly = self.__functor__()

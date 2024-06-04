@@ -12,10 +12,11 @@ from ..utils.logger import logger
 from ..utils.typing import ArrayType, ScalarType, array_type
 from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
+from .mesh_rectilinear import RectilinearMesh
 
 
 @Mesh.register("curvilinear")
-class CurvilinearMesh(StructuredMesh):
+class CurvilinearMesh(RectilinearMesh):
     """A `curvilinear Mesh` or `structured Mesh` is a Mesh with the same combinatorial structure as a regular Mesh,
     in which the cells are quadrilaterals or [general] cuboids, rather than rectangles or rectangular cuboids.
     -- [https://en.wikipedia.org/wiki/Regular_Mesh]
@@ -25,10 +26,8 @@ class CurvilinearMesh(StructuredMesh):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-
-        assert all([d.ndim == len(self._dims) for d in self._dims])
-
-        self._shape = self._dims[0].shape
+        # # assert all([d.ndim == len(self._dims) for d in self._dims]), f"{self._dims}"
+        # self._shape = self._dims[0].shape
 
     def axis(self, idx, axis=0):
         if axis == 0:
@@ -47,10 +46,6 @@ class CurvilinearMesh(StructuredMesh):
     @property
     def uv(self) -> ArrayType:
         return self._uv
-
-    @property
-    def shape(self) -> array_type:
-        return np.asarray(self._dims[0].shape)
 
     @cached_property
     def points(self) -> typing.List[ArrayType]:

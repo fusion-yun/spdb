@@ -4,8 +4,8 @@ import typing
 import numpy as np
 import numpy.typing as np_tp
 import functools
-import collections
 from enum import Enum
+import collections.abc
 
 from copy import deepcopy
 from .pluggable import Pluggable
@@ -36,6 +36,7 @@ class Domain(Pluggable):
     def __init__(self, *args, geometry=None, **kwargs) -> None:
 
         self._geometry = as_geo_object(geometry)
+
         if len(args) == 1 and isinstance(args[0], collections.abc.Mapping):
             desc = args[0]
         else:
@@ -211,7 +212,7 @@ class PPolyDomain(Domain):
 
     @property
     def points(self) -> typing.Tuple[array_type, ...]:
-        if self._points is not None:
+        if self._points is not None and self._points is not _not_found_:
             pass
         elif self._dims is not None:
             self._points = np.meshgrid(*self._dims, indexing="ij")

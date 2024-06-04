@@ -48,7 +48,7 @@ class RectilinearMesh(StructuredMesh):
         if self._geometry is None:
             self._geometry = Box([min(d) for d in self._dims], [max(d) for d in self._dims])
 
-        self._aixs = [Function(self._dims[i], np.linspace(0, 1.0, self.shape[i])) for i in range(self.rank)]
+        self._aixs = [Function(d, np.linspace(0, 1.0, len(d))) for i, d in enumerate(self._dims)]
 
     @property
     def dim1(self) -> ArrayType:
