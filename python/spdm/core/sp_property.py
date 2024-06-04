@@ -160,6 +160,12 @@ class PropertyTree(SpTree):
     def _type_hint_(self, *args, **kwargs):
         return PropertyTree
 
+    def _type_convert(self, value: typing.Any, *args, _type_hint=None, **kwargs) -> _T:
+        if _type_hint is None or _type_hint is _not_found_:
+            return value
+        else:
+            return super()._type_convert(value, *args, _type_hint=_type_hint, **kwargs)
+
     def dump(self, entry: Entry | None = None, force=False, quiet=True) -> Entry:
         if entry is None:
             return deepcopy(self._cache)
