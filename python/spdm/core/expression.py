@@ -317,7 +317,7 @@ class Expression(HTreeNode):
 
         elif isinstance(self._cache, np.ndarray):
             self._ppoly = self.domain.interpolate(self._cache)
-            
+
         else:
             self._ppoly = None
 
@@ -712,9 +712,6 @@ class Derivative(Expression):
             raise RuntimeError(f"Failed to compile expression! {str(self)}")
 
         return self._ppoly
-
-    def __call__(self, *args) -> array_type:
-        return self.__compile__()(*args)
 
 
 class Antiderivative(Derivative):
