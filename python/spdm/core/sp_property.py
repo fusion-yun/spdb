@@ -47,7 +47,6 @@ import collections.abc
 from copy import deepcopy, copy
 from _thread import RLock
 from enum import Enum
-from typing_extensions import Self
 
 from .entry import Entry
 from .aos import AoS
@@ -110,7 +109,7 @@ class SpTree(Dict[HTreeNode]):
 
         return super()._do_serialize(data, dumper)
 
-    def fetch(self, *args, exclude=[], **kwargs) -> Self:
+    def fetch(self, *args, exclude=[], **kwargs) -> typing.Self:
         if len(args) + len(kwargs) == 0:  # FIXME: 在 flush 的时候会有问题，需要 debug
             return super().fetch()
 
