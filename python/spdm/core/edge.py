@@ -3,7 +3,7 @@ import collections
 import collections.abc
 import typing
 import math
-from typing_extensions import Self
+import typing 
 from copy import deepcopy
 from .path import Path, as_path
 from .htree import HTreeNode, Dict
@@ -90,7 +90,7 @@ class Ports(Dict[Port]):
     #     self._cache[str(path)] = port = Port(None, fragment=path)
     #     return port
 
-    # def refresh(self, *args, **kwargs) -> Self:
+    # def refresh(self, *args, **kwargs) -> typing.Self:
     #     attr_name = self.__class__.__name__.lower()
 
     #     if len(args) + len(kwargs) > 0:

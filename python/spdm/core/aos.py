@@ -4,7 +4,6 @@ import functools
 import typing
 from copy import deepcopy
 
-from typing_extensions import Self
 
 
 from .entry import Entry
@@ -130,7 +129,7 @@ class AoS(List[_TTree]):
 
         return super()._find_(key, *args, default_value=default_value, **kwargs)
 
-    def _update_(self, key, value, op=None, *args, **kwargs) -> Self:
+    def _update_(self, key, value, op=None, *args, **kwargs) -> typing.Self:
         if (key is None or key is _not_found_) and op is not Path.tags.extend:
             key = as_path(f"@{Path.id_tag_name}").get(value, None)
 
@@ -172,7 +171,7 @@ class AoS(List[_TTree]):
         #     _entry = self._entry.child({tag: key})
         # yield self._type_convert(v, idx, _entry=_entry)
 
-    def fetch(self, *args, _parent=_not_found_, **kwargs) -> Self:
+    def fetch(self, *args, _parent=_not_found_, **kwargs) -> typing.Self:
         return self.__duplicate__([HTreeNode._do_fetch(obj, *args, **kwargs) for obj in self], _parent=_parent)
 
     def dump(self, entry: Entry, **kwargs) -> None:
