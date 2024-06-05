@@ -8,27 +8,38 @@ import contextlib
 
 from ..utils.logger import logger
 from ..utils.envs import SP_DEBUG, SP_LABEL
+from ..utils.tags import _not_found_
 
 from .htree import HTreeNode
 from .time_series import TimeSeriesAoS, TimeSlice
-from .edge import InPorts, OutPorts
+from .edge import InPorts, OutPorts, Port
+from .path import Path
 from .sp_object import SpObject
 from .sp_property import sp_property
 
 
 class Actor(SpObject):
     """执行体，追踪一个随时间演化的对象，其一个时间点的状态树称为 __时间片__ (time_slice),
-       由时间片的构成的序列，代表状态演化历史。
-
-    Args:
-        args,kwargs: 作为 SpTree 的输入写入属性树中
+    由时间片的构成的序列，代表状态演化历史。
     """
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._inports = InPorts(self._parent)
-        self._outports = OutPorts(self)
+        inputs = {}
+        tp_hints = typing.get_type_hints(self.__class__.refresh)
+        for name, tp in tp_hints.items():
+            if name == "return":
+                continue
+            elif getattr(tp, "_name", None) == "Optional":  # check typing.Optional
+                t_args = typing.get_args(tp)
+                if len(t_args) == 2 and t_args[1] is type(None):
+                    tp = t_args[0]
+
+            inputs[name] = Port(None, type_hint=tp)
+
+        self._inports = InPorts(inputs, _parent=self)
+        self._outports = OutPorts(_parent=self)
 
     time_slice: TimeSeriesAoS[TimeSlice] = sp_property(default_value=[])
     """时间片序列，保存 Actor 历史状态。
@@ -72,20 +83,23 @@ class Actor(SpObject):
 
         self.time_slice.initialize(*args, **kwargs)
 
-        # tp_hints = typing.get_type_hints(self.__class__.refresh)
-        # for name, tp in tp_hints.items():
-        #     if name == "return":
-        #         continue
-        #     elif getattr(tp, "_name", None) == "Optional":  # check typing.Optional
-        #         t_args = typing.get_args(tp)
-        #         if len(t_args) == 2 and t_args[1] is type(None):
-        #             tp = t_args[0]
+        from .context import Context
 
-        #     self.inports[name].link(type_hint=tp)
+        ctx = self
 
-        # # 查找父节点的输入 ，更新链接 Edge
-        # self.inports.refresh()
-        # self.outports.refresh()
+        while ctx is not None:
+            if isinstance(ctx, Context):
+                break
+            else:
+                ctx = getattr(ctx, "_parent", None)
+
+        for k, p in self._inports.items():
+            # 查找父节点的输入 ，更新链接 Port
+            if k.isidentifier() and p.node is None:
+                p.update(Path(k).get(ctx, None))
+
+            if p.node is None:
+                logger.warning(f"Input {k} is not provided! context = {ctx}")
 
     def preprocess(self, *args, **kwargs) -> typing.Type[TimeSlice]:
         """Actor 的预处理，若需要，可以在此处更新 Actor 的状态树。"""
@@ -93,8 +107,8 @@ class Actor(SpObject):
         for k in [*kwargs.keys()]:
             if isinstance(kwargs[k], HTreeNode):
                 self.inports[k] = kwargs.pop(k)
+                
         # inputs = {k: kwargs.pop(k) for k in [*kwargs.keys()] if isinstance(kwargs[k], HTreeNode)}
-
         # self.inports.update(inputs)
 
         current = self.time_slice.current
