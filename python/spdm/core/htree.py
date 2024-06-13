@@ -34,7 +34,7 @@ class HTreeNode:
 
         if len(args) == 0:
             _cache = _not_found_
-        elif isinstance(args[0], (np.ndarray,int,float,complex)):
+        elif isinstance(args[0], (np.ndarray, int, float, complex)):
             _cache = args[0]
             args = args[1:]
         elif isinstance(args[0], (collections.abc.MutableMapping, collections.abc.MutableSequence)):
@@ -652,3 +652,4 @@ class List(HTree[_T]):
 
 
 collections.abc.MutableSequence.register(List)
+

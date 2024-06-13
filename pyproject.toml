@@ -7,8 +7,6 @@ name = "spdm"
 
 authors = [{ name = "Zhi YU", email = "yuzhi@ipp.ac.cn" }]
 
-# version = "0.3.0"
-
 dynamic = ["version"]
 
 readme = "README.md"
@@ -25,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 dependencies = [
     "f90nml",
@@ -36,7 +34,9 @@ dependencies = [
     "numpy",
     "scipy",
     "scikit_image",
-    "matplotlib"
+    "matplotlib",
+    "networkx",
+    "pygraphviz",
 ]
 
 

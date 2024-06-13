@@ -8,32 +8,19 @@ from copy import deepcopy
 from .entry import Entry
 from .htree import List, HTree
 from .path import update_tree, merge_tree, Path
-from .sp_property import SpTree, sp_property
+from .sp_tree import SpTree, sp_property, sp_tree
 from ..utils.tags import _not_found_
 from ..utils.logger import logger
 
 
 class TimeSlice(SpTree):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._iteration = 0
-
     time: float = sp_property(unit="s", default_value=0.0)  # type: ignore
-
-    @property
-    def iteration(self) -> int:
-        return self._iteration
-
-    def refresh(self, value=_not_found_, *args, **kwargs):
-        current = self._update_(None, value, *args, **kwargs)
-        current._iteration += 1
-        return current
 
 
 _TSlice = typing.TypeVar("_TSlice", bound=TimeSlice)
 
 
-class TimeSeriesAoS(List[_TSlice]):
+class TimeSequence(List[_TSlice]):
     """A series of time slices .
 
     用以管理随时间变化（time series）的一组状态（TimeSlice）。
@@ -160,10 +147,10 @@ class TimeSeriesAoS(List[_TSlice]):
             else:
                 entry_cursor = 0
                 entry = None
-            
+
             value = self._type_convert(value, cache_pos, _entry=entry, _parent=self._parent)
 
-            self._cache[cache_pos]=value
+            self._cache[cache_pos] = value
 
         return value
 
@@ -192,7 +179,7 @@ class TimeSeriesAoS(List[_TSlice]):
 
         self._cache[self._cache_cursor] = current
 
-    def refresh(self, *args, **kwargs) -> typing.Type[TimeSeriesAoS]:
+    def refresh(self, *args, **kwargs) -> typing.Type[TimeSequence]:
         if not self.is_initializied:
             raise RuntimeError("TimeSlice is not initializied!")
 

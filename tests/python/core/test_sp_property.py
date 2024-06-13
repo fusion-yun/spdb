@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 from spdm.core.htree import AoS, Dict, List
-from spdm.core.sp_property import SpTree, sp_property
-from spdm.core.time_series import TimeSeriesAoS
+from spdm.core.sp_tree import SpTree, sp_property
+from spdm.core.time_sequence import TimeSequence
 from spdm.utils.logger import logger
 
 
@@ -64,7 +64,7 @@ class EqTimeSlice(SpTree):
 class Eq(SpTree):
 
     time: np.ndarray = sp_property()
-    time_slice: TimeSeriesAoS[EqTimeSlice] = sp_property()
+    time_slice: TimeSequence[EqTimeSlice] = sp_property()
 
 
 class TestSpProperty(unittest.TestCase):
@@ -128,7 +128,7 @@ class TestSpProperty(unittest.TestCase):
 
         eq = Eq(eq_data)
 
-        self.assertTrue(isinstance(eq.time_slice, TimeSeriesAoS))
+        self.assertTrue(isinstance(eq.time_slice, TimeSequence))
 
         self.assertEqual(eq.time_slice[0].profiles_2d[0].grid.dim1,
                          eq_data["$default_value"]["time_slice"]["profiles_2d"]["grid"]["dim1"])

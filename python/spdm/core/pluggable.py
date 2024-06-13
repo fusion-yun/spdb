@@ -58,6 +58,9 @@ class Pluggable(abc.ABC):
 
         plugin_name = desc.get("$type", None) or desc.get("@type", None) or desc.get("type", None)
 
+        if hasattr(cls, "_plugin_singletons") and plugin_name in cls._plugin_singletons:
+            return cls._plugin_singletons[plugin_name]
+
         if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
             return super().__new__(cls)
 
@@ -96,8 +99,13 @@ class Pluggable(abc.ABC):
             # Plugin not found in the registry
             raise ModuleNotFoundError(f"Can not find module '{plugin_path}' as subclass of '{cls.__name__}'! [{n_cls}]")
 
+        instance = super(Pluggable, cls).__new__(n_cls)
+
+        if hasattr(cls, "_plugin_singletons"):
+            cls._plugin_singletons[plugin_name] = instance
+
         # Return the plugin class
-        return super(Pluggable, cls).__new__(n_cls)
+        return instance
 
     @classmethod
     def _find_plugins(cls) -> typing.Generator[None, None, str]:

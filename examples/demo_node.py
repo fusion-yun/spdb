@@ -5,7 +5,7 @@ from spdm.utils.logger import logger
 from spdm.core.htree import Dict
 from spdm.core.htree import HTree
 from spdm.core.htree import List
-from spdm.core.sp_property import sp_property
+from spdm.core.sp_tree import sp_property
 
 
 # class Foo(Dict[Node]):

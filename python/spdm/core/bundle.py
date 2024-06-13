@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from ..utils.logger import logger
-from .sp_object import SpObject
+from .entity import Entity
 
 
-class Bundle(SpObject):
+class Bundle(Entity):
     """同类 Actor 的合集
 
     Args:
