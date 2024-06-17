@@ -10,7 +10,7 @@ from enum import Enum
 from .geo_object import GeoObject, as_geo_object
 from .domain import Domain
 from .path import update_tree
-from ..utils.typing import ArrayType, NumericType, ScalarType, as_array
+from .typing import ArrayType, NumericType, ScalarType, as_array
 from ..utils.tags import _not_found_
 from ..utils.misc import group_dict_by_prefix
 from ..utils.logger import logger

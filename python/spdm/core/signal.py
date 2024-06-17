@@ -1,4 +1,4 @@
-from ..utils.typing import array_type
+from .typing import array_type
 from .function import Function
 from .sp_tree import sp_tree, sp_property
 

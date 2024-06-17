@@ -5,7 +5,7 @@ import yaml
 from spdm.core.entry import Entry
 from spdm.core.file import File
 from spdm.utils.logger import logger
-from spdm.utils.typing import as_native
+from spdm.core.generic_helper import as_native
 
 
 # class YAMLDocument(Document):

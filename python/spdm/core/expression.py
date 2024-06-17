@@ -7,18 +7,21 @@ import collections.abc
 
 import numpy as np
 
-from ..utils.tags import _not_found_, _undefined_
-from ..utils.logger import logger
-from ..utils.misc import group_dict_by_prefix
-from ..utils.typing import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
+from spdm.utils.tags import _not_found_, _undefined_
+from spdm.utils.logger import logger
+from spdm.utils.misc import group_dict_by_prefix
 
-from ..numlib.interpolate import interpolate
+from spdm.numlib.interpolate import interpolate
 
-from .functor import Functor
-from .path import Path
-from .htree import HTreeNode, HTree, HTreeNode, List
-from .domain import Domain,PPolyDomain
-from .functor import Functor, DerivativeOp
+
+from spdm.utils.typing import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
+
+
+from spdm.core.functor import Functor
+from spdm.core.path import Path
+from spdm.core.htree import HTreeNode, HTree, HTreeNode, List
+from spdm.core.domain import Domain, PPolyDomain
+from spdm.core.functor import Functor, DerivativeOp
 
 _T = typing.TypeVar("_T", float, bool, array_type, HTreeNode)
 

@@ -8,18 +8,18 @@ from enum import Enum
 import collections.abc
 import collections
 from copy import deepcopy
-from .pluggable import Pluggable
-from ..utils.typing import ArrayType, array_type
-from .functor import Functor
-from .path import update_tree
-from .geo_object import GeoObject, as_geo_object
+from spdm.core.pluggable import Pluggable
+from spdm.utils.typing import ArrayType, array_type
+from spdm.core.functor import Functor
+from spdm.core.path import update_tree
+from spdm.core.geo_object import GeoObject, as_geo_object
 
-from ..numlib.numeric import float_nan, meshgrid, bitwise_and
-from ..numlib.interpolate import interpolate
+from spdm.numlib.numeric import float_nan, meshgrid, bitwise_and
+from spdm.numlib.interpolate import interpolate
 
 
-from ..utils.tags import _not_found_
-from ..utils.logger import logger
+from spdm.utils.tags import _not_found_
+from spdm.utils.logger import logger
 
 
 class Domain(Pluggable):

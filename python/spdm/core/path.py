@@ -272,7 +272,7 @@ class Path(list):
     tags = OpTags
 
     def __init__(self, *args, **kwargs):
-        super().__init__(args[0] if len(args) == 1 and isinstance(args[0], list) else Path._parser(args), **kwargs)
+        super().__init__(args[0] if len(args) == 1 and isinstance(args[0], list) else Path.parser(args), **kwargs)
 
     def __repr__(self):
         return Path._to_str(self)
@@ -589,7 +589,7 @@ class Path(list):
             yield Query(path)
 
     @staticmethod
-    def _parser(path) -> list:
+    def parser(path) -> list:
         """Parse the PathLike to list"""
         return [*Path._parser_iter(path)]
 
@@ -609,7 +609,7 @@ class Path(list):
 
         对应 RESTful 中的 post，非幂等操作
         """
-        return Path._do_update(target, self[:], value, Path.tags.insert, *args, **kwargs)
+        return Path.do_update(target, self[:], value, Path.tags.insert, *args, **kwargs)
 
     # 幂等
     def update(self, target: typing.Any, *args, **kwargs) -> typing.Any:
@@ -623,7 +623,7 @@ class Path(list):
 
         返回修改后的target
         """
-        return Path._do_update(target, self[:], *args, **kwargs)
+        return Path.do_update(target, self[:], *args, **kwargs)
 
     def remove(self, target: typing.Any, *args, **kwargs) -> typing.Tuple[typing.Any, int]:
         """根据路径（self）删除 target 中的元素。
@@ -634,36 +634,38 @@ class Path(list):
 
         返回修改后的target和删除的元素的个数
         """
-        return Path._do_update(target, self[:], _not_found_, Path.tags.overwrite, *args, **kwargs)
+        return Path.do_update(target, self[:], _not_found_, Path.tags.overwrite, *args, **kwargs)
 
     def find(self, source: typing.Any, *args, **kwargs) -> typing.Any:
         """
         根据路径（self）查询元素。只读，不会修改 target
         对应 RESTful 中的 read，幂等操作
         """
-        return Path._do_find(source, self[:], *args, **kwargs)
+        return Path.do_find(source, self[:], *args, **kwargs)
 
+    # 遍历子节点
     def for_each(self, source, *args, **kwargs) -> typing.Generator[typing.Tuple[int | str, typing.Any], None, None]:
-        yield from Path._do_for_each(source, self[:], *args, **kwargs)
-
-    def search(self, source, query, *args, **kwargs) -> int | None:
-        return Path._do_find(source, self[:], Path.tags.search, query, *args, **kwargs)
+        """遍历路径（self）中的元素，返回元素的索引和值"""
+        yield from Path.do_for_each(source, self[:], *args, **kwargs)
 
     def keys(self, source) -> typing.Generator[str, None, None]:
-        yield from Path._do_for_each(source, Path.tags.keys)
+        """返回路径（self）中的元素的键值"""
+        yield from Path.do_for_each(source, Path.tags.keys)
 
-    def copy(self, source: typing.Any, target: typing.Any = None, *args, **kwargs):
+    def copy(self, source: typing.Any, target: typing.Any = None, **kwargs):
         """copy object to target"""
-        return self._do_copy(source, target, self[:], *args, **kwargs)
+        return self.do_copy(source, target, self[:], **kwargs)
 
     # --------------------------------------------------------------------------------------
-    # 以下为简写，等价于上述方法，不应被重载
+    # 以下为简写，等价于上述方法
 
-    def put(self, target: typing.Any, value, _op=None) -> typing.Any:
-        return self.update(target, value, _op=_op)
+    def put(self, target: typing.Any, value, *args, **kwargs) -> typing.Any:
+        """put value to target"""
+        return self.update(target, value, *args, **kwargs)
 
-    def get(self, source: typing.Any, default_value=_not_found_):
-        return self.find(source, default_value=default_value)
+    def get(self, source: typing.Any, default_value=_not_found_, **kwargs):
+        """get value from source"""
+        return self.find(source, default_value=default_value, **kwargs)
 
     # End API
     ###########################################################
@@ -689,7 +691,7 @@ class Path(list):
         return res
 
     @staticmethod
-    def _do_copy(source: typing.Any, target: typing.Any, *args, **kwargs) -> typing.Any:
+    def do_copy(source: typing.Any, target: typing.Any, *args, **kwargs) -> typing.Any:
         raise NotImplementedError(f"TODO")
 
     @staticmethod
@@ -729,20 +731,25 @@ class Path(list):
         return target
 
     @staticmethod
-    def _do_update(
+    def do_update(
         target: typing.Any,
         path: typing.List | None,
-        value: typing.Any = _undefined_,
-        _op: OpTags | None = None,
+        value: typing.Any,
         *args,
         **kwargs,
     ) -> typing.Any:
-        if value is _undefined_ and _op is None:
+        if value is _undefined_ and len(args) == 0:
             return target
         if path is None:
             path = []
         elif not isinstance(path, list):
             path = [path]
+
+        if len(args) > 0:
+            _op = args[0]
+            args = args[1:]
+        else:
+            _op = None
 
         if len(path) == 0 and target is value:
             pass
@@ -762,7 +769,7 @@ class Path(list):
 
             elif isinstance(value, dict) and (_op is None or _op is Path.tags.update):
                 for k, v in value.items():
-                    target = Path._do_update(target, as_path(k)[:], v, _op, *args, **kwargs)
+                    target = Path.do_update(target, as_path(k)[:], v, _op, *args, **kwargs)
 
             elif _op is None:
                 target = value
@@ -819,21 +826,21 @@ class Path(list):
                     if hasattr(obj.__class__, "for_each"):
                         for k, v in enumerate(obj.for_each()):
                             old_value = v
-                            new_value = Path._do_update(old_value, path[idx + 1 :], _op=_op, **kwargs)
+                            new_value = Path.do_update(old_value, path[idx + 1 :], _op, **kwargs)
                             if new_value is not old_value:
                                 obj[k] = new_value
 
                     elif isinstance(obj, collections.abc.MutableMapping):
                         for k, v in obj.items():
                             old_value = v
-                            new_value = Path._do_update(old_value, path[idx + 1 :], _op=_op, **kwargs)
+                            new_value = Path.do_update(old_value, path[idx + 1 :], _op, **kwargs)
                             if new_value is not old_value:
                                 obj[k] = new_value
 
                     elif isinstance(obj, collections.abc.MutableSequence):
                         for k, v in enumerate(obj):
                             old_value = v
-                            new_value = Path._do_update(old_value, path[idx + 1 :], _op=_op, **kwargs)
+                            new_value = Path.do_update(old_value, path[idx + 1 :], _op, **kwargs)
                             if new_value is not old_value:
                                 obj[k] = new_value
 
@@ -874,9 +881,9 @@ class Path(list):
                     if is_tree(old_value) and idx < path_length - 1:
                         new_value = old_value
                     elif idx == path_length - 1:
-                        new_value = Path._do_update(old_value, [], value, _op=_op, **kwargs)
+                        new_value = Path.do_update(old_value, [], value, _op, **kwargs)
                     else:
-                        new_value = Path._do_update(old_value, path[idx + 1], _not_found_, _op=_op)
+                        new_value = Path.do_update(old_value, path[idx + 1], _not_found_, _op)
                         idx -= 1
 
                     if old_value is _not_found_ or old_value is not new_value:
@@ -891,9 +898,9 @@ class Path(list):
                     if is_tree(old_value) and idx < path_length - 1:
                         new_value = old_value
                     elif idx == path_length - 1:
-                        new_value = Path._do_update(old_value, [], value, _op=_op, *args, **kwargs)
+                        new_value = Path.do_update(old_value, [], value, _op, *args, **kwargs)
                     else:
-                        new_value = Path._do_update(old_value, path[idx + 1], _not_found_, _op=_op)
+                        new_value = Path.do_update(old_value, path[idx + 1], _not_found_, _op)
 
                     if old_value is _not_found_ or old_value is not new_value:
                         obj[key] = new_value
@@ -903,7 +910,7 @@ class Path(list):
 
                 elif isinstance(obj, collections.abc.MutableSequence) and isinstance(key, (Path.tags, slice)):
                     for v in obj[key]:
-                        Path._do_update(v, path[idx + 1 :], value, **kwargs)
+                        Path.do_update(v, path[idx + 1 :], value, **kwargs)
                     break
 
                 elif isinstance(obj, collections.abc.MutableSequence):
@@ -919,9 +926,9 @@ class Path(list):
                         if is_tree(old_value) and idx < path_length - 1:
                             new_value = old_value
                         elif idx == path_length - 1:
-                            new_value = Path._do_update(old_value, [], value, _op=_op, **kwargs)
+                            new_value = Path.do_update(old_value, [], value, _op, **kwargs)
                         else:
-                            new_value = Path._do_update(old_value, path[idx + 1], _not_found_, _op=_op)
+                            new_value = Path.do_update(old_value, path[idx + 1], _not_found_, _op)
 
                     elif isinstance(key, str):
                         query = Query(key)
@@ -938,7 +945,7 @@ class Path(list):
                         if is_tree(old_value) and idx < path_length - 1:
                             new_value = old_value
                         elif idx == path_length - 1:
-                            new_value = Path._do_update(old_value, [], value, _op=_op, **kwargs)
+                            new_value = Path.do_update(old_value, [], value, _op, **kwargs)
                         else:
                             raise ValueError(f"Unknown value {old_value}")
 
@@ -954,11 +961,9 @@ class Path(list):
                         if is_tree(old_value) and idx < path_length - 1:
                             new_value = old_value
                         elif idx == path_length - 1:
-                            new_value = Path._do_update(old_value, [], value, _op=_op, **kwargs)
+                            new_value = Path.do_update(old_value, [], value, _op, **kwargs)
                         elif old_value is _not_found_:
-                            new_value = Path._do_update(
-                                {f"@{Path.id_tag_name}": key}, path[idx + 1], _not_found_, _op=_op
-                            )
+                            new_value = Path.do_update({f"@{Path.id_tag_name}": key}, path[idx + 1], _not_found_, _op)
                         else:
                             raise ValueError(f"Unknown value {old_value}")
 
@@ -977,7 +982,12 @@ class Path(list):
         return target
 
     @staticmethod
-    def _do_find(source: typing.Any, path: list, _op=None, *args, default_value=_not_found_, **kwargs) -> typing.Any:
+    def do_find(source: typing.Any, path: list, *args, default_value=_not_found_, **kwargs) -> typing.Any:
+        if len(args) > 0:
+            _op = args[0]
+            args = args[1:]
+        else:
+            _op = None
         if path is None:
             path = []
         elif not isinstance(path, list):
@@ -1002,7 +1012,7 @@ class Path(list):
                 else:
                     raise NotImplementedError(f"{type(obj)} {path}")
 
-                res = Path._do_find(obj, [new_key] + path[idx + 2 :], *args, **kwargs)
+                res = Path.do_find(obj, [new_key] + path[idx + 2 :], *args, **kwargs)
 
             elif len(path) > 1 and path[1] is Path.tags.prev:
                 if isinstance(key, int):
@@ -1010,7 +1020,7 @@ class Path(list):
                 else:
                     raise NotImplementedError(f"{type(obj)} {path}")
 
-                res = Path._do_find(obj, [new_key] + path[idx + 2 :], *args, **kwargs)
+                res = Path.do_find(obj, [new_key] + path[idx + 2 :], *args, **kwargs)
 
             elif key is Path.tags.parent:
                 obj = getattr(obj, "_parent", _not_found_)
@@ -1019,7 +1029,7 @@ class Path(list):
                 # 逐级查找上层 _parent, 直到找到
                 while obj is not None and obj is not _not_found_:
                     if not isinstance(obj, collections.abc.Sequence):
-                        tmp = Path._do_find(obj, path[idx + 1 :], *args, default_value=_not_found_, **kwargs)
+                        tmp = Path.do_find(obj, path[idx + 1 :], *args, default_value=_not_found_, **kwargs)
                         if tmp is not _not_found_:
                             obj = tmp
                             break
@@ -1034,22 +1044,22 @@ class Path(list):
                 # 遍历访问所有叶节点
                 if isinstance(obj, collections.abc.Mapping):
                     obj = {
-                        k: Path._do_find(v, [Path.tags.descendants] + path[idx + 1 :], *args, **kwargs)
+                        k: Path.do_find(v, [Path.tags.descendants] + path[idx + 1 :], *args, **kwargs)
                         for k, v in obj.items()
                     }
 
                 elif isinstance(obj, collections.abc.Iterable):
-                    obj = [Path._do_find(v, [Path.tags.descendants] + path[idx + 1 :], *args, **kwargs) for v in obj]
+                    obj = [Path.do_find(v, [Path.tags.descendants] + path[idx + 1 :], *args, **kwargs) for v in obj]
 
                 elif len(path) > 0:
-                    obj = Path._do_find(obj, path[idx + 1 :], *args, **kwargs)
+                    obj = Path.do_find(obj, path[idx + 1 :], *args, **kwargs)
 
             elif key is Path.tags.children:
                 if isinstance(obj, collections.abc.Mapping):
-                    obj = {k: Path._do_find(v, path[idx + 1 :], *args, **kwargs) for k, v in obj.items()}
+                    obj = {k: Path.do_find(v, path[idx + 1 :], *args, **kwargs) for k, v in obj.items()}
 
                 elif isinstance(obj, collections.abc.Iterable):
-                    obj = [Path._do_find(v, path[idx + 1 :], *args, **kwargs) for v in obj]
+                    obj = [Path.do_find(v, path[idx + 1 :], *args, **kwargs) for v in obj]
 
                 else:
                     obj = _not_found_
@@ -1060,11 +1070,11 @@ class Path(list):
 
                 if isinstance(parent, collections.abc.Mapping):
                     obj = {
-                        k: Path._do_find(v, path[idx + 1 :], *args, **kwargs) for k, v in parent.items() if v is not obj
+                        k: Path.do_find(v, path[idx + 1 :], *args, **kwargs) for k, v in parent.items() if v is not obj
                     }
 
                 elif isinstance(parent, collections.abc.Iterable):
-                    obj = [Path._do_find(v, path[idx + 1 :], *args, **kwargs) for v in parent if v is not obj]
+                    obj = [Path.do_find(v, path[idx + 1 :], *args, **kwargs) for v in parent if v is not obj]
 
                 else:
                     obj = []
@@ -1077,10 +1087,9 @@ class Path(list):
                         break
                     else:
                         obj = tmp
-            
 
             elif isinstance(key, set):
-                obj = {k: Path._do_find(obj, as_path(k)[:] + path[idx + 1 :], *args, **kwargs) for k in key}
+                obj = {k: Path.do_find(obj, as_path(k)[:] + path[idx + 1 :], *args, **kwargs) for k in key}
                 break
             elif hasattr(obj.__class__, "_find_"):
                 obj = obj._find_(key, default_value=_not_found_)
@@ -1095,7 +1104,7 @@ class Path(list):
                     else:
                         obj = _not_found_
                 elif isinstance(key, slice):
-                    obj = [Path._do_find(s, path[idx + 1 :], *args, **kwargs) for s in obj[key]]
+                    obj = [Path.do_find(s, path[idx + 1 :], *args, **kwargs) for s in obj[key]]
                     break
 
                 else:
@@ -1120,7 +1129,7 @@ class Path(list):
         return obj
 
     @staticmethod
-    def _do_for_each(source, path, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
+    def do_for_each(source, path, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """遍历容器子节点。
         @NOTE:
             - 叶节点无输出
@@ -1135,22 +1144,22 @@ class Path(list):
         else:
             for idx, p in enumerate(path):
                 if p is Path.tags.children:
-                    source = Path._do_find(source, path[:idx])
+                    source = Path.do_find(source, path[:idx])
                     suffix = path[idx + 1 :]
                     break
                 elif isinstance(p, Path.tags):
                     raise NotImplementedError(p)
             else:
-                source = Path._do_find(source, path)
+                source = Path.do_find(source, path)
                 suffix = []
 
         if isinstance(source, collections.abc.Sequence) and not isinstance(source, str):
             for k, v in enumerate(source):
-                yield k, Path._do_find(v, suffix, *args, **kwargs)
+                yield k, Path.do_find(v, suffix, *args, **kwargs)
 
         elif isinstance(source, collections.abc.Mapping):
             for k, v in source.items():
-                yield k, Path._do_find(v, suffix, *args, **kwargs)
+                yield k, Path.do_find(v, suffix, *args, **kwargs)
 
         elif source is not _not_found_:
             logger.warning(f"{type(source)} is not iterable!")
@@ -1286,7 +1295,7 @@ _T = typing.TypeVar("_T")
 
 def update_tree(target: _T, *args, **kwargs) -> _T:
     for d in [*args, kwargs]:
-        target = Path._do_update(target, [], d)
+        target = Path.do_update(target, [], d)
     return target
 
 

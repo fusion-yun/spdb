@@ -12,7 +12,7 @@ from ..utils.tags import _not_found_
 
 from .htree import HTreeNode
 from .time_sequence import TimeSequence, TimeSlice
-from .edge import InPorts, OutPorts, Port
+from .obsolete.edge import InPorts, OutPorts, Port
 from .path import Path
 from .entity import Entity
 from .sp_tree import sp_property

@@ -5,14 +5,13 @@ import typing
 from copy import deepcopy
 
 
+from spdm.core.entry import Entry
+from spdm.core.htree import HTree, List, Dict, HTreeNode
+from spdm.core.path import Path, PathLike, as_path, OpTags, update_tree, merge_tree
 
-from .entry import Entry
-from .htree import HTree, List, Dict, HTreeNode
-from .path import Path, PathLike, as_path, OpTags, update_tree, merge_tree
-
-from ..utils.tags import _not_found_, _undefined_
-from ..utils.typing import array_type, get_args, get_type_hint
-from ..utils.logger import logger
+from spdm.utils.tags import _not_found_, _undefined_
+from spdm.utils.typing import array_type, get_args, get_type_hint
+from spdm.utils.logger import logger
 
 _T = typing.TypeVar("_T")
 

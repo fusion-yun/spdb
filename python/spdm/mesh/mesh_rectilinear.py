@@ -14,7 +14,7 @@ from ..geometry.line import Line
 from ..geometry.point import Point
 from ..numlib.interpolate import interpolate
 from ..utils.logger import logger
-from ..utils.typing import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
+from ..core.generic_helper import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
 from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
 

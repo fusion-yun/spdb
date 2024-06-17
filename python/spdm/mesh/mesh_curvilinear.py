@@ -9,7 +9,7 @@ from ..core.geo_object import GeoObject, GeoObjectSet, as_geo_object
 from ..geometry.point import Point
 from ..geometry.surface import Surface
 from ..utils.logger import logger
-from ..utils.typing import ArrayType, ScalarType, array_type
+from ..core.generic_helper import ArrayType, ScalarType, array_type
 from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
 from .mesh_rectilinear import RectilinearMesh

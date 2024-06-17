@@ -40,22 +40,17 @@
 """
 
 from __future__ import annotations
-import pprint
 import inspect
 import typing
-import collections.abc
-from copy import deepcopy, copy
+from copy import deepcopy
 from _thread import RLock
-from enum import Enum
 
-from .entry import Entry
-from .aos import AoS
-from .htree import HTree, Dict, List, HTreeNode
-from .path import update_tree, merge_tree, Path
-from .expression import Expression
-from ..utils.envs import SP_DEBUG
-from ..utils.logger import logger, deprecated
-from ..utils.tags import _not_found_, _undefined_
+from spdm.core.entry import Entry
+from spdm.core.aos import AoS
+from spdm.core.htree import HTree, Dict, HTreeNode
+from spdm.core.path import update_tree, Path
+from spdm.utils.logger import logger
+from spdm.utils.tags import _not_found_, _undefined_
 
 
 def _copy(obj, *args, **kwargs):
@@ -91,10 +86,32 @@ def _copy(obj, *args, **kwargs):
         return deepcopy(obj)
 
 
-class SpTree(Dict[HTreeNode]):
+class SpTree(Dict):
     """支持 sp_property 的 Dict"""
 
-    def __serialize__(self, dumper: typing.Callable[...] | bool = True) -> typing.Dict[str, typing.Any]:
+    def __init_subclass__(cls) -> None:
+
+        for _name, _type_hint in typing.get_type_hints(cls).items():
+            attr = getattr(cls, _name, _not_found_)
+
+            if isinstance(attr, property):
+                continue
+            elif isinstance(attr, SpProperty):
+                if not (_name in cls.__dict__):
+                    attr = SpProperty(getter=attr.getter, setter=attr.setter, deleter=attr.deleter, **attr.metadata)
+            else:
+                attr = SpProperty(default_value=attr)
+
+            attr.type_hint = _type_hint
+
+            setattr(cls, _name, attr)
+
+            attr.__set_name__(cls, _name)
+
+        if not hasattr(cls, "_metadata"):
+            cls._metadata = {}
+
+    def __getstate__(self) -> dict:
         data = {}
         for k, prop in inspect.getmembers(self.__class__, lambda c: is_sp_property(c)):
             if prop.getter is not None:
@@ -131,6 +148,7 @@ class SpTree(Dict[HTreeNode]):
 
 
 class PropertyTree(SpTree):
+    """属性树，通过 __getattr__ 访问成员，并转换为对应的类型"""
 
     def __new__(cls, *args, **kwargs):
         if cls is PropertyTree and len(args) == 1 and not isinstance(args[0], (dict, Entry)):
@@ -143,10 +161,11 @@ class PropertyTree(SpTree):
             return super().__getattribute__(key)
 
         _entry = self._entry.child(key) if self._entry is not None else None
-        value = Path._do_find(self._cache, [key], *args, **kwargs)
+        value = Path.do_find(self._cache, [key], *args, **kwargs)
         if value is _not_found_ and _entry is not None:
             value = _entry.get(default_value=_not_found_)
             _entry = None
+
         if isinstance(value, dict):
             return PropertyTree(value, _entry=_entry, _parent=self)
         elif isinstance(value, list) and (len(value) == 0 or isinstance(value[0], (dict, HTree))):
@@ -172,6 +191,18 @@ class PropertyTree(SpTree):
     #         return super()._type_convert(value, *args, _type_hint=_type_hint, **kwargs)
 
     def dump(self, entry: Entry | None = None, force=False, quiet=True) -> Entry:
+        """
+        Dumps the cache entries into an Entry object.
+
+        Args:
+            entry (Entry | None): An optional Entry object to update with the cache entries.
+                If None, a deepcopy of the cache entries is returned.
+            force (bool): If True, forces the update of the entry with the cache entries.
+            quiet (bool): If True, suppresses any output during the update.
+
+        Returns:
+            Entry: The updated Entry object if entry is not None, otherwise a deepcopy of the cache entries.
+        """
         if entry is None:
             return deepcopy(self._cache)
         else:
@@ -209,6 +240,11 @@ _TR = typing.TypeVar("_TR")
 
 
 class SpProperty:
+    """具有语义的属性
+    - 自动绑定
+    - 自动类型转换
+    """
+
     def __init__(
         self,
         getter: typing.Callable[[typing.Any], typing.Any] = None,
@@ -264,7 +300,7 @@ class SpProperty:
     def __call__(self, func: typing.Callable[..., _TR]) -> _TR:
         """用于定义属性的getter操作，与@property.getter类似"""
         if self.getter is not None:
-            raise RuntimeError(f"Can not reset getter!")
+            raise RuntimeError("Can not reset getter!")
         self.getter = func
         return self
 
@@ -308,7 +344,7 @@ class SpProperty:
         if self.doc == "":
             self.doc = f"{owner_cls.__name__}.{self.property_name}"
 
-    def __set__(self, instance: SpTree, value: typing.Any) -> None:
+    def __set__(self, instance: HTreeNode, value: typing.Any) -> None:
         assert instance is not None
 
         with self.lock:
@@ -319,11 +355,11 @@ class SpProperty:
             else:
                 logger.error("Can not use sp_property instance without calling __set_name__ on it.")
 
-    def __get__(self, instance: SpTree, owner_cls=None) -> _T:
+    def __get__(self, instance: HTreeNode, owner_cls=None) -> _T:
         if instance is None:
             # 当调用 getter(cls, <name>) 时执行
             return self
-        elif not isinstance(instance, SpTree):
+        elif not isinstance(instance, HTreeNode):
             raise TypeError(f"Class '{instance.__class__.__name__}' must be a subclass of 'SpTree'.")
 
         with self.lock:
@@ -384,32 +420,12 @@ def _process_sptree(cls, **kwargs) -> typing.Type[SpTree]:
     if not inspect.isclass(cls):
         raise TypeError(f"Not a class {cls}")
 
-    type_hints = typing.get_type_hints(cls)
-
     if not issubclass(cls, HTree):
-        n_cls = type(cls.__name__, (cls, SpTree), {})
+        n_cls = type(cls.__name__, (cls, SpTree), {"_metadata": {}})
         n_cls.__module__ = cls.__module__
+        n_cls._metadata.update(kwargs)
     else:
         n_cls = cls
-
-    for _name, _type_hint in type_hints.items():
-        prop = getattr(cls, _name, _not_found_)
-
-        if isinstance(prop, property):
-            continue
-        elif isinstance(prop, SpProperty):
-            if not (_name in cls.__dict__ and n_cls is cls):
-                prop = SpProperty(getter=prop.getter, setter=prop.setter, deleter=prop.deleter, **prop.metadata)
-        else:
-            prop = SpProperty(default_value=prop)
-
-        prop.type_hint = _type_hint
-
-        setattr(n_cls, _name, prop)
-
-        prop.__set_name__(n_cls, _name)
-
-    setattr(n_cls, "_metadata", merge_tree(getattr(cls, "_metadata", {}), kwargs))
 
     return n_cls
 

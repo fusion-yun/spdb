@@ -9,7 +9,7 @@ from copy import copy
 import numpy as np
 
 from ..utils.logger import logger
-from ..utils.typing import ArrayLike, ArrayType, NumericType, array_type, nTupleType
+from ..core.generic_helper import ArrayLike, ArrayType, NumericType, array_type, nTupleType
 
 from ..core.geo_object import GeoObject,BBox
 from .point import Point

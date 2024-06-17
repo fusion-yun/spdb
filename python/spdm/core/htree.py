@@ -1,187 +1,206 @@
+""" Hierarchical Tree (HTree) is a hierarchical data structure that can be used to
+ store a group of data or objects, such as lists, dictionaries, etc.  """
+
 from __future__ import annotations
 import collections.abc
-import abc
 import typing
+from copy import deepcopy
 import numpy as np
-from copy import copy, deepcopy
 
-from ..utils.logger import logger
-
-
-from ..utils.misc import get_positional_argument_count
-from ..utils.tags import _not_found_
-from ..utils.typing import (
+from spdm.utils.logger import logger
+from spdm.utils.misc import get_positional_argument_count
+from spdm.utils.tags import _not_found_, _undefined_
+from spdm.utils.typing import (
     ArrayType,
-    NumericType,
-    array_type,
     as_array,
-    get_args,
-    get_origin,
     isinstance_generic,
-    numeric_type,
-    serialize,
-    get_type,
     type_convert,
 )
 
-from .entry import Entry, open_entry
-from .path import Path, PathLike, Query, as_path, update_tree, merge_tree, path_like
+from spdm.core.entry import Entry, open_entry
+from spdm.core.path import Path, PathLike, as_path
+from spdm.core.generic_helper import GenericHelper
+
+
+def get_state(obj: typing.Any) -> dict:
+    if hasattr(obj.__class__, "__getstate__"):
+        return obj.__getstate__()
+    elif isinstance(obj, collections.abc.Mapping):
+        return {k: get_state(v) for k, v in obj.items()}
+    elif isinstance(obj, collections.abc.Sequence) and not isinstance(obj, str):
+        return [get_state(v) for v in obj]
+    else:
+        return obj
 
 
 class HTreeNode:
-    @classmethod
-    def _parser_args(cls, *args, _parent=None, _entry=None, **kwargs):
+    """HTreeNode is a node in the hierarchical tree."""
 
-        if len(args) == 0:
-            _cache = _not_found_
-        elif isinstance(args[0], (np.ndarray, int, float, complex)):
-            _cache = args[0]
-            args = args[1:]
-        elif isinstance(args[0], (collections.abc.MutableMapping, collections.abc.MutableSequence)):
-            _cache = args[0]
-            args = args[1:]
-        elif isinstance(args[0], (str, Entry)):
-            _cache = {"$entry": args[0]}
-            args = args[1:]
+    def __new__(cls, *args, **kwargs):
+        if cls is not HTreeNode or len(args) != 1:
+            return super().__new__(cls)
+        elif len(args) == 0:
+            return Dict(**kwargs)
+        elif len(args) > 1:
+            return List(*args, **kwargs)
+
+        value = args[0]
+
+        if isinstance(value, HTreeNode):
+            return value
+        elif isinstance(value, collections.abc.Mapping):
+            return Dict(value, **kwargs)
+        elif isinstance(value, collections.abc.Sequence) and not isinstance(value, str):
+            return List(value, **kwargs)
         else:
-            _cache = _not_found_
+            return value
 
-        if _entry is None:
-            _entry = []
-        elif not isinstance(_entry, collections.abc.Sequence) or isinstance(_entry, str):
-            _entry = [_entry]
+    def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **metadata):
+        """Initialize a HTreeNode object."""
+        self._cache = cache
+        self._entry = open_entry(_entry)
+        self._parent = _parent
+        self._metadata = metadata
 
-        _entry = list(args) + _entry
+    @property
+    def is_leaf(self) -> bool:
+        """只读属性，返回节点是否为叶节点"""
+        return True
 
-        metadata = deepcopy(getattr(cls, "_metadata", {}))
+    @property
+    def is_sequence(self) -> bool:
+        """只读属性，返回节点是否为Sequence"""
+        return False
 
-        if isinstance(_cache, dict):
-            t_entry = _cache.pop("$entry", _not_found_)
-            if t_entry is _not_found_:
-                pass
-            elif t_entry is False:
-                _entry = None
-            elif not isinstance(t_entry, list):
-                _entry = [t_entry] + _entry
-            else:
-                _entry = t_entry + _entry
+    @property
+    def is_mapping(self) -> bool:
+        """只读属性，返回节点是否为Mapping"""
+        return False
 
-            # for k in list(_cache.keys()):
-            #     if k.startswith("@"):
-            #         metadata[k[1:]] = _cache.pop(k)
+    def __getstate__(self) -> dict:
 
-        metadata.update(kwargs)
+        state = {
+            "$type": f"{self.__class__.__module__}.{self.__class__.__name__}",
+            "$path": ".".join(self.__path__),
+            "$name": self.__name__,
+            "$entry": self._entry.__getstate__(),
+            "$metadata": self._metadata,
+        }
 
-        if not isinstance(_entry, list):
-            raise RuntimeError(f"Can not parser _entry {_entry}")
-
-        _entry = open_entry(
-            sum([e if isinstance(e, list) else [e] for e in _entry if e is not None and e is not _not_found_], [])
-        )
-
-        default_value = metadata.pop("default_value", _not_found_)
-
-        if default_value is not _not_found_:
-            _cache = update_tree(deepcopy(default_value), _cache)
-
-        return _cache, _entry, _parent, metadata
-
-    def __init__(self, *args, **metadata) -> None:
-        self._cache, self._entry, self._parent, self._metadata = self.__class__._parser_args(*args, **metadata)
-
-    def __copy__(self) -> typing.Self:
-        if isinstance(self._cache, dict):
-            cache = {k: copy(value) for k, value in self._cache.items()}
-        elif isinstance(self._cache, list):
-            cache = [copy(value) for k, value in self._cache.items()]
+        if isinstance(self._cache, collections.abc.Mapping):
+            state.update(get_state(self._cache))
         else:
-            cache = deepcopy(self._cache)
+            state["$data"] = get_state(self._cache)
 
-        res = self.__class__(cache, _entry=self._entry)
+        return state
 
-        res._metadata = deepcopy(self._metadata)
+    def __setstate__(self, state: dict) -> None:
 
-        return res
+        self._entry = open_entry(state.pop("$entry", None))
+        self._metadata = state.pop("$metadata", {})
 
-    @classmethod
-    def _do_serialize(cls, source: typing.Any, dumper: Entry | typing.Callable[..., typing.Any] | bool) -> _T:
-        if source is _not_found_:
-            return source if not isinstance(dumper, Entry) else dumper
+        logger.verbose(f"Load {self.__class__.__name__} from state: {state.pop('$type',None)}")
 
-        elif hasattr(source.__class__, "__serialize__"):
-            return source.__serialize__(dumper)
+        self._cache = state.pop("$data", _not_found_)
 
-        elif isinstance(source, dict):
-            if isinstance(dumper, Entry):
-                for k, v in source.items():
-                    cls._do_serialize(v, dumper.child(k))
-                res = dumper
-            else:
-                res = {k: cls._do_serialize(v, dumper) for k, v in source.items()}
-
-        elif isinstance(source, list):
-            if isinstance(dumper, Entry):
-                for k, v in enumerate(source):
-                    cls._do_serialize(v, dumper.child(k))
-                res = dumper
-            else:
-                res = [cls._do_serialize(v, dumper) for v in source]
-
-        elif isinstance(dumper, Entry):
-            dumper.insert(source)
-            res = dumper
-
-        elif callable(dumper):
-            res = dumper(source)
-
-        elif dumper is True:
-            res = deepcopy(source)
-
-        else:
-            res = source
-
-        return res
-
-    def __serialize__(self, dumper: Entry | typing.Callable[..., typing.Any] | bool = True) -> Entry | typing.Any:
-        """若 dumper 为 Entry，将数据写入 Entry
-           若 dumper 为 callable，将数据传入 callable 并返回结果
-           若 dumper 为 True，返回数据的拷贝
-           否则返回序列化后的数据
-
-        Args:
-            target (Entry, optional): 目标入口. Defaults to None.
-            copier (typing.Callable[[typing.Any], typing.Any] | bool, optional): copier 拷贝器，当 target 为 None 有效。若为 True 则通过 copy 函数返回数据的拷贝. Defaults to None.
-
-        Returns:
-            typing.Any: 若 target is None，返回原始数据，否则返回 target
-        """
         if self._cache is _not_found_:
-            if self._entry is not None:
-                return self._entry.dump(dumper)
-            else:
-                return self._do_serialize(self.__value__, dumper)
-        else:
-            return self._do_serialize(self._cache, dumper)
+            self._cache = state
+        elif len(state) > 0:
+            logger.warning(f"Ignore property {list(state.keys())}")
 
-    @classmethod
-    def __deserialize__(cls, *args, **kwargs) -> typing.Type[HTree]:
-        return cls(*args, **kwargs)
+    # def __copy__(self) -> typing.Self:
+    #     if isinstance(self._cache, dict):
+    #         cache = {k: copy(value) for k, value in self._cache.items()}
+    #     elif isinstance(self._cache, list):
+    #         cache = [copy(value) for k, value in self._cache.items()]
+    #     else:
+    #         cache = deepcopy(self._cache)
 
-    def __duplicate__(self, *args, _parent=_not_found_, **kwargs):
-        if _parent is _not_found_:
-            _parent = self._parent
+    #     res = self.__class__(cache, _entry=self._entry)
 
-        cls = get_type(self)
+    #     res._metadata = deepcopy(self._metadata)
 
-        if len(args) == 0:
-            args = [deepcopy(self._cache)]
+    #     return res
 
-        return cls(
-            *args,
-            _parent=_parent,
-            _entry=self._entry,
-            **collections.ChainMap(kwargs, deepcopy(self._metadata)),
-        )
+    # @classmethod
+    # def do_serialize(cls, source: typing.Any, dumper: Entry | typing.Callable[..., typing.Any] | bool) -> _T:
+    #     if source is _not_found_:
+    #         return source if not isinstance(dumper, Entry) else dumper
+
+    #     elif hasattr(source.__class__, "__serialize__"):
+    #         return source.__serialize__(dumper)
+
+    #     elif isinstance(source, dict):
+    #         if isinstance(dumper, Entry):
+    #             for k, v in source.items():
+    #                 cls.do_serialize(v, dumper.child(k))
+    #             res = dumper
+    #         else:
+    #             res = {k: cls.do_serialize(v, dumper) for k, v in source.items()}
+
+    #     elif isinstance(source, list):
+    #         if isinstance(dumper, Entry):
+    #             for k, v in enumerate(source):
+    #                 cls.do_serialize(v, dumper.child(k))
+    #             res = dumper
+    #         else:
+    #             res = [cls.do_serialize(v, dumper) for v in source]
+
+    #     elif isinstance(dumper, Entry):
+    #         dumper.insert(source)
+    #         res = dumper
+
+    #     elif callable(dumper):
+    #         res = dumper(source)
+
+    #     elif dumper is True:
+    #         res = deepcopy(source)
+
+    #     else:
+    #         res = source
+
+    #     return res
+
+    # def __serialize__(self, dumper: Entry | typing.Callable[..., typing.Any] | bool = True) -> Entry | typing.Any:
+    #     """若 dumper 为 Entry，将数据写入 Entry
+    #        若 dumper 为 callable，将数据传入 callable 并返回结果
+    #        若 dumper 为 True，返回数据的拷贝
+    #        否则返回序列化后的数据
+
+    #     Args:
+    #         target (Entry, optional): 目标入口. Defaults to None.
+    #         copier (typing.Callable[[typing.Any], typing.Any] | bool, optional): copier 拷贝器，当 target 为 None 有效。若为 True 则通过 copy 函数返回数据的拷贝. Defaults to None.
+
+    #     Returns:
+    #         typing.Any: 若 target is None，返回原始数据，否则返回 target
+    #     """
+    #     if self._cache is _not_found_:
+    #         if self._entry is not None:
+    #             return self._entry.dump(dumper)
+    #         else:
+    #             return self.do_serialize(self.__value__, dumper)
+    #     else:
+    #         return self.do_serialize(self._cache, dumper)
+
+    # @classmethod
+    # def __deserialize__(cls, *args, **kwargs) -> typing.Type[HTree]:
+    #     return cls(*args, **kwargs)
+
+    # def __duplicate__(self, *args, _parent=_not_found_, **kwargs):
+    #     if _parent is _not_found_:
+    #         _parent = self._parent
+
+    #     cls = get_type(self)
+
+    #     if len(args) == 0:
+    #         args = [deepcopy(self._cache)]
+
+    #     return cls(
+    #         *args,
+    #         _parent=_parent,
+    #         _entry=self._entry,
+    #         **collections.ChainMap(kwargs, deepcopy(self._metadata)),
+    #     )
 
     @property
     def __name__(self) -> str:
@@ -207,8 +226,7 @@ class HTreeNode:
     @property
     def __root__(self) -> HTree | None:
         p = self
-        # FIXME: ids_properties is a work around for IMAS dd until we found better solution
-        while isinstance(p, HTreeNode) and getattr(p, "ids_properties", None) is None:
+        while isinstance(p, HTreeNode) and p._parent is not None:
             p = p._parent
         return p
 
@@ -237,31 +255,17 @@ class HTreeNode:
         else:
             return self._cache == other
 
-    @staticmethod
-    def _do_fetch(obj, *args, **kwargs):
-        if hasattr(obj.__class__, "fetch"):
-            return obj.fetch(*args, **kwargs)
-
-        elif isinstance(obj, dict):
-            return {k: HTreeNode._do_fetch(v, *args, **kwargs) for k, v in obj.items()}
-
-        elif isinstance(obj, (list, set, tuple)):
-            return obj.__class__([HTreeNode._do_fetch(v, *args, **kwargs) for v in obj])
-
-        elif callable(obj):
-            return obj(*args, **kwargs)
-
-        else:
-            return deepcopy(obj)
-
-            # raise RuntimeError(f"Unknown argument {obj} {args} {kwargs}")
-
-    def fetch(self, *args, **kwargs) -> typing.Self:
-        return self.__duplicate__(HTreeNode._do_fetch(self._cache, *args, **kwargs))
+    def fetch(self):
+        """fetch data from  entry to cache"""
+        if self._entry is not None:
+            self._cache.update(self._entry.dump())
+        return self
 
     def flush(self):
-        """TODO: 将 cache 内容 push 入 entry"""
-        return NotImplemented
+        """flush data from cache to entry"""
+        if self._entry is not None:
+            self._entry.update(self._cache)
+        return self
 
 
 null_node = HTreeNode(_not_found_)
@@ -270,7 +274,7 @@ null_node = HTreeNode(_not_found_)
 _T = typing.TypeVar("_T")
 
 
-class HTree(HTreeNode, typing.Generic[_T]):
+class HTree(GenericHelper[_T], HTreeNode):
     """Hierarchical Tree:
     - 其成员类型为 _T，用于存储一组数据或对象，如列表，字典等
 
@@ -279,28 +283,40 @@ class HTree(HTreeNode, typing.Generic[_T]):
     - 叶节点可以是标量或数组 array_type，或其他 type_hint 类型
     - 节点可以有缓存（cache)
     - 节点可以有父节点（_parent)
-    - 节点可以有元数据（metadata), 包含： 唯一标识（id), 名称（name), 单位（units), 描述（description), 标签（tags), 注释（comment)
+    - 节点可以有元数据（metadata)
     - 任意节点都可以通过路径访问
     - `get` 返回的类型由 `type_hint` 决定，默认为 Node
-
-
-
     """
 
-    def __contains__(self, path) -> bool:
-        return bool(self.get(path, Path.tags.exists)) is True
+    @property
+    def is_leaf(self) -> bool:
+        """只读属性，返回节点是否为叶节点"""
+        return False
 
-    #############################################
+    def __equal__(self, other) -> bool:
+        """TODO: 判断两个容器/树是否相等
+        O(N) 操作需要优化方法
+        """
+        raise NotImplementedError(f"{self.__class__.__name__}.__equal__ is not implemented!")
+
     # 对后辈节点操作，支持路径
 
+    @typing.final
     def put(self, path, value, *args, **kwargs):
+        """put value to path"""
         return as_path(path).update(self, value, *args, **kwargs)
 
-    def get(self, path: PathLike, default_value: _T = _not_found_, *args, **kwargs) -> _T:
-        return as_path(path).find(self, *args, default_value=default_value, **kwargs)
+    @typing.final
+    def get(self, path: PathLike, default_value: _T = _undefined_, **kwargs) -> _T:
+        """get value from path"""
+        value = as_path(path).find(self, default_value=default_value, **kwargs)
+        if value is _undefined_:
+            raise KeyError(f"Can not find value at path {path}!")
+        return value
 
     @typing.final
     def pop(self, path, default_value=_not_found_):
+        """pop value from path"""
         path = as_path(path)
 
         value = path.get(self, _not_found_)
@@ -324,67 +340,63 @@ class HTree(HTreeNode, typing.Generic[_T]):
     def __delitem__(self, path) -> None:
         return self.put(path, _not_found_, _idempotent=True)
 
-    @typing.final
-    def get_cache(self, path, default_value: _T = _not_found_) -> _T:
-        path = as_path(path)
-        res = path.get(self._cache, default_value=_not_found_)
+    def __missing__(self, key: str | int) -> typing.Any:
+        # raise KeyError(f"{self.__class__.__name__}.{key} is not assigned! ")
+        return _not_found_
 
-        if res is _not_found_ and self._entry is not None:
-            res = self._entry.get(path, _not_found_)
+    # 当前子节点操作，不支持路径
 
-        if res is _not_found_:
-            res = default_value
-
-        return res
-
-    #############################################
-    # 当子节点操作，不支持路径
-    @abc.abstractclassmethod
-    def children(self) -> typing.Generator[_T, None, None]:
-        """alias of for_each"""
-        return
-
-    @abc.abstractclassmethod
     def __iter__(self) -> typing.Generator[_T | str, None, None]:
-        """遍历 children"""
-        return
+        """遍历，sequence 返回子节点的值，mapping 返回子节点的键"""
+        yield from self.for_each()
+
+    @typing.final
+    def __contains__(self, key_or_node) -> bool:
+        """查找，sequence 搜索值，mapping搜索键"""
+        return self.find(key_or_node, Path.tags.exists)
 
     @typing.final
     def __len__(self) -> int:
-        return int(self._find_(None, Path.tags.count) or 0)
+        return int(self.find(None, Path.tags.count) or 0)
 
-    @typing.final
-    def __contains__(self, key) -> bool:
-        return bool(self.find(key, Path.tags.exists) is True)
-
-    @typing.final
-    def __equal__(self, other) -> bool:
-        return bool(self._find_(None, Path.tags.equal, other))
-
-    ###############################################################################
     # RESTful API
 
     @typing.final
     def insert(self, *args, **kwargs) -> None:
+        """insert value"""
         return self._insert_(*args, **kwargs)
 
     @typing.final
     def update(self, *args, **kwargs) -> None:
+        """update value"""
         if len(args) == 0 or isinstance(args[0], dict):
-            args = [None, *args]
+            args = tuple(None, *args)
         return self._update_(*args, **kwargs)
 
     @typing.final
     def remove(self, *args, **kwargs) -> bool:
+        """remove value"""
         return self._remove_(*args, **kwargs)
 
     @typing.final
     def find(self, *args, **kwargs) -> _T:
+        """find value"""
         return self._find_(*args, **kwargs)
 
     @typing.final
+    def for_each(self, *args, **kwargs) -> typing.Generator[_T, None, None]:
+        """iterate children"""
+        yield from self._for_each_(*args, **kwargs)
+
+    @typing.final
+    def children(self) -> typing.Generator[_T, None, None]:
+        """alias of for_each"""
+        yield from self.for_each()
+
+    @typing.final
     def find_cache(self, path, *args, default_value=_not_found_, **kwargs) -> typing.Any:
-        res = Path._do_find(self._cache, path, *args, default_value=_not_found_, **kwargs)
+        """find value from cache"""
+        res = Path.do_find(self._cache, path, *args, default_value=_not_found_, **kwargs)
         if res is _not_found_ and self._entry is not None:
             res = self._entry.child(path).find(*args, default_value=_not_found_, **kwargs)
         if res is _not_found_:
@@ -393,17 +405,15 @@ class HTree(HTreeNode, typing.Generic[_T]):
 
     @typing.final
     def get_cache(self, path, default_value=_not_found_) -> typing.Any:
+        """get value from cache"""
         return self.find_cache(path, default_value=default_value)
 
-    @typing.final
-    def for_each(self, *args, **kwargs) -> typing.Generator[typing.Tuple[int | str, _T], None, None]:
-        yield from self._for_each_(*args, **kwargs)
+    ################################################################################
+    # Protected methods
 
-    # -----------------------------------------------------------------------------
-    # 内部接口
-
-    def _insert_(self, value: typing.Any, _op=None, *args, **kwargs):
-        return self._update_(None, value, _op or Path.tags.insert, *args, **kwargs)
+    def _insert_(self, value: typing.Any, *args, **kwargs):
+        """插入节点："""
+        return self._update_(None, value, Path.tags.insert, *args, **kwargs)
 
     def _remove_(self, key: str | int, *args, _deleter: typing.Callable = None, **kwargs) -> bool:
         """删除节点：
@@ -413,14 +423,15 @@ class HTree(HTreeNode, typing.Generic[_T]):
         if callable(_deleter):
             return _deleter(self, key)
         else:
-            return self._update_(key, _not_found_, _op=Path.tags.remove, *args, **kwargs)
+            return self._update_(key, _not_found_, Path.tags.remove, *args, **kwargs)
 
-    def _update_(self, key: str | int, value: typing.Any, _op: Path.tags = None, *args, _setter=None, **kwargs):
+    def _update_(self, key: str | int, value: typing.Any, *args, _setter=None, **kwargs):
+        """更新节点："""
         if (key is None or key == []) and value is self:
             pass
 
         elif isinstance(key, str) and key.startswith("@"):
-            value = Path._do_update(self._metadata, key[1:], value, _op, *args, **kwargs)
+            value = Path.do_update(self._metadata, key[1:], value, *args, **kwargs)
             if value is not _not_found_:
                 return value
 
@@ -428,13 +439,9 @@ class HTree(HTreeNode, typing.Generic[_T]):
             _setter(self, key, value)
 
         else:
-            self._cache = Path._do_update(self._cache, key, value, _op, *args, **kwargs)
+            self._cache = Path.do_update(self._cache, key, value, *args, **kwargs)
 
         return self
-
-    def __missing__(self, key: str | int) -> typing.Any:
-        # raise KeyError(f"{self.__class__.__name__}.{key} is not assigned! ")
-        return _not_found_
 
     def _find_(self, key, *args, _getter=None, default_value=_not_found_, **kwargs) -> _T:
         """获取子节点/或属性
@@ -444,7 +451,7 @@ class HTree(HTreeNode, typing.Generic[_T]):
         """
 
         if isinstance(key, str) and key.startswith("@"):
-            return Path._do_find(self._metadata, key[1:], *args, default_value=_not_found_)
+            return Path.do_find(self._metadata, key[1:], *args, default_value=_not_found_)
 
         if isinstance(key, int):
             if key < len(self._cache):
@@ -452,7 +459,7 @@ class HTree(HTreeNode, typing.Generic[_T]):
             else:
                 value = _not_found_
         else:
-            value = Path._do_find(self._cache, key, default_value=_not_found_)
+            value = Path.do_find(self._cache, key, default_value=_not_found_)
 
         if value is _not_found_ and callable(_getter):
             if get_positional_argument_count(_getter) == 2:
@@ -467,16 +474,21 @@ class HTree(HTreeNode, typing.Generic[_T]):
         if key is None and isinstance(self._cache, collections.abc.MutableSequence):
             self._cache.append(value)
         elif isinstance(key, str) and isinstance(self._cache, collections.abc.MutableSequence):
-            self._cache = Path._do_update(self._cache, key, value)
+            self._cache = Path.do_update(self._cache, key, value)
         elif isinstance(key, int) and key <= len(self._cache):
+            if self._cache is _not_found_:
+                self._cache = []
             self._cache.extend([_not_found_] * (key - len(self._cache) + 1))
             self._cache[key] = value
         else:
+            if not isinstance(self._cache, collections.abc.Mapping):
+                self._cache = {}
             self._cache[key] = value
 
         return value
 
-    def _for_each_(self, *args, **kwargs) -> typing.Generator[typing.Tuple[int | str, _T], None, None]:
+    def _for_each_(self, *args, **kwargs) -> typing.Generator[str | _T, None, None]:
+
         if (self._cache is _not_found_ or len(self._cache) == 0) and self._entry is not None:
             for k, v in self._entry.for_each(*args, **kwargs):
                 if not isinstance(v, Entry):
@@ -485,12 +497,12 @@ class HTree(HTreeNode, typing.Generic[_T]):
                     yield k, self._type_convert(_not_found_, k, _entry=v)
 
         elif self._cache is not None:
-            for k, v in Path._do_for_each(self._cache, [], *args, **kwargs):
+            for k, v in Path.do_for_each(self._cache, [], *args, **kwargs):
                 _entry = self._entry.child(k) if self._entry is not None else None
                 v = self._type_convert(v, k, _entry=_entry)
                 yield k, v
 
-    ################################################################################
+    # -----------------------------------------------------------------------------
     # Private methods
 
     def _type_hint_(self, key: str | int = None) -> typing.Type:
@@ -506,10 +518,11 @@ class HTree(HTreeNode, typing.Generic[_T]):
         if isinstance(key, str):
             cls = getattr(self, "__orig_class__", self.__class__)
 
-            tp = typing.get_type_hints(get_origin(cls)).get(key, None)
+            tp = typing.get_type_hints(typing.get_origin(cls) or cls).get(key, None)
 
         if tp is None:
-            tp = get_args(getattr(self, "__orig_class__", None) or self.__class__)
+            tp = getattr(self.__class__, "__args__", [])
+            # get_args(getattr(self, "__orig_class__", None) or self.__class__)
             tp = tp[-1] if len(tp) > 0 else None
 
         return tp
@@ -544,7 +557,7 @@ class HTree(HTreeNode, typing.Generic[_T]):
 
         if isinstance_generic(value, _type_hint):
             pass
-        elif issubclass(get_origin(_type_hint), HTree):
+        elif issubclass(typing.get_origin(_type_hint) or _type_hint, HTree):
             value = _type_hint(value, _entry=_entry, _parent=_parent, **kwargs)
         else:
             value = type_convert(_type_hint, value, **kwargs)
@@ -567,89 +580,102 @@ class HTree(HTreeNode, typing.Generic[_T]):
         return value
 
 
-def as_htree(*args, **kwargs):
-    if len(args) == 0 and len(kwargs) > 0:
-        res = Dict(kwargs)
-        kwargs = {}
-    elif len(args) > 1 and len(kwargs) == 0:
-        res = List(list(args))
-        args = []
-    elif len(args) == 0:
-        res = None
-    elif isinstance(args[0], HTree):
-        res = args[0]
-        args = args[1:]
-    elif isinstance(args[0], collections.abc.MutableMapping):
-        res = Dict(args[0])
-        args = args[1:]
-    elif isinstance(args[0], collections.abc.MutableSequence):
-        res = List(args[0])
-        args = args[1:]
-    elif len(args) > 1:
-        res = List(list(args))
-        args = []
-    else:
-        res = HTree(*args, **kwargs)
+# def as_htree(*args, **kwargs):
+#     """将数据转换为 HTree 对象"""
+#     if len(args) == 0 and len(kwargs) > 0:
+#         res = Dict(kwargs)
+#         kwargs = {}
+#     elif len(args) > 1 and len(kwargs) == 0:
+#         res = List(list(args))
+#         args = []
+#     elif len(args) == 0:
+#         res = None
+#     elif isinstance(args[0], HTree):
+#         res = args[0]
+#         args = args[1:]
+#     elif isinstance(args[0], collections.abc.MutableMapping):
+#         res = Dict(args[0])
+#         args = args[1:]
+#     elif isinstance(args[0], collections.abc.MutableSequence):
+#         res = List(args[0])
+#         args = args[1:]
+#     elif len(args) > 1:
+#         res = List(list(args))
+#         args = []
+#     else:
+#         res = HTree(*args, **kwargs)
 
-    if len(args) + len(kwargs) > 0:
-        res._update_(*args, **kwargs)
+#     if len(args) + len(kwargs) > 0:
+#         res._update_(*args, **kwargs)
 
-    return res
+#     return res
 
 
 class Dict(HTree[_T]):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        if self._cache is _not_found_:
-            self._cache = {}
+    """Dict 类型的 HTree 对象"""
 
-    def children(self) -> typing.Generator[_T, None, None]:
-        yield from self.values()
+    def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
+        if cache is _not_found_:
+            cache = kwargs
+            kwargs = {}
+        super().__init__(cache, _entry=_entry, _parent=_parent, **kwargs)
 
+    @property
+    def is_mapping(self) -> bool:
+        """只读属性，返回节点是否为Mapping"""
+        return True
+
+    def __equal__(self, other) -> bool:
+        return False
+        # raise NotImplementedError(f"{self.__class__.__name__}.__equal__ is not implemented!")
+
+    @typing.final
     def __iter__(self) -> typing.Generator[str, None, None]:
-        """遍历 children"""
+        """遍历，sequence 返回子节点的值，mapping 返回子节点的键"""
         yield from self.keys()
 
     def items(self) -> typing.Generator[typing.Tuple[str, _T], None, None]:
-        yield from self.for_each()
+        """遍历 key,value"""
+        yield from self.for_each(only_key=False, only_value=False)
 
     def keys(self) -> typing.Generator[str, None, None]:
-        for k, v in self.for_each():
-            yield k
+        """遍历 key"""
+        yield from self.for_each(only_key=True)
 
     def values(self) -> typing.Generator[_T, None, None]:
-        for k, v in self.for_each():
-            yield v
+        """遍历 value"""
+        yield from self.for_each(only_value=True)
 
 
 collections.abc.MutableMapping.register(Dict)
 
 
 class List(HTree[_T]):
-    def __init__(self, *args, **kwargs) -> None:
+    """List 类型的 HTree 对象"""
+
+    def __init__(self, *args, **kwargs):
+        if len(args) != 1:
+            args = (list[args],)
         super().__init__(*args, **kwargs)
-        if self._cache is _not_found_:
-            self._cache = []
-        elif not isinstance(self._cache, list):
-            self._cache = [self._cache]
 
-    def children(self) -> typing.Generator[_T, None, None]:
-        for k, v in self.for_each():
-            yield v
+    @property
+    def is_sequence(self) -> bool:
+        """只读属性，返回节点是否为 Sequence"""
+        return True
 
-    def __iter__(self) -> typing.Generator[_T, None, None]:
-        for k, v in self.for_each():
-            yield v
+    def __equal__(self, other) -> bool:
+        raise NotImplementedError(f"{self.__class__.__name__}.__equal__ is not implemented!")
 
     def append(self, value):
-        return self._insert_(value, Path.tags.append)
+        """append value to list"""
+        return self.insert(value, Path.tags.append)
 
     def extend(self, value):
-        return self._insert_(value, Path.tags.extend)
+        """extend value to list"""
+        return self.insert(value, Path.tags.extend)
 
     def __iadd__(self, other: list) -> typing.Type[List[_T]]:
         return self.extend(other)
 
 
 collections.abc.MutableSequence.register(List)
-

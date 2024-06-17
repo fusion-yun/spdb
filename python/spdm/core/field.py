@@ -9,7 +9,7 @@ import numpy as np
 
 from ..utils.logger import logger
 from ..utils.tags import _not_found_
-from ..utils.typing import ArrayType, array_type, as_array, is_array
+from .typing import ArrayType, array_type, as_array, is_array
 
 from .mesh import Mesh
 from .expression import Expression

@@ -1,5 +1,4 @@
 from __future__ import annotations
-import numpy as np
 import collections
 import collections.abc
 import dataclasses
@@ -8,13 +7,14 @@ import os
 import pathlib
 import typing
 from copy import copy, deepcopy
+import numpy as np
 
-from ..utils.logger import deprecated, logger
-from ..utils.plugin import Pluggable
-from ..utils.tags import _not_found_, _undefined_
-from ..utils.typing import array_type, as_array, as_value, is_scalar
-from ..utils.uri_utils import URITuple, uri_split, uri_split_as_dict
-from .path import Path, PathLike, as_path, update_tree, update_tree
+from spdm.utils.logger import deprecated, logger
+from spdm.utils.plugin import Pluggable
+from spdm.utils.tags import _not_found_, _undefined_
+from spdm.utils.uri_utils import URITuple, uri_split, uri_split_as_dict
+from spdm.core.path import Path, PathLike, as_path, update_tree, update_tree
+from spdm.utils.typing import array_type, as_array, as_value, is_scalar
 
 PROTOCOL_LIST = ["local", "file", "http", "https", "ssh", "mdsplus"]
 
@@ -96,17 +96,17 @@ class Entry(Pluggable):
     ###########################################################
 
     @property
-    def _value_(self) -> typing.Any:
+    def value(self) -> typing.Any:
         return self._data if len(self._path) == 0 else self.get(default_value=_not_found_)
 
-    def __getitem__(self, *args) -> Entry:
-        return self.child(*args)
+    # def __getitem__(self, *args) -> Entry:
+    #     return self.child(*args)
 
-    def __setitem__(self, path, value):
-        return self.child(path).update(value)
+    # def __setitem__(self, path, value):
+    #     return self.child(path).update(value)
 
-    def __delitem__(self, *args):
-        return self.child(*args).remove()
+    # def __delitem__(self, *args):
+    #     return self.child(*args).remove()
 
     def get(self, query=None, default_value=_not_found_, **kwargs) -> typing.Any:
         if query is None:
@@ -160,8 +160,8 @@ class Entry(Pluggable):
         other._path = self._path.parent
         return other
 
-    def child(self, path=None, *args, **kwargs) -> Entry:
-        path = as_path(path)
+    def child(self, *args) -> Entry:
+        path = as_path(*args)
         if len(path) == 0:
             return self
 
@@ -172,7 +172,7 @@ class Entry(Pluggable):
         else:
             self._data = []
 
-        other = self.__copy__()
+        other: Path = self.__copy__()
         other._path.append(path)
         return other
 

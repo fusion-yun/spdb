@@ -18,7 +18,7 @@ from spdm.numlib.optimize import minimize_filter
 from spdm.utils.constants import *
 from spdm.utils.tags import _not_found_
 from spdm.utils.tree_utils import merge_tree_recursive
-from spdm.utils.typing import (ArrayLike, ArrayType, NumericType, array_type,
+from spdm.core.generic_helper import (ArrayLike, ArrayType, NumericType, array_type,
                                scalar_type)
 from spdm.view.sp_view import draw_profiles
 

@@ -1,3 +1,10 @@
+"""
+This module provides a base class for creating objects from a registry.
+
+Classes:
+- Pluggable: Factory class to create objects from a registry.
+"""
+
 import inspect
 import typing
 import collections
@@ -8,13 +15,26 @@ from ..utils.sp_export import sp_load_module, walk_namespace_modules
 
 
 class Pluggable(abc.ABC):
-    """Factory class to create objects from a registry."""
+    """
+    Factory class to create objects from a registry.
+
+    Attributes:
+    - _plugin_registry: A dictionary to store the registered plugins.
+    """
 
     _plugin_registry = {}
 
     @classmethod
     def _complete_path(cls, plugin_name) -> str | None:
-        """Return the complete name of the plugin."""
+        """
+        Return the complete name of the plugin.
+
+        Args:
+        - plugin_name: The name of the plugin.
+
+        Returns:
+        - str | None: The complete name of the plugin, or None if the plugin name is invalid.
+        """
         if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
             return None
         else:
@@ -28,6 +48,10 @@ class Pluggable(abc.ABC):
     def register(cls, plugin_name: str | list | None = None, plugin_cls=None):
         """
         Decorator to register a class to the registry.
+
+        Args:
+        - plugin_name: The name of the plugin.
+        - plugin_cls: The class to be registered as a plugin.
         """
         if plugin_cls is not None:
             if not isinstance(plugin_name, list):
@@ -47,6 +71,16 @@ class Pluggable(abc.ABC):
             return decorator
 
     def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
+        """
+        Create a new instance of the class.
+
+        Args:
+        - args: Positional arguments.
+        - kwargs: Keyword arguments.
+
+        Returns:
+        - typing.Type[typing.Self]: The new instance of the class.
+        """
         if len(args) != 1:
             desc = kwargs
         elif isinstance(args[0], str) and args[0].isidentifier():
@@ -58,17 +92,20 @@ class Pluggable(abc.ABC):
 
         plugin_name = desc.get("$type", None) or desc.get("@type", None) or desc.get("type", None)
 
-        if hasattr(cls, "_plugin_singletons") and plugin_name in cls._plugin_singletons:
-            return cls._plugin_singletons[plugin_name]
+        if (
+            (plugin_singletons := getattr(cls, "_plugin_singletons", None)) is not None
+            and plugin_name in plugin_singletons
+        ):
+            return plugin_singletons[plugin_name]
 
         if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
             return super().__new__(cls)
 
-        elif cls is Pluggable:
+        if cls is Pluggable:
             # Can not create instance of Pluggable
-            raise RuntimeError(f"Can not create instance of Pluggable!")
+            raise RuntimeError("Can not create instance of Pluggable!")
 
-        elif not issubclass(cls, Pluggable):
+        if not issubclass(cls, Pluggable):
             # Not pluggable
             logger.error(f"{cls.__name__} is not pluggable!")
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
@@ -85,14 +122,14 @@ class Pluggable(abc.ABC):
 
         if n_cls is None:
             # Plugin not found in the registry
-            # 尝试从 PYTHON_PATH 中查找 module, 如果找到，将其注册到 _plugin_registry
+            # Try to find the module in PYTHON_PATH and register it to _plugin_registry
 
             if sp_load_module(plugin_path) is None:
                 s_path = plugin_path.split(".")
                 s_path = s_path[0:1] + ["plugins"] + s_path[1:]
                 sp_load_module(".".join(s_path))
 
-            # 重新检查
+            # Recheck
             n_cls = cls._plugin_registry.get(plugin_path, None)
 
         if not (inspect.isclass(n_cls) and issubclass(n_cls, cls)):
@@ -109,7 +146,12 @@ class Pluggable(abc.ABC):
 
     @classmethod
     def _find_plugins(cls) -> typing.Generator[None, None, str]:
-        """Find all plugins in the Python path."""
+        """
+        Find all plugins in the Python path.F
+
+        Yields:
+        - str: The names of the plugins.
+        """
         yield from cls._plugin_registry.keys()
         for p in walk_namespace_modules(cls._complete_path()):
             if p not in cls._plugin_registry:

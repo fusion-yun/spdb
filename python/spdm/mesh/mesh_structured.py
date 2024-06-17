@@ -2,7 +2,7 @@ import typing
 import collections.abc
 import numpy as np
 
-from ..utils.typing import ArrayLike, ArrayType, as_array
+from ..core.generic_helper import ArrayLike, ArrayType, as_array
 from ..core.mesh import Mesh
 from ..utils.tags import _not_found_
 

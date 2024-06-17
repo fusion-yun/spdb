@@ -1,13 +1,51 @@
-import typing
+"""Defines the Process class that represents a change of entity state over time."""
 
-from .event import Event
-from .sp_object import sp_object
+import abc
+
+from spdm.core.graph import MultiDiGraph
+from spdm.core.event import Event, InputEvent, OutputEvent
+from spdm.core.port import Port, Ports
+from spdm.core.time import Time
+from spdm.core.sp_tree import sp_tree
 
 
-@sp_object
-class Process:
-    """描述实体状态随时间变化的过程，如运动、传热等。过程描述了一个连续的活动序列，
-    这些活动会导致实体状态的改变。过程通常是由一系列事件组成的。
+@sp_tree
+class Process(MultiDiGraph[Port | Event], Event):
+    """
+    Describes a process that represents the change of entity state over time, such as motion, heat transfer, etc.
+    A process describes a continuous sequence of activities that result in changes to the entity's state.
+    Processes are typically composed of a series of events.
     """
 
-    events: typing.List[Event]
+    def __init__(self, *args, **kwargs) -> None:
+        MultiDiGraph[Port | Event].__init__(*args, **kwargs)
+        Event.__init__(self)
+
+    input: InputEvent
+    output: OutputEvent
+
+    def inports(self) -> Ports:
+        """
+        Returns the input ports of the process.
+
+        Returns:
+            Dict[str, Port]: The input ports of the process.
+        """
+        return self.inputs.inports
+
+    def outports(self) -> Ports:
+        """
+        Returns the output ports of the process.
+
+        Returns:
+            Dict[str, Port]: The output ports of the process.
+        """
+        return self.outputs.outports
+
+    @abc.abstractmethod
+    def apply(self, time: Time = None):
+        """Applies the event.
+
+        Args:
+            time (Time, optional): The time at which the event is applied. Defaults to None.
+        """

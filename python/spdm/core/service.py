@@ -1,3 +1,13 @@
+"""This module contains the definition of the Service class and its subclass ServiceBundle.
+
+The Service class is a service object that encapsulates business logic related to specific domain operations.
+A Service typically consists of one or more operations (methods) that perform complex tasks spanning multiple domain objects.
+
+The Service class is stateless and follows interface programming principles.
+
+The ServiceBundle class is a subclass of Service and represents a bundle of services.
+"""
+
 from __future__ import annotations
 import tempfile
 import shutil
@@ -6,29 +16,25 @@ import os
 import typing
 import contextlib
 
-from ..utils.logger import logger
-from ..utils.envs import SP_DEBUG, SP_LABEL
-from ..utils.tags import _not_found_
+from spdm.utils.logger import logger
+from spdm.utils.envs import SP_DEBUG, SP_LABEL
 
-from .htree import HTreeNode
-from .edge import InPorts, OutPorts, Port
-from .path import Path
-from .obsolete.sp_tree import sp_property, sp_tree
-from .pluggable import Pluggable
+from spdm.core.htree import HTreeNode
+from spdm.core.obsolete.edge import InPorts, OutPorts, Port
+from spdm.core.path import Path
+from spdm.core.pluggable import Pluggable
 
 
 class Service(Pluggable):
     """
-    Service是一种服务对象,它封装了一些与特定领域操作相关的业务逻辑。
-    Service通常由一个或多个操作(方法)组成,这些操作执行一些比较复杂、跨多个领域对象的任务。
+    Service is a service object that encapsulates business logic related to specific domain operations.
+    A Service typically consists of one or more operations (methods) that perform complex tasks spanning multiple domain objects.
 
-    Service 无状态, 面向接口编程:
+    The Service class is stateless and follows interface programming principles.
     """
 
     def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
-
         cls_name = args[0].get("$class", None) if len(args) == 1 and isinstance(args[0], dict) else None
-
         return super().__new__(cls, cls_name)
 
     def __init__(self, *args, **kwargs) -> None:
@@ -51,16 +57,26 @@ class Service(Pluggable):
 
     @property
     def inports(self) -> InPorts:
-        """输入的 Edge，记录对其他 Actor 的依赖。"""
+        """Returns the input edges that record dependencies on other actors."""
         return self._inports
 
     @property
     def outports(self) -> OutPorts:
-        """输出的 Edge，可视为对于引用（reference）的记录"""
+        """Returns the output edges that can be considered as references."""
         return self._outports
 
     @contextlib.contextmanager
     def working_dir(self, suffix: str = "", prefix="") -> typing.Generator[pathlib.Path, None, None]:
+        """Context manager that changes the working directory to a temporary directory or a specified directory.
+
+        Args:
+            suffix (str): The suffix to be appended to the directory name.
+            prefix (str): The prefix to be prepended to the directory name.
+
+        Yields:
+            pathlib.Path: The current working directory.
+
+        """
         pwd = pathlib.Path.cwd()
 
         working_dir = f"{self.output_dir}/{prefix}{self.tag}{suffix}"
@@ -95,6 +111,12 @@ class Service(Pluggable):
 
     @property
     def output_dir(self) -> str:
+        """Returns the output directory path.
+
+        Returns:
+            str: The output directory path.
+
+        """
         return (
             self.get_cache("output_dir", None)
             or os.getenv("SP_OUTPUT_DIR", None)
@@ -102,7 +124,7 @@ class Service(Pluggable):
         )
 
     def initialize(self, *args, **kwargs) -> None:
-        """初始化 Actor 。"""
+        """Initializes the actor."""
         if self.time_slice.is_initializied:
             return
 
@@ -119,7 +141,7 @@ class Service(Pluggable):
                 ctx = getattr(ctx, "_parent", None)
 
         for k, p in self._inports.items():
-            # 查找父节点的输入 ，更新链接 Port
+            # Look for input from parent node and update the link Port
             if k.isidentifier() and p.node is None:
                 p.update(Path(k).get(ctx, None))
 
@@ -127,37 +149,56 @@ class Service(Pluggable):
                 logger.warning(f"Input {k} is not provided! context = {ctx}")
 
     def preprocess(self, *args, **kwargs) -> typing.Type[StateTree]:
-        """Actor 的预处理，若需要，可以在此处更新 Actor 的状态树。"""
+        """Preprocesses the actor and updates its state tree if necessary.
 
+        Args:
+            *args: Positional arguments.
+            **kwargs: Keyword arguments.
+
+        Returns:
+            typing.Type[StateTree]: The current state tree.
+
+        """
         for k in [*kwargs.keys()]:
             if isinstance(kwargs[k], HTreeNode):
                 self.inports[k] = kwargs.pop(k)
 
-        # inputs = {k: kwargs.pop(k) for k in [*kwargs.keys()] if isinstance(kwargs[k], HTreeNode)}
-        # self.inports.update(inputs)
-
         current = self.time_slice.current
-        # current.refresh(*args, **kwargs)
 
         return current
 
     def execute(self, current: typing.Type[StateTree], *args) -> typing.Type[StateTree]:
-        """根据 inports 和 前序 time slice 更新当前time slice"""
+        """Updates the current time slice based on inports and the previous time slice.
+
+        Args:
+            current (typing.Type[StateTree]): The current state tree.
+            *args: Positional arguments.
+
+        Returns:
+            typing.Type[StateTree]: The updated state tree.
+
+        """
         return current
 
     def postprocess(self, current: typing.Type[StateTree]) -> typing.Type[StateTree]:
-        """Actor 的后处理，若需要，可以在此处更新 Actor 的状态树。
-        @param current: 当前时间片
-        @param working_dir: 工作目录
+        """Postprocesses the actor and updates its state tree if necessary.
+
+        Args:
+            current (typing.Type[StateTree]): The current state tree.
+
+        Returns:
+            typing.Type[StateTree]: The updated state tree.
+
         """
         return current
 
     def refresh(self, *args, **kwargs) -> typing.Type[StateTree]:
-        """更新当前 Actor 的状态。
-        更新当前状态树 （time_slice），并执行 self.iteration+=1
+        """Updates the current state of the actor.
+
+        Returns:
+            typing.Type[StateTree]: The updated state tree.
 
         """
-
         current = self.preprocess(*args, **kwargs)
 
         current = self.execute(current, self.time_slice.previous)
@@ -167,26 +208,40 @@ class Service(Pluggable):
         return current
 
     def flush(self) -> None:
-        """保存当前时间片的状态。
-        根据当前 inports 的状态，更新状态并写入 time_slice，
-        默认 do nothing， 返回当前时间片
+        """Saves the state of the current time slice.
+
+        Returns:
+            None
+
         """
         return self.time_slice.flush()
 
     def finalize(self) -> None:
-        """完成。"""
+        """Finalizes the actor.
 
+        Returns:
+            None
+
+        """
         self.flush()
         self.time_slice.finalize()
 
     def fetch(self, *args, **kwargs) -> typing.Type[StateTree]:
-        """根据当前状态，根据参数返回一个时间片描述。
-        例如，根据给定的坐标，对 object 进行插值，构建相应的时间片。
+        """Returns a time slice description based on the current state and the given parameters.
+
+        Args:
+            *args: Positional arguments.
+            **kwargs: Keyword arguments.
+
+        Returns:
+            typing.Type[StateTree]: The time slice description.
+
         """
         return HTreeNode._do_fetch(self.time_slice.current, *args, **kwargs)
 
 
 class ServiceBundle(Service):
-    def __init__(self, *args, **kwargs):
+    """A bundle of services."""
 
+    def __init__(self, *args, **kwargs):
         self._bundle = []

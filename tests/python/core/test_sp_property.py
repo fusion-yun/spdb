@@ -1,75 +1,74 @@
 import unittest
 
 import numpy as np
-from spdm.core.htree import AoS, Dict, List
-from spdm.core.sp_tree import SpTree, sp_property
+from spdm.core.htree import List
+from spdm.core.sp_tree import SpTree
 from spdm.core.time_sequence import TimeSequence
-from spdm.utils.logger import logger
+from spdm.core.aos import AoS
 
 
 class Foo(SpTree):
-    a: float = sp_property(default_value=4)
-    b: float = sp_property()
-    c: float = sp_property()
+    a: float = 4
+    b: float
+    c: float
 
 
 class Goo(SpTree):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-    value: float = sp_property()
-
-    foos: List[Foo] = sp_property(default_value={"a": 1, "b": 2, "c": 3})
+    value: float
+    foos: List[Foo] = {"a": 1, "b": 2, "c": 3}
 
 
 class Doo(SpTree):
 
-    foo: Foo = sp_property(default_value={"a": 1})
+    foo: Foo = {"a": 1}
 
-    goo: Goo = sp_property(default_value={"value": 3.14})
+    goo: Goo = {"value": 3.14}
 
-    foo_list: List[Foo] = sp_property()
+    foo_list: List[Foo]
 
-    balaaa = sp_property[Foo](default={"bala": 1})
+    balaaa: Foo = {"bala": 1}
 
 
 eq_data = {
     "time": [0.0],
     "vacuum_toroidal_field": {"r0": 6.2, "b0": [-5.3]},
-    "code": {"name":  "eq_analyze", },
+    "code": {
+        "name": "eq_analyze",
+    },
     "$default_value": {
         "time_slice": {
             "profiles_2d": {"grid": {"dim1": 129, "dim2": 257}},
             "boundary": {"psi_norm": 0.99},
-            "coordinate_system": {"grid": {"dim1": 256, "dim2": 128}}
-        }}
+            "coordinate_system": {"grid": {"dim1": 256, "dim2": 128}},
+        }
+    },
 }
 
 
 class Mesh(SpTree):
-    dim1: int = sp_property()
-    dim2: int = sp_property()
+    dim1: int
+    dim2: int
 
 
 class EquilibriumProfiles2d(SpTree):
 
-    grid: Mesh = sp_property()
+    grid: Mesh
 
 
 class EqTimeSlice(SpTree):
 
-    profiles_2d: AoS[EquilibriumProfiles2d] = sp_property()
+    profiles_2d: AoS[EquilibriumProfiles2d]
 
 
 class Eq(SpTree):
 
-    time: np.ndarray = sp_property()
-    time_slice: TimeSequence[EqTimeSlice] = sp_property()
+    time: np.ndarray
+    time_slice: TimeSequence[EqTimeSlice]
 
 
 class TestSpProperty(unittest.TestCase):
     def test_get(self):
-        cache = {"foo": {"a": 1234}, }
+        cache = {"foo": {"a": 1234}}
         d = Doo(cache)
 
         self.assertFalse(isinstance(cache["foo"], Foo))
@@ -89,7 +88,13 @@ class TestSpProperty(unittest.TestCase):
 
     def test_get_list(self):
 
-        cache = {"foo_list": [{"a": 1234}, {"b": 1234}, {"c": 1234}, ]}
+        cache = {
+            "foo_list": [
+                {"a": 1234},
+                {"b": 1234},
+                {"c": 1234},
+            ]
+        }
 
         d = Doo(cache)
 
@@ -130,9 +135,11 @@ class TestSpProperty(unittest.TestCase):
 
         self.assertTrue(isinstance(eq.time_slice, TimeSequence))
 
-        self.assertEqual(eq.time_slice[0].profiles_2d[0].grid.dim1,
-                         eq_data["$default_value"]["time_slice"]["profiles_2d"]["grid"]["dim1"])
+        self.assertEqual(
+            eq.time_slice[0].profiles_2d[0].grid.dim1,
+            eq_data["$default_value"]["time_slice"]["profiles_2d"]["grid"]["dim1"],
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

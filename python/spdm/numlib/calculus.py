@@ -1,6 +1,6 @@
 from ..core.functor import Functor
 from ..core.expression import Expression
-from ..utils.typing import NumericType, as_array
+from ..core.generic_helper import NumericType, as_array
 import typing
 from .interpolate import interpolate
 import numpy as np

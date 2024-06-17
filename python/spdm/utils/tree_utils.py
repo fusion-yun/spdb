@@ -6,7 +6,7 @@ import numpy as np
 
 from .logger import deprecated, logger
 from .tags import _not_found_, _undefined_
-from .typing import primary_type
+from ..core.generic_helper import primary_type
 
 
 class DefaultDict(dict):

@@ -16,7 +16,7 @@ from .htree import List
 
 from ..utils.logger import logger
 from ..utils.tags import _not_found_
-from ..utils.typing import ArrayType, NumericType, array_type, get_args, get_origin, as_array
+from .typing import ArrayType, NumericType, array_type, get_args, get_origin, as_array
 
 
 class Function(Expression):
