@@ -1,98 +1,19 @@
 from __future__ import annotations
 import collections.abc
-import functools
 import typing
 from copy import deepcopy
 
 
 from spdm.core.entry import Entry
-from spdm.core.htree import HTree, List, Dict, HTreeNode
-from spdm.core.path import Path, PathLike, as_path, OpTags, update_tree, merge_tree
+from spdm.core.htree import HTree, List, HTreeNode
+from spdm.core.path import Path, as_path
 
 from spdm.utils.tags import _not_found_, _undefined_
-from spdm.utils.typing import array_type, get_args, get_type_hint
-from spdm.utils.logger import logger
 
 _T = typing.TypeVar("_T")
 
 
-class QueryResult(HTree):
-    """Handle the result of query"""
-
-    def __init__(self, query: PathLike, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._path = as_path(query)
-
-    def __getattr__(self, name: str):
-        return self._get(name)
-
-    def _get(self, query: str | int | slice | dict, *args, **kwargs):
-        default_value = kwargs.pop("default_value", _not_found_)
-        _VT = get_args(self.__orig_class__)[0]
-        if isinstance(query, str):
-            if default_value is _not_found_ and isinstance(self._default_value, dict):
-                default_value = self._default_value.get(query, _not_found_)
-            tp = get_type_hint(_VT, query)
-
-            return QueryResult[tp](self._path.append(query), *args, default_value=default_value, **kwargs)
-        else:
-            return QueryResult[_VT](self._path.append(query), *args, default_value=default_value, **kwargs)
-
-    @property
-    def _value_(self) -> typing.Any:
-        value = super()._query(self._path)
-        if isinstance(value, list):
-            value = functools.reduce(self._default_reducer, value)
-        return value
-
-    def __call__(self, *args, **kwargs) -> typing.Any:
-        value = super()._query(self._path, op=Path.tags.call, *args, **kwargs)
-
-        if isinstance(value, list):
-            value = functools.reduce(self._default_reducer, value)
-
-        return value
-
-    @staticmethod
-    def _default_reducer(first: typing.Any, second: typing.Any) -> typing.Any:
-        if first is _not_found_:
-            return second
-        elif second is _not_found_ or second is None:
-            return second
-        elif isinstance(first, (str)):
-            return first
-        elif isinstance(first, array_type) and isinstance(second, array_type):
-            return first + second
-        elif isinstance(first, (dict, list)) or isinstance(second, (dict, list)):
-            return update_tree(first, second)
-        else:
-            return first + second
-
-    def children(self) -> typing.Generator[_T | HTree, None, None]:
-        """遍历 children"""
-        cache = self._cache if self._cache is not _not_found_ else self._default_value
-
-        if not isinstance(cache, list) or len(cache) == 0:
-            yield from super().children()
-
-        else:
-            for idx, value in enumerate(cache):
-                if isinstance(value, (dict, Dict)):
-                    id = value.get(self._identifier, None)
-                else:
-                    id = None
-                if id is not None:
-                    entry = self._entry.child({f"@{self._identifier}": id})
-                else:
-                    entry = None
-
-                yield self._type_convert(value, idx, entry=entry)
-
-
-_TTree = typing.TypeVar("_TTree")
-
-
-class AoS(List[_TTree]):
+class AoS(List[_T]):
     """
     Array of structure
 
@@ -101,7 +22,7 @@ class AoS(List[_TTree]):
         - 可以自动转换 list 类型 cache 和 entry
     """
 
-    def __missing__(self, key) -> _TTree:
+    def __missing__(self, key) -> _T:
         tag = f"@{Path.id_tag_name}"
 
         if self._cache is not None and len(self._cache) > 0:
@@ -120,7 +41,7 @@ class AoS(List[_TTree]):
 
         return value
 
-    def _find_(self, key, *args, default_value=_undefined_, **kwargs) -> _TTree:
+    def _find_(self, key, *args, default_value=_undefined_, **kwargs) -> _T:
         """AoS._find_ 当键值不存在时，默认强制调用 __missing__"""
         self._sync_cache()
         if default_value is _not_found_:
@@ -128,7 +49,7 @@ class AoS(List[_TTree]):
 
         return super()._find_(key, *args, default_value=default_value, **kwargs)
 
-    def _update_(self, key, value, op=None, *args, **kwargs) -> typing.Self:
+    def _update_(self, key, *args, **kwargs) -> typing.Self:
         if (key is None or key is _not_found_) and op is not Path.tags.extend:
             key = as_path(f"@{Path.id_tag_name}").get(value, None)
 
@@ -170,14 +91,14 @@ class AoS(List[_TTree]):
         #     _entry = self._entry.child({tag: key})
         # yield self._type_convert(v, idx, _entry=_entry)
 
-    def fetch(self, *args, _parent=_not_found_, **kwargs) -> typing.Self:
-        return self.__duplicate__([HTreeNode._do_fetch(obj, *args, **kwargs) for obj in self], _parent=_parent)
+    # def fetch(self, *args, _parent=_not_found_, **kwargs) -> typing.Self:
+    #     return self.__duplicate__([HTreeNode._do_fetch(obj, *args, **kwargs) for obj in self], _parent=_parent)
 
-    def dump(self, entry: Entry, **kwargs) -> None:
-        """将数据写入 entry"""
-        entry.insert([{}] * len(self._cache))
-        for idx, value in enumerate(self._cache):
-            if isinstance(value, HTree):
-                value.dump(entry.child(idx), **kwargs)
-            else:
-                entry.child(idx).insert(value)
+    # def dump(self, entry: Entry, **kwargs) -> None:
+    #     """将数据写入 entry"""
+    #     entry.insert([{}] * len(self._cache))
+    #     for idx, value in enumerate(self._cache):
+    #         if isinstance(value, HTree):
+    #             value.dump(entry.child(idx), **kwargs)
+    #         else:
+    #             entry.child(idx).insert(value)

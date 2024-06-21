@@ -161,7 +161,7 @@ class PropertyTree(SpTree):
             return super().__getattribute__(key)
 
         _entry = self._entry.child(key) if self._entry is not None else None
-        value = Path.do_find(self._cache, [key], *args, **kwargs)
+        value = Path.do_get(self._cache, [key], *args, **kwargs)
         if value is _not_found_ and _entry is not None:
             value = _entry.get(default_value=_not_found_)
             _entry = None
@@ -402,7 +402,7 @@ class SpProperty:
 
     def __delete__(self, instance: SpTree) -> None:
         with self.lock:
-            instance._remove_(self.property_name, deleter=self.deleter)
+            instance._delete_(self.property_name, deleter=self.deleter)
 
 
 def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:

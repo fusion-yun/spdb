@@ -11,31 +11,31 @@ from enum import Flag, auto
 
 import numpy as np
 
-from ..utils.logger import deprecated, logger
-from ..utils.misc import serialize
-from ..utils.tags import _not_found_, _undefined_
-from ..utils.typing import array_type, isinstance_generic, is_int, is_tree
+from spdm.utils.logger import deprecated, logger
+from spdm.utils.misc import serialize
+from spdm.utils.tags import _not_found_, _undefined_
+from spdm.utils.typing import array_type, isinstance_generic, is_int, is_tree
 
 
 # fmt:off
 class OpTags(Flag):
     # traversal operation 操作
-    root  = auto()      # root node
-    parent = auto()     # parent node
-    children = auto()   # 所有子节点
-    ancestors =auto()   # 所有祖先节点  
-    descendants = auto()# 所有后代节点
-    slibings=auto()     # 所有兄弟节点
-
-    current = auto()    # current node
-    next  = auto()      # next sibling
-    prev  = auto()      # previous sibling
-
-    # RESTful operation for CRUD
-    find  = auto()      # GET
-    update = auto()     # PUT
-    insert = auto()     # POST
-    remove = auto()     # DELETE
+    root  = auto()       # root node    `/`
+    parent = auto()      # parent node  `..`
+    ancestors =auto()    # 所有祖先节点  `...`
+    children = auto()    # 所有子节点    `*`
+    descendants = auto() # 所有后代节点  `**`
+    slibings=auto()      # 所有兄弟节点  `../*`
+ 
+    current = auto()     # current node
+    next  = auto()       # next sibling
+    prev  = auto()       # previous sibling
+ 
+    # CRUD 
+    query  = auto()      # Read/Query/GET
+    update = auto()      # Update/PUT
+    insert = auto()      # Insert/Create/POST
+    delete = auto()      # DELETE
 
 
     append = auto()
@@ -50,7 +50,8 @@ class OpTags(Flag):
     is_list=auto()
     is_dict=auto()
     check_type = auto() # check type
-    keys=auto()         # 返回键值
+    get_key=auto()         # 返回键值
+    get_value=auto()         # 返回键值
     search = auto()     # search by query return idx
     dump  = auto()      # rescurive get all data
 
@@ -265,6 +266,28 @@ class Path(list):
     | `a/b/c[{value:{$le:10}}]/value  |
     | `a/b/c.$next/           |
 
+    - 可以迭代器的方式返回多个结果。
+
+    - 可以返回节点（Node）或属性（Attribute）
+        - 节点返回类型，为 HTreeNode
+        - 属性返回类型，为 PrimaryType
+
+    - 可选择遍历策略(traversal_strategy)，
+        - 深度优先(deep-first)，
+        - 广度优先(breadth-first)，
+        - 前序 (pre-order)，
+        - 后序 (post-order)
+
+    - 可对节点进行筛选 filter
+
+    - 可选择遍历范围，
+        - 父节点(Parent)，该节点的父节点
+        - 子节点（Children），该节点的所有子节点
+        - 兄弟(Sibling), 该节点具有相同父节点的所有节点，
+        - 祖辈(Ancestor)，从根节点到该节点的路径上的所有节点
+        - 子孙(Descendant)，从该节点到任何叶节点的路径上的所有节点
+        - 所有子孙(all descendant)，以该节点为根的所有子孙节点
+
     """
 
     id_tag_name = "name"
@@ -302,6 +325,10 @@ class Path(list):
         return not self.is_generator
 
     @property
+    def is_query(self) -> bool:
+        return isinstance(self[-1], Query) if len(self) > 0 else False
+
+    @property
     def is_generator(self) -> bool:
         return any([isinstance(v, (slice, dict)) for v in self])
 
@@ -323,7 +350,7 @@ class Path(list):
 
     @property
     def slibings(self):
-        return self._parent.children
+        return self.parent.children
 
     @property
     def next(self) -> Path:
@@ -594,10 +621,9 @@ class Path(list):
         return [*Path._parser_iter(path)]
 
     ###########################################################
-    # RESTful API:
-
     # 非幂等
-    def insert(self, target: typing.Any, value, *args, **kwargs) -> typing.Tuple[typing.Any, Path]:
+    @typing.final
+    def insert(self, target: typing.Any, value, **kwargs) -> typing.Tuple[_T, Path]:
         """
         根据路径（self）向 target 添加元素。
         当路径指向位置为空时，创建（create）元素
@@ -605,139 +631,205 @@ class Path(list):
         当路径指向位置为非 list 时，合并为 [old,new]
         当路径指向位置为 dict, 添加值亦为 dict 时，根据 key 递归执行 insert
 
-        返回新添加元素的路径
-
-        对应 RESTful 中的 post，非幂等操作
+        返回修改后的的target和添加元素的路径
         """
-        return Path.do_update(target, self[:], value, Path.tags.insert, *args, **kwargs)
+        return Path._insert(target, self[:], value, **kwargs)
 
     # 幂等
-    def update(self, target: typing.Any, *args, **kwargs) -> typing.Any:
+    @typing.final
+    def update(self, target: typing.Any, value, **kwargs) -> typing.Any:
         """
         根据路径（self）更新 target 中的元素。
         当路径指向位置为空时，创建（create）元素
         当路径指向位置为 dict, 添加值亦为 dict 时，根据 key 递归执行 update
         当路径指向位置为空时，用新的值替代（replace）元素
 
-        对应 RESTful 中的 put， 幂等操作
-
         返回修改后的target
         """
-        return Path.do_update(target, self[:], *args, **kwargs)
+        return Path._update(target, self[:], value, **kwargs)
 
-    def remove(self, target: typing.Any, *args, **kwargs) -> typing.Tuple[typing.Any, int]:
+    @typing.final
+    def delete(self, target: typing.Any) -> bool:
         """根据路径（self）删除 target 中的元素。
-
-        if quiet is False then raise KeyError if the path is not found
-
-        对应 RESTful 中的 delete， 幂等操作
-
-        返回修改后的target和删除的元素的个数
+        成功返回 True，否则为 False
         """
-        return Path.do_update(target, self[:], _not_found_, Path.tags.overwrite, *args, **kwargs)
+        return Path._delete(target, self[:])
 
-    def find(self, source: typing.Any, *args, **kwargs) -> typing.Any:
-        """
-        根据路径（self）查询元素。只读，不会修改 target
-        对应 RESTful 中的 read，幂等操作
-        """
-        return Path.do_find(source, self[:], *args, **kwargs)
-
-    # 遍历子节点
-    def for_each(self, source, *args, **kwargs) -> typing.Generator[typing.Tuple[int | str, typing.Any], None, None]:
+    @typing.final
+    def search(self, target, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """遍历路径（self）中的元素，返回元素的索引和值"""
-        yield from Path.do_for_each(source, self[:], *args, **kwargs)
+        yield from Path._search(target, self[:], *args, **kwargs)
 
-    def keys(self, source) -> typing.Generator[str, None, None]:
-        """返回路径（self）中的元素的键值"""
-        yield from Path.do_for_each(source, Path.tags.keys)
+    # alias
+    @typing.final
+    def query(self, *args, **kwargs) -> typing.Any:
+        """返回第一个search结果，失败则报错"""
+        try:
+            value = next(self.search(*args, **kwargs))
+        except StopIteration as error:
+            logger.error(f"Fail to query {str(self)}", exc_info=error)
+        else:
+            return value
+        return next(self.search(*args, **kwargs))
+
+    @typing.final
+    def find(self, *args, default_value=_not_found_, **kwargs) -> typing.Any:
+        """返回第一个search结果，若没有则返回 default_value"""
+        try:
+            value = next(self.search(*args, **kwargs))
+        except StopIteration:
+            return default_value
+        else:
+            return value
+
+    @typing.final
+    def put(self, target: typing.Any, *args, **kwargs) -> typing.Any:
+        """put value to target, alias of update"""
+        return self.update(target, *args, **kwargs)
+
+    @typing.final
+    def get(self, target: typing.Any, **kwargs):
+        """get value from source, alias of find"""
+        return self.find(target, **kwargs)
+
+    @typing.final
+    def pop(self, target, default_value=_not_found_, **kwargs):
+        """get and delete value from target"""
+        value = self.get(target, default_value=_not_found_, **kwargs)
+        if value is not _not_found_:
+            self.delete(self)
+            return value
+        else:
+            return default_value
 
     def copy(self, source: typing.Any, target: typing.Any = None, **kwargs):
         """copy object to target"""
         return self.do_copy(source, target, self[:], **kwargs)
 
-    # --------------------------------------------------------------------------------------
-    # 以下为简写，等价于上述方法
-
-    def put(self, target: typing.Any, value, *args, **kwargs) -> typing.Any:
-        """put value to target"""
-        return self.update(target, value, *args, **kwargs)
-
-    def get(self, source: typing.Any, default_value=_not_found_, **kwargs):
-        """get value from source"""
-        return self.find(source, default_value=default_value, **kwargs)
-
-    # End API
     ###########################################################
 
     @staticmethod
-    def _apply_op(op: Path.tags, obj: typing.Any, *args, **kwargs):
-        if op is Path.tags.find or op is None:
+    def _set(obj, key, *args, **kwargs):
+        """set values to target[key] and return target[key]"""
+        if hasattr(obj.__class__, "__set_node__"):
+            obj.__set_node__(key, *args, **kwargs)
             return obj
 
-        elif isinstance(op, Path.tags):
-            func = getattr(Path, f"_op_{op.name}", None)
+        if isinstance(key, int):
+            if obj is _not_found_:
+                obj = [_not_found_] * (key + 1)
+            elif isinstance(obj, collections.abc.MutableSequence) and len(obj) <= key - 1:
+                obj.extend([_not_found_] * (key + 1 - len(obj)))
+            else:
+                raise TypeError(f"{type(obj)} is not indexable!")
+        elif obj is _not_found_ and isinstance(key, str):
+            obj = {}
+
+        for value in (*args, kwargs):
+            if value is _not_found_:
+                pass
+            elif obj is _not_found_:
+                obj = value
+
+            elif isinstance(value, collections.abc.Mapping):
+                for k, v in value.items():
+                    obj = Path._update(obj, [k], v)
+            else:
+                obj = value
+
+        return obj
+
+    @staticmethod
+    def _get(obj, key):
+        if hasattr(obj.__class__, "__get_node__"):
+            res = obj.__get_node__(key)
+
+        elif isinstance(obj, collections.abc.Mapping):
+            res = obj.get(key, _not_found_)
+
+        elif isinstance(obj, collections.abc.Sequence) and not isinstance(obj, str):
+            if key >= len(obj):
+                raise IndexError(f"Index out of range {key}>={len(obj)}!")
+
+            res = obj[key]
+
+        elif isinstance(key, str) and key.isidentifier():
+            res = getattr(obj, key, _not_found_)
+
         else:
-            func = op
-
-        if not callable(func):
-            raise RuntimeError(f"Unknown operator {op}")
-
-        try:
-            res = func(obj, *args, **kwargs)
-        except Exception as error:
-            raise RuntimeError(f'Fail to call "{op}"! {func}') from error
+            raise KeyError(f"Can not get {key} from {type(obj)}")
 
         return res
 
     @staticmethod
-    def do_copy(source: typing.Any, target: typing.Any, *args, **kwargs) -> typing.Any:
-        raise NotImplementedError(f"TODO")
+    def _insert(target, path: typing.List[PathItemLike], *args, **kwargs):
+        return Path._update(target, path + [Path.tags.append], *args, **kwargs)
 
     @staticmethod
-    def _update_tree(target, *sources, _idempotent=True, **kwargs):
-        if len(kwargs) > 0:
-            sources = [*sources, kwargs]
+    def _update(target, path: typing.List[PathItemLike], *args, **kwargs):
 
-        for source in sources:
-            if source is _not_found_:  # 不更新
-                continue
-            elif (target is _not_found_ or target is None) and not isinstance(source, dict):  # 直接替换
-                target = source
-            elif isinstance(source, dict):  # 合并 dict
-                # if not isinstance(target, dict) and hasattr(target.__class__, "update"):
-                #     # target is object with update method
-                #     target.update(source)
-                # else:
-                if target is _not_found_ or target is None:
-                    target = {}
+        path = [0] + path
+        holder = [target]
+        current_ = holder
 
-                for key, value in source.items():
-                    Path(key).update(target, value, _idempotent=_idempotent)
-
-            elif _idempotent is True:  # 幂等操作，直接替换对象 target
-                target = source
-
-            elif isinstance(target, list):  # 合并 sequence
-                if isinstance(source, list):
-                    target.extend(source)
-                else:
-                    target.append(source)
-            elif isinstance(source, list):
-                target = [target, *source]
+        for idx, key in enumerate(path):
+            if key in (Path.tags.children, Path.tags.ancestors, Path.tags.descendants, Path.tags.slibings):
+                # for p in Path._search(current_, path[idx + 1 :]):
+                #     Path._update(current_, p, *args, **kwargs)
+                # break
+                # raise NotImplementedError("Traversal update")
+                break
+            elif key is Path.tags.current:
+                next_ = current_
+                key = None
+            elif key is Path.tags.parent:
+                next_ = getattr(current_, "_parent", _not_found_)
+                key = None
+            elif isinstance(key, (int, str)):
+                next_ = Path._get(current_, key)
             else:
-                target = [target, source]
+                raise NotImplementedError(f"Update {path[1:idx+1]}")
 
-        return target
+            tmp = next_
+            if idx == len(path) - 1:
+                if hasattr(next_.__class__, "__set_node__"):
+                    next_.__set_node__(*args, **kwargs)
+                else:
+                    for value in (*args, kwargs):
+                        if value is _not_found_:
+                            pass
+                        elif next_ is _not_found_:
+                            next_ = value
+
+                        elif isinstance(value, collections.abc.Mapping):
+                            for k, v in value.items():
+                                next_ = Path._update(next_, [k], v)
+                        else:
+                            next_ = value
+
+            elif isinstance(path[idx + 1], int):
+                if isinstance(next_, collections.abc.MutableSequence) :
+                    if  path[idx + 1] >= len(next_):
+                        next_.extend([_not_found_] * (path[idx + 1] + 1 - len(next_)))
+                elif next_ is _not_found_:
+                    next_ = [[_not_found_] * (path[idx + 1] + 1)]
+
+            elif next_ is _not_found_:
+                next_ = {}
+
+            if next_ is tmp:
+                pass
+            elif key is not None:
+                Path._set(current_, key, next_)
+            else:
+                raise RuntimeError(f"key is None! {path[1:idx+1]}")
+            
+            current_ = next_
+  
+        return holder[0]
 
     @staticmethod
-    def do_update(
-        target: typing.Any,
-        path: typing.List | None,
-        value: typing.Any,
-        *args,
-        **kwargs,
-    ) -> typing.Any:
+    def _delete(target: typing.Any, path: typing.List[PathItemLike], **kwargs) -> typing.Any:
         if value is _undefined_ and len(args) == 0:
             return target
         if path is None:
@@ -769,7 +861,7 @@ class Path(list):
 
             elif isinstance(value, dict) and (_op is None or _op is Path.tags.update):
                 for k, v in value.items():
-                    target = Path.do_update(target, as_path(k)[:], v, _op, *args, **kwargs)
+                    target = Path._delete(target, as_path(k)[:], v, _op, *args, **kwargs)
 
             elif _op is None:
                 target = value
@@ -795,7 +887,7 @@ class Path(list):
 
             else:
                 raise NotImplementedError(f" {_op} {target} {value}")
-                target = Path._apply_op(_op, target, value, *args, **kwargs)
+                target = Path._project(_op, target, value, *args, **kwargs)
 
         else:
             if target is _not_found_:
@@ -826,21 +918,21 @@ class Path(list):
                     if hasattr(obj.__class__, "for_each"):
                         for k, v in enumerate(obj.for_each()):
                             old_value = v
-                            new_value = Path.do_update(old_value, path[idx + 1 :], _op, **kwargs)
+                            new_value = Path._delete(old_value, path[idx + 1 :], _op, **kwargs)
                             if new_value is not old_value:
                                 obj[k] = new_value
 
                     elif isinstance(obj, collections.abc.MutableMapping):
                         for k, v in obj.items():
                             old_value = v
-                            new_value = Path.do_update(old_value, path[idx + 1 :], _op, **kwargs)
+                            new_value = Path._delete(old_value, path[idx + 1 :], _op, **kwargs)
                             if new_value is not old_value:
                                 obj[k] = new_value
 
                     elif isinstance(obj, collections.abc.MutableSequence):
                         for k, v in enumerate(obj):
                             old_value = v
-                            new_value = Path.do_update(old_value, path[idx + 1 :], _op, **kwargs)
+                            new_value = Path._delete(old_value, path[idx + 1 :], _op, **kwargs)
                             if new_value is not old_value:
                                 obj[k] = new_value
 
@@ -881,9 +973,9 @@ class Path(list):
                     if is_tree(old_value) and idx < path_length - 1:
                         new_value = old_value
                     elif idx == path_length - 1:
-                        new_value = Path.do_update(old_value, [], value, _op, **kwargs)
+                        new_value = Path._delete(old_value, [], value, _op, **kwargs)
                     else:
-                        new_value = Path.do_update(old_value, path[idx + 1], _not_found_, _op)
+                        new_value = Path._delete(old_value, path[idx + 1], _not_found_, _op)
                         idx -= 1
 
                     if old_value is _not_found_ or old_value is not new_value:
@@ -898,9 +990,9 @@ class Path(list):
                     if is_tree(old_value) and idx < path_length - 1:
                         new_value = old_value
                     elif idx == path_length - 1:
-                        new_value = Path.do_update(old_value, [], value, _op, *args, **kwargs)
+                        new_value = Path._delete(old_value, [], value, _op, *args, **kwargs)
                     else:
-                        new_value = Path.do_update(old_value, path[idx + 1], _not_found_, _op)
+                        new_value = Path._delete(old_value, path[idx + 1], _not_found_, _op)
 
                     if old_value is _not_found_ or old_value is not new_value:
                         obj[key] = new_value
@@ -910,7 +1002,7 @@ class Path(list):
 
                 elif isinstance(obj, collections.abc.MutableSequence) and isinstance(key, (Path.tags, slice)):
                     for v in obj[key]:
-                        Path.do_update(v, path[idx + 1 :], value, **kwargs)
+                        Path._delete(v, path[idx + 1 :], value, **kwargs)
                     break
 
                 elif isinstance(obj, collections.abc.MutableSequence):
@@ -926,9 +1018,9 @@ class Path(list):
                         if is_tree(old_value) and idx < path_length - 1:
                             new_value = old_value
                         elif idx == path_length - 1:
-                            new_value = Path.do_update(old_value, [], value, _op, **kwargs)
+                            new_value = Path._delete(old_value, [], value, _op, **kwargs)
                         else:
-                            new_value = Path.do_update(old_value, path[idx + 1], _not_found_, _op)
+                            new_value = Path._delete(old_value, path[idx + 1], _not_found_, _op)
 
                     elif isinstance(key, str):
                         query = Query(key)
@@ -945,7 +1037,7 @@ class Path(list):
                         if is_tree(old_value) and idx < path_length - 1:
                             new_value = old_value
                         elif idx == path_length - 1:
-                            new_value = Path.do_update(old_value, [], value, _op, **kwargs)
+                            new_value = Path._delete(old_value, [], value, _op, **kwargs)
                         else:
                             raise ValueError(f"Unknown value {old_value}")
 
@@ -961,9 +1053,9 @@ class Path(list):
                         if is_tree(old_value) and idx < path_length - 1:
                             new_value = old_value
                         elif idx == path_length - 1:
-                            new_value = Path.do_update(old_value, [], value, _op, **kwargs)
+                            new_value = Path._delete(old_value, [], value, _op, **kwargs)
                         elif old_value is _not_found_:
-                            new_value = Path.do_update({f"@{Path.id_tag_name}": key}, path[idx + 1], _not_found_, _op)
+                            new_value = Path._delete({f"@{Path.id_tag_name}": key}, path[idx + 1], _not_found_, _op)
                         else:
                             raise ValueError(f"Unknown value {old_value}")
 
@@ -982,21 +1074,61 @@ class Path(list):
         return target
 
     @staticmethod
-    def do_find(source: typing.Any, path: list, *args, default_value=_not_found_, **kwargs) -> typing.Any:
-        if len(args) > 0:
-            _op = args[0]
-            args = args[1:]
-        else:
-            _op = None
-        if path is None:
-            path = []
-        elif not isinstance(path, list):
-            path = [path]
+    def _search_(
+        target, path: typing.List[PathItemLike], projection=None, **kwargs
+    ) -> typing.Generator[typing.Any, None, None]:
+        """遍历容器子节点。
+        @NOTE:
+            - 叶节点无输出
+            - Sequence: 输出 value 子节点
+            - Mapping:  输出 key和 value
+        @FIXME:
+            - level 参数，用于实现多层遍历，尚未实现
+        """
+        obj = target
+        for idx, p in enumerate(path):
+            if obj is _not_found_:
+                break
+            if isinstance(p, (str, int)):
+                pass
+            else:
+                match p:
+                    case Path.tags.parent:
+                        obj = getattr(obj, "_parent", _not_found_)
 
-        obj = source
+            if p is Path.tags.children:
+                target = Path._search(target, path[:idx])
+                suffix = path[idx + 1 :]
+                break
+            elif isinstance(p, Path.tags):
+                raise NotImplementedError(p)
+        else:
+            target = Path._search(target, path)
+            suffix = []
+
+        if isinstance(target, collections.abc.Sequence) and not isinstance(target, str):
+            for k, v in enumerate(target):
+                yield k, Path._search(v, suffix, **kwargs)
+
+        elif isinstance(target, collections.abc.Mapping):
+            for k, v in target.items():
+                yield k, Path._search(v, suffix, **kwargs)
+
+        elif target is not _not_found_:
+            logger.warning(f"{type(target)} is not iterable!")
+
+    @staticmethod
+    def _search(
+        target: typing.Any, path: typing.List[PathItemLike], **kwargs
+    ) -> typing.Generator[typing.Any, None, None]:
+
+        obj = target
 
         for idx, key in enumerate(path):
-            if key is None or key is Path.tags.current or obj is _not_found_ or obj is None:
+            if obj is _not_found_:
+                break
+
+            elif key is None or key is Path.tags.current or obj is _not_found_ or obj is None:
                 pass
 
             elif (
@@ -1012,7 +1144,7 @@ class Path(list):
                 else:
                     raise NotImplementedError(f"{type(obj)} {path}")
 
-                res = Path.do_find(obj, [new_key] + path[idx + 2 :], *args, **kwargs)
+                res = Path._search(obj, [new_key] + path[idx + 2 :], *args, **kwargs)
 
             elif len(path) > 1 and path[1] is Path.tags.prev:
                 if isinstance(key, int):
@@ -1020,77 +1152,84 @@ class Path(list):
                 else:
                     raise NotImplementedError(f"{type(obj)} {path}")
 
-                res = Path.do_find(obj, [new_key] + path[idx + 2 :], *args, **kwargs)
+                res = Path._search(obj, [new_key] + path[idx + 2 :], **kwargs)
 
-            elif key is Path.tags.parent:
-                obj = getattr(obj, "_parent", _not_found_)
+            elif isinstance(key, Path.tags):
+                match key:
+                    case Path.tags.parent:
+                        obj = getattr(obj, "_parent", _not_found_)
 
-            elif key is Path.tags.ancestors:
-                # 逐级查找上层 _parent, 直到找到
-                while obj is not None and obj is not _not_found_:
-                    if not isinstance(obj, collections.abc.Sequence):
-                        tmp = Path.do_find(obj, path[idx + 1 :], *args, default_value=_not_found_, **kwargs)
-                        if tmp is not _not_found_:
-                            obj = tmp
-                            break
-                    obj = getattr(obj, "_parent", _not_found_)
-                    # Path._do_find(obj, [Path.tags.parent], default_value=_not_found_)
-                else:
-                    obj = _not_found_
+                    case Path.tags.ancestors:
+                        # 逐级查找上层 _parent, 直到找到
+                        while obj is not None and obj is not _not_found_:
+                            if not isinstance(obj, collections.abc.Sequence):
+                                tmp = Path._search(obj, path[idx + 1 :], *args, default_value=_not_found_, **kwargs)
+                                if tmp is not _not_found_:
+                                    obj = tmp
+                                    break
+                            obj = getattr(obj, "_parent", _not_found_)
+                            # Path.__search(obj, [Path.tags.parent], default_value=_not_found_)
+                        else:
+                            obj = _not_found_
 
-                break
-
-            elif key is Path.tags.descendants:
-                # 遍历访问所有叶节点
-                if isinstance(obj, collections.abc.Mapping):
-                    obj = {
-                        k: Path.do_find(v, [Path.tags.descendants] + path[idx + 1 :], *args, **kwargs)
-                        for k, v in obj.items()
-                    }
-
-                elif isinstance(obj, collections.abc.Iterable):
-                    obj = [Path.do_find(v, [Path.tags.descendants] + path[idx + 1 :], *args, **kwargs) for v in obj]
-
-                elif len(path) > 0:
-                    obj = Path.do_find(obj, path[idx + 1 :], *args, **kwargs)
-
-            elif key is Path.tags.children:
-                if isinstance(obj, collections.abc.Mapping):
-                    obj = {k: Path.do_find(v, path[idx + 1 :], *args, **kwargs) for k, v in obj.items()}
-
-                elif isinstance(obj, collections.abc.Iterable):
-                    obj = [Path.do_find(v, path[idx + 1 :], *args, **kwargs) for v in obj]
-
-                else:
-                    obj = _not_found_
-                break
-
-            elif key is Path.tags.slibings:
-                parent = getattr(obj, "_parent", _not_found_)
-
-                if isinstance(parent, collections.abc.Mapping):
-                    obj = {
-                        k: Path.do_find(v, path[idx + 1 :], *args, **kwargs) for k, v in parent.items() if v is not obj
-                    }
-
-                elif isinstance(parent, collections.abc.Iterable):
-                    obj = [Path.do_find(v, path[idx + 1 :], *args, **kwargs) for v in parent if v is not obj]
-
-                else:
-                    obj = []
-                break
-            elif key is Path.tags.root:
-                tmp = obj
-                while tmp is not None and tmp is not _not_found_:
-                    tmp = getattr(tmp, "_parent", _not_found_)
-                    if tmp is _not_found_ or tmp is None:
                         break
-                    else:
-                        obj = tmp
+
+                    case Path.tags.descendants:
+                        # 遍历访问所有叶节点
+                        if isinstance(obj, collections.abc.Mapping):
+                            obj = {
+                                k: Path._search(v, [Path.tags.descendants] + path[idx + 1 :], *args, **kwargs)
+                                for k, v in obj.items()
+                            }
+
+                        elif isinstance(obj, collections.abc.Iterable):
+                            obj = [
+                                Path._search(v, [Path.tags.descendants] + path[idx + 1 :], *args, **kwargs) for v in obj
+                            ]
+
+                        elif len(path) > 0:
+                            obj = Path._search(obj, path[idx + 1 :], *args, **kwargs)
+
+                    case Path.tags.children:
+                        if isinstance(obj, collections.abc.Mapping):
+                            obj = {k: Path._search(v, path[idx + 1 :], *args, **kwargs) for k, v in obj.items()}
+
+                        elif isinstance(obj, collections.abc.Iterable):
+                            obj = [Path._search(v, path[idx + 1 :], *args, **kwargs) for v in obj]
+
+                        else:
+                            obj = _not_found_
+                        break
+
+                    case Path.tags.slibings:
+                        parent = getattr(obj, "_parent", _not_found_)
+
+                        if isinstance(parent, collections.abc.Mapping):
+                            obj = {
+                                k: Path._search(v, path[idx + 1 :], *args, **kwargs)
+                                for k, v in parent.items()
+                                if v is not obj
+                            }
+
+                        elif isinstance(parent, collections.abc.Iterable):
+                            obj = [Path._search(v, path[idx + 1 :], *args, **kwargs) for v in parent if v is not obj]
+
+                        else:
+                            obj = []
+                        break
+                    case Path.tags.root:
+                        tmp = obj
+                        while tmp is not None and tmp is not _not_found_:
+                            tmp = getattr(tmp, "_parent", _not_found_)
+                            if tmp is _not_found_ or tmp is None:
+                                break
+                            else:
+                                obj = tmp
 
             elif isinstance(key, set):
-                obj = {k: Path.do_find(obj, as_path(k)[:] + path[idx + 1 :], *args, **kwargs) for k in key}
+                obj = {k: Path._search(obj, as_path(k)[:] + path[idx + 1 :], **kwargs) for k in key}
                 break
+
             elif hasattr(obj.__class__, "_find_"):
                 obj = obj._find_(key, default_value=_not_found_)
 
@@ -1104,7 +1243,7 @@ class Path(list):
                     else:
                         obj = _not_found_
                 elif isinstance(key, slice):
-                    obj = [Path.do_find(s, path[idx + 1 :], *args, **kwargs) for s in obj[key]]
+                    obj = [Path._search(s, path[idx + 1 :], **kwargs) for s in obj[key]]
                     break
 
                 else:
@@ -1118,51 +1257,45 @@ class Path(list):
             else:
                 obj = _not_found_
         else:
-            obj = Path._apply_op(_op, obj, *args, **kwargs)
-
-        if obj is _not_found_:
-            obj = default_value
-
-        # if idx < len(path) - 1 and obj is _not_found_:
-        #     raise KeyError(f"Path not found {path[:idx + 1]}")
-
-        return obj
+            yield Path._project(obj, projection=kwargs.get("projection", None))
 
     @staticmethod
-    def do_for_each(source, path, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
-        """遍历容器子节点。
-        @NOTE:
-            - 叶节点无输出
-            - Sequence: 输出 value 子节点
-            - Mapping:  输出 key和 value
-        @FIXME:
-            - level 参数，用于实现多层遍历，尚未实现
-        """
+    def _project(target: typing.Any, projection, **kwargs):
 
-        if path is None:
-            suffix = None
-        else:
-            for idx, p in enumerate(path):
-                if p is Path.tags.children:
-                    source = Path.do_find(source, path[:idx])
-                    suffix = path[idx + 1 :]
-                    break
-                elif isinstance(p, Path.tags):
-                    raise NotImplementedError(p)
+        if isinstance(projection, Path.tags):
+            projection = getattr(Path, f"_op_{projection.name}", None)
+
+        if callable(projection):
+            try:
+                res = projection(target, **kwargs)
+            except Exception as error:
+                raise RuntimeError(f'Fail to call "{projection}"!  ') from error
             else:
-                source = Path.do_find(source, path)
-                suffix = []
+                return res
 
-        if isinstance(source, collections.abc.Sequence) and not isinstance(source, str):
-            for k, v in enumerate(source):
-                yield k, Path.do_find(v, suffix, *args, **kwargs)
+        elif isinstance(projection, str) and projection.isidentifier():
+            res = getattr(target, projection, _not_found_)
+            if res is _not_found_:
+                res = target.get(projection, _not_found_)
+            return res
 
-        elif isinstance(source, collections.abc.Mapping):
-            for k, v in source.items():
-                yield k, Path.do_find(v, suffix, *args, **kwargs)
+        elif isinstance(projection, int):
+            return target[projection]
 
-        elif source is not _not_found_:
-            logger.warning(f"{type(source)} is not iterable!")
+        elif isinstance(projection, set):
+            return {k: Path._project(target, k, **kwargs) for k in projection}
+
+        elif isinstance(projection, list):
+            return [Path._project(target, k, **kwargs) for k in projection]
+
+        elif isinstance(projection, dict):
+            return {k: Path._project(target, v, **kwargs) for k, v in projection.items()}
+
+        elif projection is None:
+            return target
+
+        else:
+            raise RuntimeError(f"Unkonwn projection {projection}")
 
     ####################################################
     # operation
@@ -1287,7 +1420,9 @@ class Path(list):
 
 PathLike = str | int | slice | dict | list | OpTags | Path | None
 
-path_like = [int, str, slice, list, None, tuple, set, dict, OpTags, Path]
+PathItemLike = str | int | slice | dict | OpTags
+
+path_like = tuple([int, str, slice, list, tuple, set, dict, OpTags, Path])
 
 
 _T = typing.TypeVar("_T")
@@ -1295,7 +1430,7 @@ _T = typing.TypeVar("_T")
 
 def update_tree(target: _T, *args, **kwargs) -> _T:
     for d in [*args, kwargs]:
-        target = Path.do_update(target, [], d)
+        target = Path._delete(target, [], d)
     return target
 
 

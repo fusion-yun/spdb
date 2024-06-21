@@ -119,7 +119,7 @@ class Entry(Pluggable):
             entry = self.child(query)
             args = ()
 
-        return entry.find(Path.tags.find, *args, default_value=default_value, **kwargs)
+        return entry.find(Path.tags.read, *args, default_value=default_value, **kwargs)
 
     def put(self, pth, value, *args, **kwrags) -> Entry:
         entry = self.child(pth)
@@ -214,7 +214,7 @@ class Entry(Pluggable):
 
     def for_each(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """Return a generator of the results."""
-        yield from self._path.for_each(self._data, *args, **kwargs)
+        yield from self._path.search(self._data, *args, **kwargs)
 
     def search(self, *args, **kwargs) -> Entry:
         raise NotImplementedError()

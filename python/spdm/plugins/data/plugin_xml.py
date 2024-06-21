@@ -323,13 +323,13 @@ class XMLEntry(Entry):
         elif op is Path.tags.is_dict:
             return len(obj) == 1
 
-        elif op is None or op is Path.tags.find:
+        elif op is None or op is Path.tags.read:
             return self._dump(obj, path=path, envs=envs, **kwargs)
 
         else:
             target = self._dump(obj, path=path, envs=envs, **kwargs)
 
-            return Path._apply_op(target, op, [], *args)
+            return Path._project(target, op, [], *args)
 
     def search_next(self, start=None, **kwargs) -> typing.Tuple[typing.Any, int | None]:
 
