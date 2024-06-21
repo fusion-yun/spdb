@@ -8,7 +8,7 @@ import abc
 
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.utils.typing import ArrayType, as_array, isinstance_generic, type_convert, primary_type, PrimaryType
+from spdm.utils.type_hint import ArrayType, as_array, isinstance_generic, type_convert, primary_type, PrimaryType
 
 from spdm.core.entry import Entry, open_entry
 from spdm.core.path import Path, PathLike, as_path

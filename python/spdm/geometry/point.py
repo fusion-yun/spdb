@@ -3,9 +3,8 @@ from __future__ import annotations
 import typing
 import numpy as np
 from spdm.utils.logger import logger
-
-from ..core.generic_helper import ArrayType, NumericType
-from ..core.geo_object import GeoObject,BBox
+from spdm.utils.type_hint import ArrayType, NumericType
+from spdm.core.geo_object import GeoObject, BBox
 
 
 class Point(GeoObject):

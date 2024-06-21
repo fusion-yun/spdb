@@ -14,7 +14,7 @@ from spdm.utils.plugin import Pluggable
 from spdm.utils.tags import _not_found_, _undefined_
 from spdm.utils.uri_utils import URITuple, uri_split, uri_split_as_dict
 from spdm.core.path import Path, PathLike, as_path, update_tree, update_tree
-from spdm.utils.typing import array_type, as_array, as_value, is_scalar
+from spdm.utils.type_hint import array_type, as_array, as_value, is_scalar
 
 PROTOCOL_LIST = ["local", "file", "http", "https", "ssh", "mdsplus"]
 

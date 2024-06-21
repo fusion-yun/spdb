@@ -1,12 +1,10 @@
 import collections.abc
+from copy import deepcopy
 import typing
-from copy import copy, deepcopy
 
-import numpy as np
-
-from .logger import deprecated, logger
-from .tags import _not_found_, _undefined_
-from ..core.generic_helper import primary_type
+from spdm.utils.logger import deprecated
+from spdm.utils.tags import _not_found_, _undefined_
+from spdm.utils.type_hint import primary_type
 
 
 class DefaultDict(dict):
@@ -47,7 +45,7 @@ def update_tree(target: _T, key: str | int | list, *args, **kwargs) -> _T:
 
     if pth is None:
         if hasattr(target, "_cache"):  # is HTree
-            target._cache=update_tree(target._cache, None, *args, **kwargs)
+            target._cache = update_tree(target._cache, None, *args, **kwargs)
 
         elif len(args) > 0:
             src = args[0]
@@ -109,9 +107,6 @@ def update_tree(target: _T, key: str | int | list, *args, **kwargs) -> _T:
 
     return target
 
-
- 
- 
 
 def traversal_tree(d: typing.Any, func: typing.Callable[..., typing.Any]) -> typing.Any:
     if isinstance(d, dict):

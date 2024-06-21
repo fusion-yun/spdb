@@ -7,7 +7,7 @@ import functools
 import networkx as nx
 from networkx.classes.reportviews import DegreeView, EdgeView, NodeView
 
-from spdm.utils.typing import GenericHelper, type_convert
+from spdm.utils.type_hint import GenericHelper, type_convert
 
 
 TNode = typing.TypeVar("TNode")

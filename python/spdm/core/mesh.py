@@ -7,15 +7,15 @@ import numpy as np
 from functools import cached_property
 from enum import Enum
 
-from .geo_object import GeoObject, as_geo_object
-from .domain import Domain
-from .path import update_tree
-from .typing import ArrayType, NumericType, ScalarType, as_array
-from ..utils.tags import _not_found_
-from ..utils.misc import group_dict_by_prefix
-from ..utils.logger import logger
-from .path import update_tree, Path
-from ..numlib.numeric import float_nan, meshgrid, bitwise_and
+from spdm.core.geo_object import GeoObject, as_geo_object
+from spdm.core.domain import Domain
+from spdm.core.path import Path
+
+from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, as_array
+from spdm.utils.tags import _not_found_
+from spdm.utils.misc import group_dict_by_prefix
+from spdm.utils.logger import logger
+from spdm.numlib.numeric import float_nan, meshgrid, bitwise_and
 
 
 def guess_mesh(holder, prefix="mesh", **kwargs):

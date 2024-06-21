@@ -14,7 +14,7 @@ import numpy as np
 from spdm.utils.logger import deprecated, logger
 from spdm.utils.misc import serialize
 from spdm.utils.tags import _not_found_, _undefined_
-from spdm.utils.typing import array_type, isinstance_generic, is_int, is_tree
+from spdm.utils.type_hint import array_type, isinstance_generic, is_int, is_tree
 
 
 # fmt:off

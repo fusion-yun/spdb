@@ -12,9 +12,9 @@ from scipy.interpolate import (
     interp2d,
 )
 
-from ..core.functor import Functor
-from ..utils.logger import logger
-from ..core.generic_helper import array_type
+from spdm.core.functor import Functor
+from spdm.utils.logger import logger
+from spdm.utils.type_hint import array_type
 
 
 class RectInterpolateOp(Functor):

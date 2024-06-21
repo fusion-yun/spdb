@@ -2,7 +2,7 @@ import typing
 import collections.abc
 import numpy as np
 
-from ..core.generic_helper import ArrayLike, ArrayType, as_array
+from spdm.utils.type_hint import ArrayLike, ArrayType, as_array
 from ..core.mesh import Mesh
 from ..utils.tags import _not_found_
 
@@ -17,7 +17,7 @@ class StructuredMesh(Mesh):
 
         self._periods = self._metadata.get("periods", None)
         self._dims = self._metadata.get("dims", None)
-        
+
         if isinstance(self._periods, collections.abc.Sequence):
             for idx, d in enumerate(self._dims):
                 if (

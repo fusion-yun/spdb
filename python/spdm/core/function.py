@@ -8,15 +8,15 @@ import numpy.typing as np_tp
 import collections.abc
 from copy import copy, deepcopy
 
-from .expression import Expression, zero
-from .functor import Functor
-from .path import update_tree, Path
-from .domain import Domain, PPolyDomain
-from .htree import List
+from spdm.core.expression import Expression, zero
+from spdm.core.functor import Functor
+from spdm.core.path import update_tree, Path
+from spdm.core.domain import Domain, PPolyDomain
+from spdm.core.htree import List
 
-from ..utils.logger import logger
-from ..utils.tags import _not_found_
-from .typing import ArrayType, NumericType, array_type, get_args, get_origin, as_array
+from spdm.utils.logger import logger
+from spdm.utils.tags import _not_found_
+from spdm.utils.type_hint import ArrayType, NumericType, array_type, get_args, get_origin, as_array
 
 
 class Function(Expression):

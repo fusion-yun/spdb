@@ -9,7 +9,7 @@ import collections.abc
 import collections
 from copy import deepcopy
 from spdm.core.pluggable import Pluggable
-from spdm.utils.typing import ArrayType, array_type
+from spdm.utils.type_hint import ArrayType, array_type
 from spdm.core.functor import Functor
 from spdm.core.path import update_tree
 from spdm.core.geo_object import GeoObject, as_geo_object

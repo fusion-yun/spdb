@@ -14,7 +14,7 @@ from spdm.utils.misc import group_dict_by_prefix
 from spdm.numlib.interpolate import interpolate
 
 
-from spdm.utils.typing import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
+from spdm.utils.type_hint import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
 
 
 from spdm.core.functor import Functor

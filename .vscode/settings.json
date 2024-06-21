@@ -1,11 +1,18 @@
 {
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
 
-  "python.testing.unittestEnabled": true,
-
   "cSpell.words": ["efit", "geqdsk", "mdsplus"],
   // "python.analysis.typeCheckingMode": "basic",
 
   "cmake.configureOnOpen": false,
-
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "./tests/",
+    "-p",
+    "test_*.py"
+  ],
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestEnabled": true,
+  "python.envFile": "${workspaceFolder}/.env"
 }

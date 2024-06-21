@@ -5,8 +5,8 @@ from copy import copy
 
 import numpy as np
 
-from ..utils.logger import logger
-from .typing import NumericType, as_array, numeric_type, scalar_type
+from spdm.utils.logger import logger
+from spdm.utils.type_hint import NumericType, as_array, numeric_type, scalar_type
 
 ExprOpLike = typing.Callable | None
 

@@ -1,9 +1,12 @@
-from ..core.functor import Functor
-from ..core.expression import Expression
-from ..core.generic_helper import NumericType, as_array
+
 import typing
-from .interpolate import interpolate
 import numpy as np
+
+
+from spdm.core.functor import Functor
+from spdm.core.expression import Expression
+from spdm.utils.type_hint import NumericType, as_array
+from spdm.numlib.interpolate import interpolate
 
 
 def integral(func, *args, **kwargs):

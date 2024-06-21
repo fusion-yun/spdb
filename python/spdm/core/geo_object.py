@@ -7,10 +7,9 @@ from copy import copy
 import numpy as np
 
 from .pluggable import Pluggable
-from .typing import array_type
 
-from .typing import ArrayLike, ArrayType, NumericType, ScalarType, array_type, nTupleType, numeric_type
-from ..utils.logger import logger
+from spdm.utils.type_hint import ArrayLike, ArrayType, NumericType, ScalarType, array_type, nTupleType, numeric_type
+from spdm.utils.logger import logger
 
 
 class BBox:
