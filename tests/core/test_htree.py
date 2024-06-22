@@ -1,8 +1,10 @@
 import typing
 import unittest
 import numpy as np
+from copy import deepcopy
 
 from spdm.core.htree import Dict, List, HTreeNode, HTree
+from spdm.utils.tags import _not_found_
 
 
 class Foo(Dict):
@@ -54,6 +56,27 @@ class TestHTree(unittest.TestCase):
         self.assertTrue(isinstance(HTree({"a": 1, "b": 2, "c": 3}), Dict))
 
         # self.assertEqual(len(n) == 0)
+
+    def test_type_hint(self):
+        d1 = List[HTree]([])
+        d1.insert({"a": 1, "b": 2})
+
+        self.assertIsInstance(d1[0], HTree)
+
+        # self.assertEqual(len(d1), 1)
+        self.assertEqual(d1[0]["a"], 1)
+        self.assertEqual(d1[0]["b"], 2)
+
+        data = [1, 2, 3, 4, 5]
+
+        class Foo:
+            def __init__(self, v) -> None:
+                self.v = v
+
+        d1 = List[Foo](deepcopy(data))
+
+        self.assertIsInstance(d1[2], Foo)
+        self.assertEqual(d1[2].v, data[2])
 
     # data = {
     #     "a": ["hello world {name}!", "hello world2 {name}!", 1, 2, 3, 4],
@@ -120,88 +143,80 @@ class TestHTree(unittest.TestCase):
 
         self.assertEqual(cache[1:], [1, 2, 3, 4])
 
-    # def test_update(self):
-    #     d = Dict(deepcopy(test_data))
+    def test_update(self):
+        d = Dict(
+            {
+                "a": ["hello world {name}!", "hello world2 {name}!", 1.0, 2, 3, 4],
+                "c": "I'm {age}!",
+                "d": {"e": "{name} is {age}", "f": "{address}"},
+            }
+        )
 
-    #     d.update({"d": {"g": 5}})
+        d.update({"d": {"g": 5}})
 
-    #     self.assertEqual(d["d"]["e"], "{name} is {age}")
-    #     self.assertEqual(d["d"]["f"], "{address}")
-    #     self.assertEqual(d["d"]["g"], 5)
+        self.assertEqual(d["d"]["e"], "{name} is {age}")
+        self.assertEqual(d["d"]["f"], "{address}")
+        self.assertEqual(d["d"]["g"], 5)
 
-    # def test_insert(self):
-    #     d0 = Dict(deepcopy(test_data))
+    def test_insert(self):
+        d0 = Dict(
+            {
+                "a": ["hello world {name}!", "hello world2 {name}!", 1.0, 2, 3, 4],
+                "c": "I'm {age}!",
+                "d": {"e": "{name} is {age}", "f": "{address}"},
+            }
+        )
 
-    #     d0.insert({"a": "hello world {name}!"})
-    #     d0.update({"d": {"g": 5}})
+        d0.insert("a", "hello world {name}!")
+        d0.update("d", {"g": 5})
 
-    #     self.assertEqual(d0["d"]["e"], "{name} is {age}")
-    #     self.assertEqual(d0["d"]["f"], "{address}")
-    #     self.assertEqual(d0["d"]["g"], 5)
+        self.assertEqual(d0["d"]["e"], "{name} is {age}")
+        self.assertEqual(d0["d"]["f"], "{address}")
+        self.assertEqual(d0["d"]["g"], 5)
 
-    #     d1 = List([])
+        d1 = List([])
 
-    #     d1.insert({"a": [1], "b": 2})
+        d1.insert({"a": [1], "b": 2})
 
-    #     self.assertEqual(d1[0]["a"][0], 1)
-    #     self.assertEqual(d1[0]["b"], 2)
+        self.assertEqual(d1[0]["a"][0], 1)
+        self.assertEqual(d1[0]["b"], 2)
 
-    #     d1["0/a"].insert(2)
+        # # d1["0/a"].insert(2)
 
-    #     self.assertEqual(d1[0]["a"], [1, 2])
+        # self.assertEqual(d1[0]["a"], [1, 2])
 
-    # def test_get_by_index(self):
-    #     data = [1, 2, 3, 4, 5]
+    def test_get_by_index(self):
+        data = [1, 2, 3, 4, 5]
 
-    #     d0 = List[int](data)
-    #     # logger.debug(type(d0[0]))
-    #     self.assertIsInstance(d0[0], int)
-    #     self.assertEqual(d0[0], data[0])
-    #     # self.assertListEqual(list(d0[:]), data)
+        d0 = List[int](data)
+        # logger.debug(type(d0[0]))
+        self.assertIsInstance(d0[0], int)
+        self.assertEqual(d0[0], data[0])
+        # self.assertListEqual(list(d0[:]), data)
 
-    # def test_node_del(self):
-    #     cache = {"a": ["hello world {name}!", "hello world2 {name}!", 1, 2, 3, 4]}
+    def test_node_del(self):
 
-    #     d = Dict(cache)
+        cache = {"a": ["hello world {name}!", "hello world2 {name}!", 1, 2, 3, 4]}
 
-    #     del d["a"]
+        d = Dict(cache)
 
-    #     self.assertTrue(cache["a"], _undefined_)
+        del d["a"]
 
-    # def test_node_insert(self):
-    #     d = Dict[List]({"this_is_a_cache": True})
+        self.assertTrue(d.get("a", _not_found_) is _not_found_)
 
-    #     d["a"] = ["hello world {name}!"]
-    #     self.assertEqual(d["a"][0], "hello world {name}!")
+    def test_node_insert(self):
+        d = Dict[List]({"this_is_a_cache": True})
 
-    #     d["c"].insert(1.23455)
-    #     d["c"].insert({"a": "hello world", "b": 3.141567})
+        d.insert("a", "hello world {name}!")
+        self.assertEqual(d["a"], "hello world {name}!")
 
-    #     self.assertEqual(d["c"][0], 1.23455)
-    #     self.assertEqual(d.get("c/0"), 1.23455)
-    #     self.assertEqual(d["c"][1]["b"], 3.141567)
-    #     self.assertEqual(d.get("c/1/b"), 3.141567)
+        d.insert("c", 1.23455)
+        d.insert("c", {"a": "hello world", "b": 3.141567})
 
-    # def test_type_hint(self):
-    #     d1 = List[HTree]([])
-    #     d1.insert({"a": 1, "b": 2})
-
-    #     self.assertIsInstance(d1[0], HTree)
-
-    #     # self.assertEqual(len(d1), 1)
-    #     self.assertEqual(d1[0]["a"], 1)
-    #     self.assertEqual(d1[0]["b"], 2)
-
-    #     data = [1, 2, 3, 4, 5]
-
-    #     class Foo:
-    #         def __init__(self, v) -> None:
-    #             self.v = v
-
-    #     d1 = List[Foo](deepcopy(data))
-
-    #     self.assertIsInstance(d1[2], Foo)
-    #     self.assertEqual(d1[2].v, data[2])
+        self.assertEqual(d["c"][0], 1.23455)
+        self.assertEqual(d.get("c/0"), 1.23455)
+        self.assertEqual(d["c"][1]["b"], 3.141567)
+        self.assertEqual(d.get("c/1/b"), 3.141567)
 
 
 # class TestQuery(unittest.TestCase):

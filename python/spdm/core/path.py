@@ -96,7 +96,7 @@ class Query:
     @staticmethod
     def _eval_one(target, k, v) -> typing.Any:
         res = False
-        if k == "." or k is OpTags.current:
+        if k == "." or k is Path.tags.current:
             res = Query._q_equal(target, v)
 
         elif isinstance(k, str) and k.startswith("@"):
@@ -848,25 +848,19 @@ class Path(list):
                 else:
                     raise KeyError(f"{type(target)} is not indexable! key={key} ")
             elif isinstance(target, collections.abc.MutableMapping):
-                if isinstance(value, collections.abc.Mapping):
-                    if key is None:
-                        obj = target
-                    elif isinstance(key, str):
-                        obj = target.get(key, _not_found_)
-
-                    for k, v in value.items():
-                        obj = Path._set(obj, k, v)
-
-                    value = obj
-
-                    if key is not None:
-                        target[key] = value
+                if key is Path.tags.append:
+                    target = [target, value]
+                elif isinstance(key, str):
+                    obj = target.get(key, _not_found_)
+                    target[key] = Path._update(obj, [], value)
+                elif key is None:
+                    if isinstance(value, collections.abc.Mapping):
+                        for k, v in value.items():
+                            target = Path(k).update(target, v)
                     else:
                         target = value
-                elif isinstance(key, str):
-                    target[key] = value
                 else:
-                    raise KeyError(f"{type(target)} is not indexable! key={key} ")
+                    raise KeyError(f"{type(target)} is not indexable! key={key} value={value}")
             elif target is _not_found_:
                 if key is None:
                     target = value
@@ -917,7 +911,6 @@ class Path(list):
                 res = source[key]
         elif isinstance(source, collections.abc.Sequence) and isinstance(key, slice):
             res = source[key]
-
         elif isinstance(source, collections.abc.Sequence) and isinstance(key, (str)):
             query = as_query(name=key)
             res = next(filter(query.check, source))
@@ -939,7 +932,7 @@ class Path(list):
     @staticmethod
     def _update(target, path: typing.List[PathItemLike], *args, **kwargs):
 
-        if len(path) == 0 or path is None:
+        if path is None or len(path) == 0:
             key = None
             sub_path = []
         else:
@@ -982,7 +975,9 @@ class Path(list):
                 Path._update(node, sub_path, *args, **kwargs)
 
         else:
-            target = Path._set(target, key, Path._update(Path._get(target, key), sub_path, *args, **kwargs))
+            old_node = Path._get(target, key)
+            new_node = Path._update(old_node, sub_path, *args, **kwargs)
+            target = Path._set(target, key, new_node)
 
         return target
 
@@ -1235,7 +1230,7 @@ _T = typing.TypeVar("_T")
 
 def update_tree(target: _T, *args, **kwargs) -> _T:
     for d in [*args, kwargs]:
-        target = Path._delete(target, [], d)
+        target = Path._update(target, [], d)
     return target
 
 
