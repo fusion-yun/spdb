@@ -1,10 +1,12 @@
 import typing
 import unittest
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
 
 from spdm.core.htree import Dict, List, HTreeNode, HTree
 from spdm.utils.tags import _not_found_
+from spdm.utils.logger import logger
 
 
 class Foo(Dict):
@@ -208,13 +210,15 @@ class TestHTree(unittest.TestCase):
         d = Dict[List]({"this_is_a_cache": True})
 
         d.insert("a", "hello world {name}!")
-        self.assertEqual(d["a"], "hello world {name}!")
+        
+        self.assertEqual(d["a"][0], "hello world {name}!")
 
         d.insert("c", 1.23455)
-        d.insert("c", {"a": "hello world", "b": 3.141567})
 
         self.assertEqual(d["c"][0], 1.23455)
         self.assertEqual(d.get("c/0"), 1.23455)
+
+        d.insert("c", {"a": "hello world", "b": 3.141567})
         self.assertEqual(d["c"][1]["b"], 3.141567)
         self.assertEqual(d.get("c/1/b"), 3.141567)
 

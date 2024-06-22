@@ -824,7 +824,7 @@ class Path(list):
             kwargs = {}
 
         for value in args:
-            if value is _not_found_:
+            if value is _not_found_ or value is target:
                 pass
             elif hasattr(target.__class__, "__set_node__"):
                 target.__set_node__(key, value)

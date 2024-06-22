@@ -477,23 +477,24 @@ class HTree(GenericHelper[_T], HTreeNode):
             type_hint = typing.get_type_hints(cls).get(key, None)
 
         if type_hint is None:
-            type_hint = getattr(self.__class__, "__args__", ())
-            if isinstance(type_hint, tuple) and len(type_hint) > 0:
-                type_hint = type_hint[0]
-            else:
-                type_hint = None
-            # get_args(getattr(self, "__orig_class__", None) or self.__class__)
+            type_hint = getattr(self.__class__, "__args__", None)
 
-        if type_hint is None:
+        if type_hint is None or type_hint is _not_found_:
             node = value
-        elif not inspect.isclass(type_hint):
-            raise TypeError(f"Invalid type hint {type_hint}")
-        elif isinstance(value, type_hint):
-            node = value
-        elif issubclass(type_hint, HTreeNode):
-            node = type_hint(value, _entry=entry, _parent=self)
+
         else:
-            node = type_convert(type_hint, value)
+            if not isinstance(type_hint, tuple):
+                type_hint = (type_hint,)
+            for tp in type_hint:
+                if not inspect.isclass(tp):
+                    continue
+                elif isinstance(value, tp):
+                    node = value
+                elif issubclass(tp, HTreeNode):
+                    node = tp(value, _entry=entry, _parent=self)
+                else:
+                    node = type_convert(tp, value)
+                break
 
         if isinstance(node, HTreeNode):
             if node._parent is None:
@@ -587,9 +588,8 @@ class Dict(HTree[_T]):
     """Dict 类型的 HTree 对象"""
 
     def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
-        if cache is _not_found_:
-            cache = kwargs
-            kwargs = {}
+        if cache is  _not_found_:
+            cache = {}
         super().__init__(cache, _entry=_entry, _parent=_parent, **kwargs)
 
     @property
@@ -611,18 +611,18 @@ class Dict(HTree[_T]):
     def items(self) -> typing.Generator[typing.Tuple[str, _T], None, None]:
         """遍历 key,value"""
         for key in self.keys():
-            yield key, self.__getchild__(key)
+            yield key, self.__get_node__(key)
 
     @typing.final
     def values(self) -> typing.Generator[_T, None, None]:
         """遍历 value"""
         for key in self.keys():
-            yield self.__getchild__(key)
+            yield self.__get_node__(key)
 
     def children(self) -> typing.Generator[_T, None, None]:
         """遍历子节点"""
         for k in self.keys():
-            yield self.__getchild__(k)
+            yield self.__get_node__(k)
 
     @typing.final
     def __iter__(self) -> typing.Generator[str, None, None]:
@@ -641,9 +641,17 @@ class List(HTree[_T]):
     """List 类型的 HTree 对象"""
 
     def __init__(self, *args, **kwargs):
-        if len(args) != 1:
-            args = (list[args],)
-        super().__init__(*args, **kwargs)
+        if len(args) == 1:
+            if args[0] is _not_found_:
+                cache = []
+            elif isinstance(args[0], list):
+                cache = args[0]
+            elif isinstance(args[0], collections.abc.Iterable):
+                cache = [*args[0]]
+        else:
+            cache = list(args)
+
+        super().__init__(cache, **kwargs)
 
     @property
     def is_sequence(self) -> bool:
@@ -665,7 +673,7 @@ class List(HTree[_T]):
         """查找，sequence 搜索值，mapping搜索键"""
         if isinstance(path_or_node, PathLike):
             return super().__contains__(path_or_node)
-        return self.query({Path.tags.exists: path_or_node})
+        return self.query(path_or_node, Query.tags.exists)
 
     def __len__(self) -> int:
         """返回子节点的数量"""
