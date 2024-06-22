@@ -9,12 +9,12 @@ import typing
 from copy import copy, deepcopy
 import numpy as np
 
-from spdm.utils.logger import deprecated, logger
+from spdm.utils.logger import logger
 from spdm.utils.plugin import Pluggable
 from spdm.utils.tags import _not_found_, _undefined_
-from spdm.utils.uri_utils import URITuple, uri_split, uri_split_as_dict
-from spdm.core.path import Path, PathLike, as_path, update_tree, update_tree
-from spdm.utils.type_hint import array_type, as_array, as_value, is_scalar
+from spdm.utils.uri_utils import URITuple, uri_split
+from spdm.core.path import Path, PathLike, as_path, update_tree, update_tree, Query
+from spdm.utils.type_hint import array_type, as_array, is_scalar
 
 PROTOCOL_LIST = ["local", "file", "http", "https", "ssh", "mdsplus"]
 
@@ -75,15 +75,15 @@ class Entry(Pluggable):
 
     @property
     def is_leaf(self) -> bool:
-        return self.find(Path.tags.is_leaf)
+        return self.find(Query.is_leaf)
 
     @property
     def is_list(self) -> bool:
-        return self.find(Path.tags.is_list)
+        return self.find(Query.is_list)
 
     @property
     def is_dict(self) -> bool:
-        return self.find(Path.tags.is_dict)
+        return self.find(Query.is_dict)
 
     @property
     def is_root(self) -> bool:
@@ -99,52 +99,37 @@ class Entry(Pluggable):
     def value(self) -> typing.Any:
         return self._data if len(self._path) == 0 else self.get(default_value=_not_found_)
 
-    # def __getitem__(self, *args) -> Entry:
-    #     return self.child(*args)
-
-    # def __setitem__(self, path, value):
-    #     return self.child(path).update(value)
-
-    # def __delitem__(self, *args):
-    #     return self.child(*args).remove()
-
-    def get(self, query=None, default_value=_not_found_, **kwargs) -> typing.Any:
-        if query is None:
-            entry = self
-            args = ()
-        elif isinstance(query, (slice, set, dict)):
-            entry = self
-            args = (query,)
+    def get(self, *args, **kwargs) -> typing.Any:
+        if len(args) > 0:
+            return self.child(*args).get(**kwargs)
         else:
-            entry = self.child(query)
-            args = ()
+            return self._path.get(self._data, **kwargs)
 
-        return entry.find(Path.tags.read, *args, default_value=default_value, **kwargs)
-
-    def put(self, pth, value, *args, **kwrags) -> Entry:
-        entry = self.child(pth)
-        entry.update(value, *args, **kwrags)
-        return entry
+    def put(self, *args, **kwargs) -> Entry:
+        if len(args) > 1:
+            return self.child(*args[:-1]).put(*args[-1:], **kwargs)
+        else:
+            return self._path.put(self._data, *args[-1:], **kwargs)
 
     def dump(self, *args, **kwargs) -> typing.Any:
-        return self.find(Path.tags.dump, *args, **kwargs)
+        return self.query(Query.dump, *args, **kwargs)
 
     def equal(self, other) -> bool:
         if isinstance(other, Entry):
-            return self.find(Path.tags.equal, other.__value__)
+            return self.query(Query.equal, other.__value__)
         else:
-            return self.find(Path.tags.equal, other)
+            return self.query(Query.equal, other)
 
     @property
     def count(self) -> int:
-        return self.find(Path.tags.count)
+        return self.query(Query.count)
 
     @property
     def exists(self) -> bool:
-        return self.find(Path.tags.exists)
+        return self.query(Query.exists)
 
     def check_type(self, tp: typing.Type) -> bool:
-        return self.find(Path.tags.check_type, tp)
+        return self.query(Query.check_type, tp)
 
     ###########################################################
 
@@ -197,9 +182,8 @@ class Entry(Pluggable):
         self._data = self._path.update(self._data, value, *args, **kwargs)
         return self
 
-    def remove(self, *args, **kwargs) -> int:
-        self._data, num = self._path.remove(self._data, *args, **kwargs)
-        return num
+    def delete(self) -> bool:
+        return self._path.delete(self._data)
 
     def find(self, *args, **kwargs) -> typing.Any:
         """
@@ -208,6 +192,14 @@ class Entry(Pluggable):
         Could be overridden by subclasses.
         """
         return self._path.find(self._data, *args, **kwargs)
+
+    def query(self, *args, **kwargs) -> typing.Any:
+        """
+        Query the Entry.
+        Same function as `find`, but put result into a contianer.
+        Could be overridden by subclasses.
+        """
+        return self._path.query(self._data, *args, **kwargs)
 
     def keys(self) -> typing.Generator[str, None, None]:
         yield from self._path.keys(self._data)
@@ -244,7 +236,7 @@ class ChainEntry(Entry):
         return self._entrys[0].is_writable
 
     def find(self, *args, default_value=_not_found_, **kwargs):
-        if len(args) > 0 and args[0] is Path.tags.count:
+        if len(args) > 0 and args[0] is Query.count:
             res = super().find(*args, default_value=_not_found_, **kwargs)
             if res is _not_found_ or res == 0:
                 for e in self._entrys:
@@ -297,8 +289,8 @@ class ChainEntry(Entry):
 
     @property
     def exists(self) -> bool:
-        res = [super().find(Path.tags.exists)]
-        res.extend([e.child(self._path).find(Path.tags.exists) for e in self._entrys])
+        res = [super().find(Query.exists)]
+        res.extend([e.child(self._path).find(Query.exists) for e in self._entrys])
         return any(res)
 
 
@@ -738,7 +730,7 @@ class EntryProxy(Entry):
     def update(self, value, **kwargs) -> typing.Self:
         raise NotImplementedError(f"")
 
-    def remove(self, **kwargs) -> int:
+    def delete(self, **kwargs) -> int:
         raise NotImplementedError(f"")
 
     def find(self, *args, default_value=_not_found_, **kwargs) -> typing.Any:

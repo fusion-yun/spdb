@@ -223,12 +223,12 @@ class HTreeNode:
     def __empty__(self) -> bool:
         return (self._cache is _not_found_ or len(self._cache) == 0) and (self._entry is None)
 
-    def __bool__(self) -> bool:
-        return self.query({Query.tags.equal: True})
+    # def __bool__(self) -> bool:
+    #     return self.query(Query.tags.equal, True)
 
     def __equal__(self, other) -> bool:
         """比较节点的值是否相等"""
-        return self.query({Query.tags.equal: other if not isinstance(other, HTreeNode) else other.__value__})
+        return self.query(Query.tags.equal, other if not isinstance(other, HTreeNode) else other.__value__)
 
     # def __copy__(self) -> typing.Self:
     #     if isinstance(self._cache, dict):

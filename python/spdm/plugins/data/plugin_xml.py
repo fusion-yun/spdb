@@ -295,7 +295,7 @@ class XMLEntry(Entry):
     def update(self, *args, **kwargs) -> XMLEntry:
         raise NotImplementedError(f"")
 
-    def remove(self, *args, **kwargs) -> int:
+    def delete(self, *args, **kwargs) -> int:
         raise NotImplementedError(f"")
 
     def find(self, op=None, *args, **kwargs) -> typing.Any:

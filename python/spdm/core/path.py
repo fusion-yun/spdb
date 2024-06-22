@@ -210,6 +210,10 @@ class Query:
         return source
 
     @staticmethod
+    def equal(source: typing.Any, other, *args, **kwargs) -> bool:
+        return source == other
+
+    @staticmethod
     def exists(source: typing.Any, *args, **kwargs) -> bool:
         return source is not _not_found_
 
@@ -1125,9 +1129,20 @@ class Path(list):
         @FIXME:
             - level 参数，用于实现多层遍历，尚未实现
         """
-
-        if len(path) == 0 or path is None or source is _not_found_ or source is None:
+        if source is _not_found_ or source is None:
             yield Path._project(source, *args, **kwargs)
+
+        elif len(path) == 0 or path is None:
+
+            if isinstance(source, collections.abc.Mapping):
+                yield from map(lambda v: Path._project(v, *args, **kwargs), source.values())
+
+            elif isinstance(source, collections.abc.Iterable) and not isinstance(source, str):
+                yield from map(lambda v: Path._project(v, *args, **kwargs), source)
+
+            else:
+                yield Path._project(source, *args, **kwargs)
+
         else:
 
             key = path[0]
@@ -1159,6 +1174,7 @@ class Path(list):
                     if child is source:
                         continue
                     yield from Path._search(child, sub_path, *args, **kwargs)
+                    
             elif key is Path.tags.descendants:
                 for child in Path._search(source, Path.tags.children):
                     yield from Path._search(child, sub_path, *args, **kwargs)

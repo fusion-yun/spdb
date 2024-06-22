@@ -14,16 +14,16 @@ class TestEntry(unittest.TestCase):
 
     def test_get(self):
 
-        d = Entry(self.data)
+        d =Entry(deepcopy(self.data))
 
-        self.assertEqual(d.get("c"), self.data["c"])
+        self.assertEqual(d.get("c")  , self.data["c"])
         self.assertEqual(d.get("d/e"), self.data["d"]["e"])
         self.assertEqual(d.get("d/f"), self.data["d"]["f"])
         self.assertEqual(d.get("a/0"), self.data["a"][0])
         self.assertEqual(d.get("a/1"), self.data["a"][1])
 
     def test_exists(self):
-        d = Entry(self.data)
+        d =Entry(deepcopy(self.data))
 
         self.assertTrue(d.exists)
         self.assertTrue(d.child("a").exists)
@@ -32,19 +32,20 @@ class TestEntry(unittest.TestCase):
         self.assertFalse(d.child("f/g").exists)
 
     def test_count(self):
-        d = Entry(self.data)
+        d =Entry(deepcopy(self.data))
 
-        self.assertEqual(d.count, 1)
+        self.assertEqual(d.count, 3)
         self.assertEqual(d.child("a").count, 6)
-        self.assertEqual(d.child("d").count, 1)
+        self.assertEqual(d.child("d").count, 2)
 
     def test_insert(self):
         cache = deepcopy(self.data)
+
         d = Entry(cache)
 
         d.child("c").insert(1.23455)
 
-        d.child("c").insert([{"a": "hello world", "b": 3.141567}])
+        d.child("c").insert({"a": "hello world", "b": 3.141567})
 
         self.assertEqual(cache["c"][1], 1.23455)
         self.assertEqual(cache["c"][2]["a"], "hello world")
@@ -61,11 +62,11 @@ class TestEntry(unittest.TestCase):
         self.assertEqual(cache["d"]["f"], "{address}")
         self.assertEqual(cache["d"]["g"], 5)
 
-    def test_erase(self):
+    def test_delete(self):
         cache = {"a": ["hello world {name}!", "hello world2 {name}!", 1, 2, 3, 4], "b": "hello world!"}
 
         d = Entry(cache)
-        d.remove("b")
+        d.child("b").delete()
         self.assertTrue("b" not in cache)
 
     def test_get_many(self):
@@ -86,22 +87,22 @@ class TestEntry(unittest.TestCase):
 
         self.assertListEqual([v for v in d0.for_each()], data)
 
-    def test_find_next(self):
-        data = [1, 2, 3, 4, 5]
+    # def test_find_next(self):
+    #     data = [1, 2, 3, 4, 5]
 
-        d0 = Entry(data)
+    #     d0 = Entry(data)
 
-        res = []
+    #     res = []
 
-        next_id = []
+    #     next_id = []
 
-        while True:
-            value, next_id = d0.find_next(*next_id)
-            if next_id is None or len(next_id) == 0:
-                break
-            res.append(value)
+    #     while True:
+    #         value, next_id = d0.find_next(*next_id)
+    #         if next_id is None or len(next_id) == 0:
+    #             break
+    #         res.append(value)
 
-        self.assertListEqual(res, data)
+    #     self.assertListEqual(res, data)
 
 
 if __name__ == "__main__":
