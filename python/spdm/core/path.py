@@ -583,9 +583,9 @@ class Path(list):
         return target
 
     @staticmethod
-    def _expand(target: typing.Any):
+    def _extend(target: typing.Any):
         if isinstance(target, collections.abc.Generator):
-            res = [Path._expand(v) for v in target]
+            res = [Path._extend(v) for v in target]
             if len(res) > 1 and isinstance(res[0], tuple) and len(res[0]) == 2:
                 res = dict(*res)
             elif len(res) == 1:
@@ -765,9 +765,9 @@ class Path(list):
         return Path._delete(target, self[:])
 
     @typing.final
-    def find(self, target) -> typing.Any:
+    def find(self, target, *args, **kwargs) -> typing.Any:
         """返回第一个search结果，若没有则返回 default_value"""
-        return Path._find(target, self[:])
+        return Path._find(target, self[:], *args, **kwargs)
 
     @typing.final
     def query(self, source, *args, **kwargs) -> typing.Any:
@@ -828,16 +828,31 @@ class Path(list):
                 pass
             elif hasattr(target.__class__, "__set_node__"):
                 target.__set_node__(key, value)
+            elif key is None and not isinstance(value, (dict)):
+                target = value
+            elif target is _not_found_:
+                if key is None:
+                    target = value
+                elif isinstance(key, int):
+                    target = [_not_found_] * (key) + [value]
+                elif isinstance(key, slice):
+                    target = [_not_found_] * (key.stop) + [value]
+                elif isinstance(key, str):
+                    target = {key: value}
+                elif key in (Path.tags.append, Path.tags.extend):
+                    target = value
+                else:
+                    raise KeyError(f"{(target)} is not indexable! key={key} ")
             elif isinstance(target, collections.abc.MutableSequence):
                 if key is None:
                     target = value
                 elif isinstance(key, int):
                     if len(target) < key + 1:
-                        target.expand([_not_found_] * (key + 1 - len(target)))
+                        target.extend([_not_found_] * (key + 1 - len(target)))
                     target[key] = value
                 elif isinstance(key, slice):
                     if len(target) < key.stop + 1:
-                        target.expand([_not_found_] * (key.stop + 1 - len(target)))
+                        target.extend([_not_found_] * (key.stop + 1 - len(target)))
                     target[key] = value
                 elif key is Path.tags.append:
                     target.append(value)
@@ -861,19 +876,6 @@ class Path(list):
                         target = value
                 else:
                     raise KeyError(f"{type(target)} is not indexable! key={key} value={value}")
-            elif target is _not_found_:
-                if key is None:
-                    target = value
-                elif isinstance(key, int):
-                    target = [_not_found_] * (key) + [value]
-                elif isinstance(key, slice):
-                    target = [_not_found_] * (key.stop) + [value]
-                elif isinstance(key, str):
-                    target = {key: value}
-                elif key in (Path.tags.append, Path.tags.extend):
-                    target = value
-                else:
-                    raise KeyError(f"{(target)} is not indexable! key={key} ")
             elif key is Path.tags.append:
                 target = [target, value]
             elif key is Path.tags.extend:
@@ -1075,7 +1077,7 @@ class Path(list):
             _op = None
 
     @staticmethod
-    def _find(source, path: typing.List[PathItemLike]):
+    def _find(source, path: typing.List[PathItemLike], *args, **kwargs):
         if len(path) == 0 or path is None:
             res = source
         else:
@@ -1109,6 +1111,8 @@ class Path(list):
             else:
                 raise KeyError(f"Cannot index {source} by {key}!")
 
+        if res is _not_found_:
+            res = kwargs.get("default_value", _not_found_)
         return res
 
     @staticmethod

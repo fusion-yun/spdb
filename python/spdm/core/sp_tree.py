@@ -344,22 +344,22 @@ class SpProperty:
         if self.doc == "":
             self.doc = f"{owner_cls.__name__}.{self.property_name}"
 
-    def __set__(self, instance: HTreeNode, value: typing.Any) -> None:
+    def __set__(self, instance: HTree, value: typing.Any) -> None:
         assert instance is not None
 
         with self.lock:
             if self.alias is not None:
-                instance._update_(self.alias, value)
+                instance.__set_node__(self.alias, value)
             elif self.property_name is not None:
-                instance._update_(self.property_name, value, _setter=self.setter)
+                instance.__set_node__(self.property_name, value, _setter=self.setter)
             else:
                 logger.error("Can not use sp_property instance without calling __set_name__ on it.")
 
-    def __get__(self, instance: HTreeNode, owner_cls=None) -> _T:
+    def __get__(self, instance: HTree, owner_cls=None) -> _T:
         if instance is None:
             # 当调用 getter(cls, <name>) 时执行
             return self
-        elif not isinstance(instance, HTreeNode):
+        elif not isinstance(instance, HTree):
             raise TypeError(f"Class '{instance.__class__.__name__}' must be a subclass of 'SpTree'.")
 
         with self.lock:
@@ -385,7 +385,7 @@ class SpProperty:
                     **self.metadata,
                 )
             else:
-                value = instance._find_(
+                value = instance.__get_node__(
                     self.property_name,
                     _type_hint=self.type_hint,
                     _getter=self.getter,
@@ -402,7 +402,7 @@ class SpProperty:
 
     def __delete__(self, instance: SpTree) -> None:
         with self.lock:
-            instance._delete_(self.property_name, deleter=self.deleter)
+            instance.__del_node__(self.property_name, _deleter=self.deleter)
 
 
 def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:

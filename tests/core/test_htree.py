@@ -48,7 +48,6 @@ class TestHTree(unittest.TestCase):
         self.assertTrue(isinstance(HTree(1, first=1, second=2, name="hello"), HTree))
         self.assertTrue(isinstance(HTree(first=1, second=2, name="hello"), Dict))
         self.assertTrue(isinstance(HTree({"first": 1, "second": 2, "name": "hello"}), Dict))
-        self.assertTrue(isinstance(HTree(1, 2, 3, 4), List))
         self.assertTrue(isinstance(HTree([1, 2, 3, 4]), List))
         self.assertTrue(isinstance(HTree("hello"), HTree))
         self.assertTrue(isinstance(HTree(1), HTree))

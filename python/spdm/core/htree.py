@@ -6,9 +6,10 @@ import collections.abc
 import typing
 import inspect
 import abc
+from copy import deepcopy
 
 from spdm.utils.logger import logger
-from spdm.utils.tags import _not_found_
+from spdm.utils.tags import _not_found_, _undefined_
 from spdm.utils.type_hint import ArrayType, as_array, primary_type, PrimaryType, type_convert
 
 from spdm.core.entry import Entry, open_entry
@@ -223,11 +224,11 @@ class HTreeNode:
         return (self._cache is _not_found_ or len(self._cache) == 0) and (self._entry is None)
 
     def __bool__(self) -> bool:
-        return self.query({Path.tags.equal: True})
+        return self.query({Query.tags.equal: True})
 
     def __equal__(self, other) -> bool:
         """比较节点的值是否相等"""
-        return self.query({Path.tags.equal: other if not isinstance(other, HTreeNode) else other.__value__})
+        return self.query({Query.tags.equal: other if not isinstance(other, HTreeNode) else other.__value__})
 
     # def __copy__(self) -> typing.Self:
     #     if isinstance(self._cache, dict):
@@ -462,39 +463,46 @@ class HTree(GenericHelper[_T], HTreeNode):
     # -----------------------------------------------------------------------------
     # API as container
 
-    def __get_node__(self, key, *args, **kwargs) -> typing.Any:
+    def __get_node__(
+        self, key, *args, _type_hint=None, _getter=None, default_value=_not_found_, **kwargs
+    ) -> typing.Any:
+
         if key is None and len(args) + len(kwargs) == 0:
             return self
 
-        value = Path([key]).find(self._cache, *args, **kwargs)
+        if callable(_getter):
+            value = _getter(self, key, *args, **kwargs)
+
+        else:
+            value = Path([key]).find(self._cache, default_value=_not_found_)
+
+        if value is _not_found_ or (isinstance(value, dict) and isinstance(default_value, dict)):
+            value = Path().update(deepcopy(default_value), value)
 
         entry = self._entry.child(key) if self._entry is not None else None
 
-        type_hint = None
-
-        if isinstance(key, str) and key.isidentifier():
+        if _type_hint is None and isinstance(key, str) and key.isidentifier():
             cls = typing.get_origin(self.__class__) or self.__class__
-            type_hint = typing.get_type_hints(cls).get(key, None)
+            _type_hint = typing.get_type_hints(cls).get(key, None)
 
-        if type_hint is None:
-            type_hint = getattr(self.__class__, "__args__", None)
+        if _type_hint is None:
+            _type_hint = getattr(self.__class__, "__args__", None)
 
-        if type_hint is None or type_hint is _not_found_:
+        if _type_hint is None or _type_hint is _not_found_:
             node = value
 
         else:
-            if not isinstance(type_hint, tuple):
-                type_hint = (type_hint,)
-            for tp in type_hint:
-                if not inspect.isclass(tp):
-                    continue
-                elif isinstance(value, tp):
-                    node = value
-                elif issubclass(tp, HTreeNode):
-                    node = tp(value, _entry=entry, _parent=self)
-                else:
-                    node = type_convert(tp, value)
-                break
+            if isinstance(_type_hint, tuple):
+                _type_hint = _type_hint[-1]
+
+            if not inspect.isclass(_type_hint):
+                node = value
+            elif isinstance(value, _type_hint):
+                node = value
+            elif issubclass(_type_hint, HTreeNode):
+                node = _type_hint(value, _entry=entry, _parent=self)
+            else:
+                node = type_convert(_type_hint, value)
 
         if isinstance(node, HTreeNode):
             if node._parent is None:
@@ -508,10 +516,17 @@ class HTree(GenericHelper[_T], HTreeNode):
                 if self._metadata.get("name", _not_found_) in (_not_found_, None, "unnamed"):
                     self._metadata["name"] = str(key)
 
+        self._cache = Path([key]).update(self._cache, node)
+
         return node
 
-    def __set_node__(self, key, *args, **kwargs) -> None:
-        self._cache = Path([key]).update(self._cache, *args, **kwargs)
+    def __set_node__(self, key, *args, _setter=None, **kwargs) -> None:
+        if callable(_setter):
+            _setter(self, key, *args, **kwargs)
+        else:
+            self._cache = Path([key]).update(self._cache, *args, **kwargs)
+
+        return self
         # key = args[0]
         # if (key is None or key == []) and value is self:
         #     pass
@@ -522,7 +537,6 @@ class HTree(GenericHelper[_T], HTreeNode):
         # else:
         #     self._cache = Path._delete(self._cache, key, value, *args, **kwargs)
 
-        return self
         # path = Path(*args)
         # if path.is_query:
         #     query = path.pop()
@@ -556,11 +570,13 @@ class HTree(GenericHelper[_T], HTreeNode):
         #         self._cache[key] = value
         # return value
 
-    def __del_node__(self, key_or_index: str | int) -> bool:
-        if (isinstance(self._cache, collections.abc.MutableMapping) and key_or_index in self._cache) or (
-            isinstance(self._cache, collections.abc.Sequence) and key_or_index < len(self._cache)
+    def __del_node__(self, key: str | int, _deleter=None) -> bool:
+        if callable(_deleter):
+            return _deleter(self, key)
+        elif (isinstance(self._cache, collections.abc.MutableMapping) and key in self._cache) or (
+            isinstance(self._cache, collections.abc.Sequence) and key < len(self._cache)
         ):
-            self._cache[key_or_index] = _not_found_
+            self._cache[key] = _not_found_
             return True
         else:
             return False
@@ -588,9 +604,9 @@ class Dict(HTree[_T]):
     """Dict 类型的 HTree 对象"""
 
     def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
-        if cache is  _not_found_:
-            cache = {}
         super().__init__(cache, _entry=_entry, _parent=_parent, **kwargs)
+        if self._cache is _not_found_:
+            self._cache = {}
 
     @property
     def is_mapping(self) -> bool:
@@ -641,17 +657,19 @@ class List(HTree[_T]):
     """List 类型的 HTree 对象"""
 
     def __init__(self, *args, **kwargs):
-        if len(args) == 1:
-            if args[0] is _not_found_:
-                cache = []
-            elif isinstance(args[0], list):
-                cache = args[0]
-            elif isinstance(args[0], collections.abc.Iterable):
-                cache = [*args[0]]
-        else:
-            cache = list(args)
+        # if len(args) == 1:
+        #     if args[0] is _not_found_:
+        #         cache = []
+        #     elif isinstance(args[0], list):
+        #         cache = args[0]
+        #     elif isinstance(args[0], collections.abc.Iterable):
+        #         cache = [*args[0]]
+        # else:
+        #     cache = list(args)
 
-        super().__init__(cache, **kwargs)
+        super().__init__(*args, **kwargs)
+        if self._cache is _not_found_:
+            self._cache = []
 
     @property
     def is_sequence(self) -> bool:
@@ -690,12 +708,17 @@ class List(HTree[_T]):
     def children(self) -> typing.Generator[_T, None, None]:
         """遍历子节点"""
         for idx in range(len(self)):
-            yield self.__getchild__(idx)
+            yield self.__get_node__(idx)
 
     @typing.final
     def __iter__(self) -> typing.Generator[_T, None, None]:
         """遍历子节点"""
         yield from self.children()
+
+    def __get_node__(self, key, *args, default_value=_not_found_, **kwargs) -> _T:
+        if default_value is _not_found_:
+            default_value = self._metadata.get("default_value", _not_found_)
+        return super().__get_node__(key, *args, default_value=default_value, **kwargs)
 
 
 collections.abc.MutableSequence.register(List)

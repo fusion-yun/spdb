@@ -37,26 +37,17 @@ class TimeSequence(List[_TSlice]):
     def __init__(self, *args, cache_depth=3, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if self._cache is _not_found_ or self._cache is None:
-            self._cache = []
-
         self._entry_cursor = None
         self._cache_cursor = len(self._cache) - 1
         self._cache_depth = cache_depth
+
+        if self._cache is _not_found_:
+            self._cache = []
 
         if self._cache_cursor + 1 < self._cache_depth:
             self._cache += [_not_found_] * (self._cache_depth - self._cache_cursor - 1)
         else:
             self._cache_depth = self._cache_cursor + 1
-
-    def dump(self, entry: Entry, **kwargs) -> None:
-        """将数据写入 entry"""
-        entry.insert([{}] * len(self._cache))
-        for idx, value in enumerate(self._cache):
-            if isinstance(value, HTree):
-                value.dump(entry.child(idx), **kwargs)
-            else:
-                entry.child(idx).insert(value)
 
     def __missing__(self, idx: int):
         """当循环队列满了或序号出界的时候调用
@@ -88,6 +79,15 @@ class TimeSequence(List[_TSlice]):
     @property
     def is_initializied(self) -> bool:
         return self._cache_cursor >= 0
+
+    def dump(self, entry: Entry, **kwargs) -> None:
+        """将数据写入 entry"""
+        entry.insert([{}] * len(self._cache))
+        for idx, value in enumerate(self._cache):
+            if isinstance(value, HTree):
+                value.dump(entry.child(idx), **kwargs)
+            else:
+                entry.child(idx).insert(value)
 
     def _find_slice_by_time(self, time: float) -> typing.Tuple[int, float]:
         if self._entry is None:
