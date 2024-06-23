@@ -26,7 +26,7 @@ class Entry(Pluggable):
     def __init__(
         self,
         data: typing.Any = _not_found_,
-        path: Path | PathLike = [],
+        path: Path | PathLike = None,
         *args,
         scheme=None,
         **kwargs,
@@ -99,6 +99,12 @@ class Entry(Pluggable):
     def value(self) -> typing.Any:
         return self._data if len(self._path) == 0 else self.get(default_value=_not_found_)
 
+    def __setitem__(self, key, value) -> None:
+        return self.put(key, value)
+
+    def __getitem__(self, key) -> typing.Type[Entry]:
+        return self.get(key)
+
     def get(self, *args, **kwargs) -> typing.Any:
         if len(args) > 0:
             return self.child(*args).get(**kwargs)
@@ -112,7 +118,7 @@ class Entry(Pluggable):
             return self._path.put(self._data, *args[-1:], **kwargs)
 
     def dump(self, *args, **kwargs) -> typing.Any:
-        return self.query(Query.dump, *args, **kwargs)
+        return self.query(Query.tags.dump, *args, **kwargs)
 
     def equal(self, other) -> bool:
         if isinstance(other, Entry):

@@ -6,16 +6,16 @@ import os
 import typing
 import contextlib
 
-from ..utils.logger import logger
-from ..utils.envs import SP_DEBUG, SP_LABEL
-from ..utils.tags import _not_found_
+from spdm.utils.logger import logger
+from spdm.utils.envs import SP_DEBUG, SP_LABEL
+from spdm.utils.tags import _not_found_
 
-from .htree import HTreeNode
-from .time_sequence import TimeSequence, TimeSlice
-from .obsolete.edge import InPorts, OutPorts, Port
-from .path import Path
-from .entity import Entity
-from .sp_tree import sp_property
+from spdm.core.htree import HTreeNode
+from spdm.core.time_sequence import TimeSequence, TimeSlice
+from spdm.core.port import Ports, Port
+from spdm.core.path import Path
+from spdm.core.entity import Entity
+from spdm.core.sp_tree import sp_property
 
 
 class Actor(Entity):
@@ -38,8 +38,8 @@ class Actor(Entity):
 
             inputs[name] = Port(None, type_hint=tp)
 
-        self._inports = InPorts(inputs, _parent=self)
-        self._outports = OutPorts(_parent=self)
+        self._inports = Ports(inputs, _parent=self)
+        self._outports = Ports(_parent=self)
 
     time_slice: TimeSequence[TimeSlice] = sp_property(default_value=[])
     """时间片序列，保存 Actor 历史状态。
@@ -47,12 +47,12 @@ class Actor(Entity):
         """
 
     @property
-    def inports(self) -> InPorts:
+    def inports(self) -> Ports:
         """输入的 Edge，记录对其他 Actor 的依赖。"""
         return self._inports
 
     @property
-    def outports(self) -> OutPorts:
+    def outports(self) -> Ports:
         """输出的 Edge，可视为对于引用（reference）的记录"""
         return self._outports
 

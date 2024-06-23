@@ -5,6 +5,7 @@ import collections.abc
 import inspect
 import pprint
 import re
+import itertools
 import typing
 from copy import copy, deepcopy
 from enum import Flag, auto
@@ -45,15 +46,13 @@ class Query:
         less = auto()
         greater = auto()
 
-    def __init__(self, query: QueryLike = None, only_first=True, **kwargs) -> None:
+    def __init__(self, query: QueryLike = None, **kwargs) -> None:
         if query is _not_found_ or query is None:
             query = {}
         if isinstance(query, Query):
             self._query = Query._parser(query._query, **kwargs)
         else:
             self._query = Query._parser(query, **kwargs)
-
-        self._only_first = only_first
 
     def __str__(self) -> str:
         p = self._query
@@ -99,8 +98,8 @@ class Query:
         if k == "." or k is Path.tags.current:
             res = Query._q_equal(target, v)
 
-        elif isinstance(k, str) and k.startswith("@"):
-            if hasattr(target.__class__, k[1:]):
+        elif isinstance(k, str):
+            if k.startswith("@") and hasattr(target.__class__, k[1:]):
                 res = Query._q_equal(getattr(target, k[1:], _not_found_), v)
 
             elif isinstance(target, collections.abc.Mapping):
@@ -408,7 +407,7 @@ class Path(list):
     # fmt:on
 
     def __init__(self, *args, **kwargs):
-        super().__init__(args[0] if len(args) == 1 and isinstance(args[0], list) else Path.parser(args), **kwargs)
+        super().__init__(args[0] if len(args) == 1 and isinstance(args[0], list) else Path.parser(*args), **kwargs)
 
     def __repr__(self):
         return Path._to_str(self)
@@ -718,7 +717,7 @@ class Path(list):
         elif isinstance(path, Path.tags):
             yield path
 
-        elif isinstance(path, (int, slice, set)):
+        elif isinstance(path, (int, slice, set, tuple)):
             yield path
 
         elif isinstance(path, collections.abc.Sequence):
@@ -729,9 +728,9 @@ class Path(list):
             yield Query(path)
 
     @staticmethod
-    def parser(path) -> list:
+    def parser(*args) -> list:
         """Parse the PathLike to list"""
-        return [*Path._parser_iter(path)]
+        return [*itertools.chain(*map(Path._parser_iter, args))]
 
     ###########################################################
     # 非幂等
@@ -789,7 +788,7 @@ class Path(list):
         return self.query(target, default_value=default_value)
 
     @typing.final
-    def pop(self, target, **kwargs):
+    def pop(self, target, default_value=_not_found_, **kwargs):
         """get and delete value from target"""
         value = self.get(target, **kwargs)
         if value is not _not_found_:
@@ -802,10 +801,6 @@ class Path(list):
     def search(self, target, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """遍历路径（self）中的元素，返回元素的索引和值"""
         yield from Path._search(target, self[:], *args, **kwargs)
-
-    def copy(self, source: typing.Any, target: typing.Any = None, **kwargs):
-        """copy object to target"""
-        return self.do_copy(source, target, self[:], **kwargs)
 
     ###########################################################
 
@@ -863,7 +858,14 @@ class Path(list):
                 elif key is Path.tags.extend:
                     target.extend(value)
                 elif isinstance(key, (str, dict)):
-                    raise NotImplementedError(f"TODO:Update sequence by filter! {key}")
+                    query = as_query(key)
+                    for idx, node in enumerate(target):
+                        if not query.check(node):
+                            continue
+                        new_node = Path._update(node, [], value)
+                        if new_node is not node:
+                            target[idx] = new_node
+
                 else:
                     raise KeyError(f"{type(target)} is not indexable! key={key} ")
             elif isinstance(target, collections.abc.MutableMapping):
@@ -919,13 +921,15 @@ class Path(list):
             res = source[key]
         elif isinstance(source, collections.abc.Sequence) and isinstance(key, (str)):
             query = as_query(name=key)
-            res = next(filter(query.check, source))
+            try:
+                res = next(filter(query.check, source))
+            except StopIteration:
+                res = _not_found_
         elif isinstance(source, collections.abc.Sequence) and isinstance(key, Query):
             query = as_query(key)
             res = [*filter(query.check, source)]
         elif isinstance(source, object) and isinstance(key, str) and key.startswith("@"):
             res = getattr(source, key[1:], kwargs.get("default_value", _not_found_))
-
         else:
             raise KeyError(f"Can not get {key} from {(source)}")
 
@@ -1078,8 +1082,6 @@ class Path(list):
         else:
             raise KeyError(f"{key}")
 
-            _op = None
-
     @staticmethod
     def _find(source, path: typing.List[PathItemLike], *args, **kwargs):
         if len(path) == 0 or path is None:
@@ -1090,7 +1092,8 @@ class Path(list):
             if key is None:
                 res = Path._find(source, sub_path)
             elif isinstance(key, tuple):
-                res = (Path._find(source, Path(k)[:] + sub_path) for k in key)
+                res=[Path._find(source, Path(k)[:] + sub_path) for k in key]
+                res = tuple(res)
             elif isinstance(key, list):
                 res = [Path._find(source, Path(k)[:] + sub_path) for k in key]
             elif isinstance(key, set):
@@ -1174,7 +1177,7 @@ class Path(list):
                     if child is source:
                         continue
                     yield from Path._search(child, sub_path, *args, **kwargs)
-                    
+
             elif key is Path.tags.descendants:
                 for child in Path._search(source, Path.tags.children):
                     yield from Path._search(child, sub_path, *args, **kwargs)
@@ -1195,8 +1198,8 @@ class Path(list):
             if isinstance(op, Query.tags):
                 op = getattr(Query, f"_q_{op.name}", _not_found_)
             if not callable(op):
-                logger.warning(f"illegal op {args}!")
-                res = target
+                raise RuntimeError(f"illegal op {args}!")
+                # res = target
             else:
                 res = op(target, *args[1:], **kwargs)
 

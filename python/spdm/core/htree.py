@@ -9,7 +9,7 @@ import abc
 from copy import deepcopy
 
 from spdm.utils.logger import logger
-from spdm.utils.tags import _not_found_, _undefined_
+from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, as_array, primary_type, PrimaryType, type_convert
 
 from spdm.core.entry import Entry, open_entry
@@ -31,28 +31,26 @@ def get_state(obj: typing.Any) -> dict:
 class HTreeNode:
     """HTreeNode is a node in the hierarchical tree."""
 
-    def __new__(cls, *args, **kwargs):
-        if cls is not HTreeNode and cls is not HTree:
-            return super().__new__(cls)
-        elif len(args) == 0:
-            return super().__new__(Dict)
-        elif len(args) > 1:
-            return super().__new__(List)
-
-        value = args[0]
-
-        if isinstance(value, collections.abc.Mapping):
-            return super().__new__(Dict)
-        elif isinstance(value, collections.abc.Sequence) and not isinstance(value, str):
-            return super().__new__(List)
-        elif isinstance(value, HTreeNode):
-            raise RuntimeError(f"Can not create {cls.__name__} from {value.__class__.__name__}")
-        elif len(kwargs) == 0 and cls is not HTree:
-            if not isinstance(value, primary_type) and not (value is None or value is _not_found_):
-                raise TypeError(f"Can not create {cls.__name__} from '{value.__class__.__name__}'")
-            return value
-        else:
-            return super().__new__(cls)
+    # def __new__(cls, *args, **kwargs):
+    #     if cls is not HTreeNode and cls is not HTree:
+    #         return super().__new__(cls)
+    #     elif len(args) == 0:
+    #         return super().__new__(Dict)
+    #     elif len(args) > 1:
+    #         return super().__new__(List)
+    #     value = args[0]
+    #     if isinstance(value, collections.abc.Mapping):
+    #         return super().__new__(Dict)
+    #     elif isinstance(value, collections.abc.Sequence) and not isinstance(value, str):
+    #         return super().__new__(List)
+    #     elif isinstance(value, HTreeNode):
+    #         raise RuntimeError(f"Can not create {cls.__name__} from {value.__class__.__name__}")
+    #     elif len(kwargs) == 0 and cls is not HTree:
+    #         if not isinstance(value, primary_type) and not (value is None or value is _not_found_):
+    #             raise TypeError(f"Can not create {cls.__name__} from '{value.__class__.__name__}'")
+    #         return value
+    #     else:
+    #         return super().__new__(cls)
 
     def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **metadata):
         """Initialize a HTreeNode object."""
@@ -355,9 +353,9 @@ class HTree(GenericHelper[_T], HTreeNode):
         return Path(*args).delete(self, **kwargs)
 
     @typing.final
-    def put(self, *args, **kwargs):
+    def put(self, path, value, **kwargs):
         """Put, alias of update"""
-        return self.update(*args, **kwargs)
+        return self.update(path, value, **kwargs)
 
     @typing.final
     def get(self, path, default_value=None, **kwargs) -> _T:
@@ -365,11 +363,11 @@ class HTree(GenericHelper[_T], HTreeNode):
         return self.query(path, default_value=default_value, **kwargs)
 
     @typing.final
-    def pop(self, *args, default_value=_not_found_, **kwargs) -> typing.Any:
+    def pop(self, path, default_value=_not_found_, **kwargs) -> typing.Any:
         """Pop , query and delete"""
-        node = self.get(*args, default_value=_not_found_, **kwargs)
+        node = self.get(path, default_value=_not_found_, **kwargs)
         if node is not _not_found_:
-            self.delete(*args, **kwargs)
+            self.delete(path, **kwargs)
             return node
         else:
             return default_value
@@ -420,20 +418,23 @@ class HTree(GenericHelper[_T], HTreeNode):
     # Python special methods
 
     @typing.final
-    def __getitem__(self, path: PathLike) -> _T:
+    def __getitem__(self, *path: PathLike) -> _T:
         """Get item from tree by path. 当找不到时，调用 __missing__ 方法"""
-        node = self.get(path, _not_found_)
+        node = self.get(Path(*path), default_value=_not_found_)
         return node if node is not _not_found_ else self.__missing__(path)
 
     @typing.final
     def __setitem__(self, path: PathLike, value) -> None:
         """Set item to tree by path. alias of update"""
-        return self.update(path, value)
+        if isinstance(path, tuple):
+            return self.update(*path, value)
+        else:
+            return self.update(path, value)
 
     @typing.final
-    def __delitem__(self, path: PathLike) -> None:
+    def __delitem__(self, *path: PathLike) -> None:
         """Delete item. alias of delete"""
-        return self.delete(path)
+        return self.delete(*path)
 
     def __missing__(self, path: PathLike) -> typing.Any:
         """fallback 当 __getitem__ 没有找到元素时被调用"""

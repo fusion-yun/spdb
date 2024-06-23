@@ -3,7 +3,7 @@ import typing
 
 import numpy as np
 
-from ..core.generic_helper import ArrayType
+from spdm.utils.type_hint import ArrayType
 
 from ..core.geo_object import GeoObject,BBox
 from .line import Segment

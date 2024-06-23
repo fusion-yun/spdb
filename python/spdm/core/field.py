@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-from copy import copy, deepcopy
 import collections.abc
-import functools
 import typing
-from enum import Enum
 import numpy as np
 
-from ..utils.logger import logger
-from ..utils.tags import _not_found_
-from .typing import ArrayType, array_type, as_array, is_array
+from spdm.utils.tags import _not_found_
+from spdm.utils.type_hint import ArrayType, array_type
 
-from .mesh import Mesh
-from .expression import Expression
-from .domain import Domain
+from spdm.core.mesh import Mesh
+from spdm.core.expression import Expression
 
 
 class Field(Expression):

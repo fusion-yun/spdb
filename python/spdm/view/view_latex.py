@@ -8,7 +8,7 @@ from ..core.expression import Expression, Variable
 from ..core.functor import Functor
 from ..core.function import Function
 from ..utils.logger import logger
-from ..core.generic_helper import array_type
+from spdm.utils.type_hint  import array_type
 from .sp_view import SpView
 
 _EXPR_OP_NAME = {

@@ -27,36 +27,36 @@ class NamedFoo(Dict):
 
 
 class TestHTree(unittest.TestCase):
-    def test_new(self):
+    # def test_new(self):
 
-        self.assertTrue(HTreeNode().__empty__())
-        self.assertFalse(HTreeNode().__null__())
+    #     self.assertTrue(HTreeNode().__empty__())
+    #     self.assertFalse(HTreeNode().__null__())
 
-        self.assertEqual(HTreeNode(None), None)
-        self.assertEqual(HTreeNode("hello"), "hello")
-        self.assertEqual(HTreeNode(1.2345), 1.2345)
-        self.assertTrue(isinstance(HTreeNode(np.ones([10, 20])), np.ndarray))
+    #     self.assertEqual(HTreeNode(None), None)
+    #     self.assertEqual(HTreeNode("hello"), "hello")
+    #     self.assertEqual(HTreeNode(1.2345), 1.2345)
+    #     self.assertTrue(isinstance(HTreeNode(np.ones([10, 20])), np.ndarray))
 
-        with self.assertRaises(TypeError):
-            HTreeNode({1, 2, 3, 4, 5})  # set is not supported
+    #     with self.assertRaises(TypeError):
+    #         HTreeNode({1, 2, 3, 4, 5})  # set is not supported
 
-        self.assertTrue(HTree().__empty__())
-        self.assertFalse(HTree().__null__())
-        self.assertTrue(HTree(None).__null__())
-        self.assertTrue(isinstance(HTree(1), HTree))
-        self.assertTrue(isinstance(HTree(1, _parent=None), HTree))
-        self.assertTrue(isinstance(HTree(1, first=1, second=2, name="hello"), HTree))
-        self.assertTrue(isinstance(HTree(first=1, second=2, name="hello"), Dict))
-        self.assertTrue(isinstance(HTree({"first": 1, "second": 2, "name": "hello"}), Dict))
-        self.assertTrue(isinstance(HTree([1, 2, 3, 4]), List))
-        self.assertTrue(isinstance(HTree("hello"), HTree))
-        self.assertTrue(isinstance(HTree(1), HTree))
-        self.assertTrue(isinstance(HTree(np.ones([10, 20])), HTree))
-        self.assertTrue(isinstance(HTree([1, 2, 3, 4, 5]), List))
-        self.assertTrue(isinstance(HTree((1, 2, 3, 4, 5)), List))
-        self.assertTrue(isinstance(HTree({"a": 1, "b": 2, "c": 3}), Dict))
+    #     self.assertTrue(HTree().__empty__())
+    #     self.assertFalse(HTree().__null__())
+    #     self.assertTrue(HTree(None).__null__())
+    #     self.assertTrue(isinstance(HTree(1), HTree))
+    #     self.assertTrue(isinstance(HTree(1, _parent=None), HTree))
+    #     self.assertTrue(isinstance(HTree(1, first=1, second=2, name="hello"), HTree))
+    #     self.assertTrue(isinstance(HTree(first=1, second=2, name="hello"), Dict))
+    #     self.assertTrue(isinstance(HTree({"first": 1, "second": 2, "name": "hello"}), Dict))
+    #     self.assertTrue(isinstance(HTree([1, 2, 3, 4]), List))
+    #     self.assertTrue(isinstance(HTree("hello"), HTree))
+    #     self.assertTrue(isinstance(HTree(1), HTree))
+    #     self.assertTrue(isinstance(HTree(np.ones([10, 20])), HTree))
+    #     self.assertTrue(isinstance(HTree([1, 2, 3, 4, 5]), List))
+    #     self.assertTrue(isinstance(HTree((1, 2, 3, 4, 5)), List))
+    #     self.assertTrue(isinstance(HTree({"a": 1, "b": 2, "c": 3}), Dict))
 
-        # self.assertEqual(len(n) == 0)
+    #     # self.assertEqual(len(n) == 0)
 
     def test_type_hint(self):
         d1 = List[HTree]([])
@@ -127,7 +127,7 @@ class TestHTree(unittest.TestCase):
         self.assertEqual(cache["e"]["f"], 5)
         self.assertEqual(cache["e"]["g"], 6)
 
-        d["e/h", 0] = 7
+        d["e/h/0"] = 7
 
         self.assertEqual(cache["e"]["h"][0], 7)
 

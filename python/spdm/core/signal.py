@@ -1,6 +1,6 @@
-from .typing import array_type
-from .function import Function
-from .sp_tree import sp_tree, sp_property
+from spdm.utils.type_hint import array_type
+from spdm.core.function import Function
+from spdm.core.sp_tree import sp_tree, sp_property
 
 
 @sp_tree

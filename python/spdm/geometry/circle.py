@@ -1,20 +1,19 @@
 import typing
 
-from ..core.generic_helper import ArrayType
-from ..core.geo_object import GeoObject,BBox
+from spdm.utils.type_hint import ArrayType
+from spdm.core.geo_object import GeoObject, BBox
 
-from .line import Line
-from .plane import Plane
-from .point import Point
-from .solid import Solid
-from .surface import Surface
-
+from spdm.geometry.line import Line
+from spdm.geometry.plane import Plane
+from spdm.geometry.point import Point
+from spdm.geometry.solid import Solid
+from spdm.geometry.surface import Surface
 
 
 @GeoObject.register("circle")
 class Circle(GeoObject):
-    """ Circle
-        圆，具有一个固定圆心和一个固定半径
+    """Circle
+    圆，具有一个固定圆心和一个固定半径
     """
 
     def __init__(self, x: float, y: float, r: float, **kwargs) -> None:
@@ -25,16 +24,19 @@ class Circle(GeoObject):
 
     @property
     def bbox(self) -> BBox:
-        return BBox([self._x - self._r, self._y - self._r], [2.0*self._r, 2.0 * self._r])
+        return BBox([self._x - self._r, self._y - self._r], [2.0 * self._r, 2.0 * self._r])
 
     @property
-    def x(self) -> float: return self._x
+    def x(self) -> float:
+        return self._x
 
     @property
-    def y(self) -> float: return self._y
+    def y(self) -> float:
+        return self._y
 
     @property
-    def r(self) -> float: return self._r
+    def r(self) -> float:
+        return self._r
 
     def map(self, u, *args, **kwargs):
         return NotImplemented
@@ -54,16 +56,17 @@ class Circle(GeoObject):
 
 @GeoObject.register("ellipse")
 class Ellipse(GeoObject):
-    """ Ellipse
-        椭圆，具有一个固定圆心和两个固定半径
+    """Ellipse
+    椭圆，具有一个固定圆心和两个固定半径
     """
+
     pass
 
 
 @Plane.register("disc")
 class Disc(Plane):
-    """ Disc
-        圆盘
+    """Disc
+    圆盘
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -77,8 +80,8 @@ class Disc(Plane):
 
 @Surface.register("sphere")
 class Sphere(Surface):
-    """ Sphere
-        球面
+    """Sphere
+    球面
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -90,8 +93,8 @@ class Sphere(Surface):
 
 @Solid.register("ball")
 class Ball(GeoObject):
-    """ Ball
-        球体
+    """Ball
+    球体
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -101,9 +104,10 @@ class Ball(GeoObject):
 
 @Solid.register("cylinder")
 class Cylinder(GeoObject):
-    """ Cylinder
-        圆柱体，具有两个固定端面
+    """Cylinder
+    圆柱体，具有两个固定端面
     """
+
     pass
 
 
@@ -117,4 +121,8 @@ class ToroidalSurface(Surface):
 class Toroidal(Solid):
     def __init__(self, section: Plane, circle: Circle, *args, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._boundary = ToroidalSurface(cross_section.boundary, circle, *args,)
+        self._boundary = ToroidalSurface(
+            cross_section.boundary,
+            circle,
+            *args,
+        )

@@ -2,7 +2,7 @@ import typing
 import numpy as np
 from ..core.mesh import Mesh
 from .mesh_structured import StructuredMesh
-from ..core.generic_helper import ArrayType
+from spdm.utils.type_hint import ArrayType
 
 
 @Mesh.register("uniform")

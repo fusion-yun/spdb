@@ -5,17 +5,19 @@ from functools import cached_property
 
 import numpy as np
 
-from ..core.function import Function
-from ..core.geo_object import BBox, GeoObject
+from spdm.core.function import Function
+from spdm.core.geo_object import BBox, GeoObject
 
-from ..geometry.box import Box
-from ..geometry.curve import Curve
-from ..geometry.line import Line
-from ..geometry.point import Point
-from ..numlib.interpolate import interpolate
-from ..utils.logger import logger
-from ..core.generic_helper import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
-from ..core.mesh import Mesh
+from spdm.geometry.box import Box
+from spdm.geometry.curve import Curve
+from spdm.geometry.line import Line
+from spdm.geometry.point import Point
+from spdm.numlib.interpolate import interpolate
+from spdm.utils.logger import logger
+from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
+
+from spdm.core.mesh import Mesh
+
 from .mesh_structured import StructuredMesh
 
 

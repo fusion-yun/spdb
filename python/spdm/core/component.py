@@ -1,9 +1,9 @@
 import typing
 import abc
-from .entity import Entity
-from .signal import Signal
-from .obsolete.sp_tree import PropertyTree
-from .geo_object import GeoObject
+from spdm.core.entity import Entity
+from spdm.core.signal import Signal
+from spdm.core.sp_tree import PropertyTree
+from spdm.core.geo_object import GeoObject
 
 
 class Component(Entity):

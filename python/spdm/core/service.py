@@ -20,7 +20,7 @@ from spdm.utils.logger import logger
 from spdm.utils.envs import SP_DEBUG, SP_LABEL
 
 from spdm.core.htree import HTreeNode
-from spdm.core.obsolete.edge import InPorts, OutPorts, Port
+from spdm.core.port import Ports, Port
 from spdm.core.path import Path
 from spdm.core.pluggable import Pluggable
 
@@ -52,16 +52,16 @@ class Service(Pluggable):
 
             inputs[name] = Port(None, type_hint=tp)
 
-        self._inports = InPorts(inputs, _parent=self)
-        self._outports = OutPorts(_parent=self)
+        self._inports = Ports(inputs, _parent=self)
+        self._outports = Ports(_parent=self)
 
     @property
-    def inports(self) -> InPorts:
+    def inports(self) -> Ports:
         """Returns the input edges that record dependencies on other actors."""
         return self._inports
 
     @property
-    def outports(self) -> OutPorts:
+    def outports(self) -> Ports:
         """Returns the output edges that can be considered as references."""
         return self._outports
 

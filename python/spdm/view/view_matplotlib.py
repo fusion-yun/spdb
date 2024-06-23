@@ -5,25 +5,25 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..core.path import update_tree, merge_tree
-from ..core.expression import Expression
-from ..core.signal import Signal
-from ..core.field import Field
-from ..core.function import Function
+from spdm.core.path import update_tree, merge_tree
+from spdm.core.expression import Expression
+from spdm.core.signal import Signal
+from spdm.core.field import Field
+from spdm.core.function import Function
 
-from ..geometry.circle import Circle
-from ..geometry.curve import Curve
-from ..core.geo_object import GeoObject, BBox
-from ..geometry.line import Line
-from ..geometry.point import Point
-from ..geometry.point_set import PointSet
-from ..geometry.polygon import Polygon, Rectangle
-from ..geometry.polyline import Polyline
+from spdm.geometry.circle import Circle
+from spdm.geometry.curve import Curve
+from spdm.core.geo_object import GeoObject, BBox
+from spdm.geometry.line import Line
+from spdm.geometry.point import Point
+from spdm.geometry.point_set import PointSet
+from spdm.geometry.polygon import Polygon, Rectangle
+from spdm.geometry.polyline import Polyline
 
-from ..utils.envs import SP_DEBUG
-from ..utils.logger import SP_DEBUG, logger
-from ..utils.tags import _not_found_
-from ..core.generic_helper import array_type, as_array, is_array, is_scalar
+from spdm.utils.envs import SP_DEBUG
+from spdm.utils.logger import SP_DEBUG, logger
+from spdm.utils.tags import _not_found_
+from spdm.utils.type_hint import array_type, as_array, is_array, is_scalar
 
 from .sp_view import SpView
 

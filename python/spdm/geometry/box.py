@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from ..core.geo_object import GeoObject,BBox, BBox
-from ..core.generic_helper import array_type
+from spdm.utils.type_hint import array_type
 from ..utils.logger import logger
 
 

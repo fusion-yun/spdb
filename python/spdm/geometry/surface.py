@@ -5,17 +5,16 @@ import typing
 from copy import copy
 import numpy as np
 
-from ..utils.logger import logger
-from ..core.generic_helper import (ArrayLike, ArrayType, NumericType, array_type,
-                            nTupleType)
-from ..core.geo_object import GeoObject,BBox
-from .point_set import PointSet
-from .curve import Curve
-from .line import Segment
+from spdm.utils.logger import logger
+from spdm.utils.type_hint import ArrayLike, ArrayType, NumericType, array_type, nTupleType
+from spdm.core.geo_object import GeoObject, BBox
+from spdm.geometry.point_set import PointSet
+from spdm.geometry.curve import Curve
+from spdm.geometry.line import Segment
 
 
 class Surface(PointSet):
-    """ Surface """
+    """Surface"""
 
     def __init__(self, *args, uv=None, **kwargs) -> None:
         super().__init__(*args, rank=2, **kwargs)
@@ -29,14 +28,18 @@ class Surface(PointSet):
         return super().enclose(*args)
 
     @property
-    def boundary(self) -> Curve: return Curve(super().boundary, is_closed=True)
+    def boundary(self) -> Curve:
+        return Curve(super().boundary, is_closed=True)
 
     @functools.cached_property
-    def measure(self) -> float: return np.sum(self.dl)
+    def measure(self) -> float:
+        return np.sum(self.dl)
 
-    def coordinates(self, *uvw) -> ArrayType: raise NotImplementedError(f"{self.__class__.__name__}.coordinates")
+    def coordinates(self, *uvw) -> ArrayType:
+        raise NotImplementedError(f"{self.__class__.__name__}.coordinates")
 
-    def derivative(self, *args, **kwargs): raise NotImplementedError(f"{self.__class__.__name__}.derivative")
+    def derivative(self, *args, **kwargs):
+        raise NotImplementedError(f"{self.__class__.__name__}.derivative")
 
     def remesh(self, u) -> Surface:
         other: Surface = copy(self)
@@ -53,8 +56,8 @@ class Surface(PointSet):
         if self._points.ndim != 2:
             raise NotImplementedError(f"{self.__class__.__name__}.edges for ndim!=2")
         elif self._edges is None:
-            for idx in range(self._points.shape[0]-1):
-                yield Segment(self._points[idx], self._points[idx+1])
+            for idx in range(self._points.shape[0] - 1):
+                yield Segment(self._points[idx], self._points[idx + 1])
         elif isinstance(self._edges, array_type):
             for b, e in self._edges:
                 yield Segment(self._points[b], self._points[e])

@@ -113,30 +113,30 @@ class TestPath(unittest.TestCase):
         self.assertTrue("b" not in cache)
         self.assertEqual(cache["a"], ["hello world {name}!", 1, 2, 3, 4])
 
-    # def test_sequence_tag(self):
-    #     cache = {
-    #         "people": [
-    #             {"@name": "zhangsan", "age": 10, "address": "beijing"},
-    #             {"@name": "lisi", "age": 20, "address": "shanghai"},
-    #             {"@name": "wangwu", "age": 30, "address": "guangzhou"},
-    #             {"@name": "zhaoliu", "age": 40, "address": "shenzhen"},
-    #         ]
-    #     }
+    def test_sequence_tag(self):
+        cache = {
+            "people": [
+                {"name": "zhangsan", "age": 10, "address": "beijing"},
+                {"name": "lisi", "age": 20, "address": "shanghai"},
+                {"name": "wangwu", "age": 30, "address": "guangzhou"},
+                {"name": "zhaoliu", "age": 40, "address": "shenzhen"},
+            ]
+        }
 
-    #     self.assertEqual(Path("people/zhangsan/age").get(cache), 10)
-    #     self.assertEqual(Path("people/lisi/age").get(cache), 20)
+        self.assertEqual(Path("people/zhangsan/age").get(cache), 10)
+        self.assertEqual(Path("people/lisi/age").get(cache), 20)
 
-    #     Path("people/qianqi/age").put(cache, 70)
-    #     self.assertEqual(Path("people/qianqi/age").get(cache), 70)
+        Path("people/lisi/age").put(cache, 70)
+        self.assertEqual(Path("people/lisi/age").get(cache), 70)
 
-    # def test_find_many(self):
+    def test_find_many(self):
 
-    #     res = Path(("a/2", "c",  "d/e", "e")).query(self.data, default_value=_not_found_)
+        res = Path(("a/2", "c",  "d/e", "e")).find(self.data, default_value=_not_found_)
 
-    #     self.assertListEqual(res, [self.data['a'][2],
-    #                                self.data['c'],
-    #                                self.data['d']['e'],
-    #                                _not_found_])
+        self.assertListEqual(list(res), [self.data['a'][2],
+                                   self.data['c'],
+                                   self.data['d']['e'],
+                                   _not_found_])
 
 
 if __name__ == "__main__":
