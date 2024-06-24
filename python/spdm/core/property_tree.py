@@ -15,19 +15,18 @@ class PropertyTree(Dict):
             return super().__getattribute__(key)
         return self.__get_node__(key, default_value=_not_found_)
 
-    def __get_node__(self, key, *args, _type_hint=None, **kwargs):
-        if _type_hint is None:
-            _type_hint = self.__class__
+    def __get_node__(self, key, *args, _type_hint=None, _getter=None, _entry=None, default_value=_not_found_, **kwargs):
 
-        _entry = self._entry.child(key) if self._entry is not None else None
+        if _entry is None and self._entry is not None:
+            _entry = self._entry.child(key)
 
-        value = Path([key]).get(self._cache, *args, **kwargs)
+        value = Path([key]).get(self._cache, default_value=default_value)
 
         if value is _not_found_ and _entry is not None:
             value = _entry.get(default_value=_not_found_)
             _entry = None
 
-        if isinstance(value, dict) :
+        if isinstance(value, dict):
             value = PropertyTree(value, _entry=_entry, _parent=self)
         elif isinstance(value, list) and (len(value) == 0 or isinstance(value[0], (dict, HTree))):
             value = AoS[PropertyTree](value, _entry=_entry, _parent=self)

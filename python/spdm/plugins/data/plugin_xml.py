@@ -16,7 +16,7 @@ from lxml.etree import fromstring, tostring
 from lxml.etree import parse as parse_xml
 from spdm.core.entry import Entry
 from spdm.core.file import File
-from spdm.core.path import Path, PathLike
+from spdm.core.path import Path, PathLike, Query
 from spdm.utils.logger import logger
 from spdm.utils.misc import normalize_path, serialize
 from spdm.utils.path_traverser import PathTraverser
@@ -194,7 +194,9 @@ class XMLEntry(Entry):
             return _not_found_
         else:
             res = [self._dump(e, path=path, lazy=lazy, envs=envs, **kwargs) for e in element]
-            if len(res) == 1 and not (isinstance(res[0], collections.abc.Mapping) and res[0].get("@id", None) is not None):
+            if len(res) == 1 and not (
+                isinstance(res[0], collections.abc.Mapping) and res[0].get("@id", None) is not None
+            ):
                 return res[0]
             else:
                 return res
@@ -305,11 +307,11 @@ class XMLEntry(Entry):
 
         obj: typing.List[_XMLElement] = xp.evaluate(self._data)
 
-        if op is Path.tags.exists:
+        if op is Query.tags.exists:
             return len(obj) > 0
-        elif op is Path.tags.count:
+        elif op is Query.tags.count:
             return len(obj)
-        elif op is Path.tags.is_leaf:
+        elif op is Query.tags.is_leaf:
             if len(obj) == 0:
                 return _not_found_
             elif len(obj) > 1:
@@ -317,13 +319,13 @@ class XMLEntry(Entry):
             else:
                 return len(obj[0]) == 0
 
-        elif op is Path.tags.is_list:
+        elif op is Query.tags.is_list:
             return len(obj) > 1 or (len(obj) == 1 and obj[0].attrib.get("id", None) != None)
 
-        elif op is Path.tags.is_dict:
+        elif op is Query.tags.is_dict:
             return len(obj) == 1
 
-        elif op is None or op is Path.tags.read:
+        elif op is None or op is Query.tags.read:
             return self._dump(obj, path=path, envs=envs, **kwargs)
 
         else:
