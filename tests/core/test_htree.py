@@ -59,7 +59,10 @@ class TestHTree(unittest.TestCase):
     #     # self.assertEqual(len(n) == 0)
 
     def test_type_hint(self):
-        d1 = List[HTree]([])
+        d1 = List[Dict]([])
+
+        self.assertEqual(d1._DEFAULT_TYPE_HINT, Dict)
+
         d1.insert({"a": 1, "b": 2})
 
         self.assertIsInstance(d1[0], HTree)
@@ -209,7 +212,7 @@ class TestHTree(unittest.TestCase):
         d = Dict[List]({"this_is_a_cache": True})
 
         d.insert("a", "hello world {name}!")
-        
+
         self.assertEqual(d["a"][0], "hello world {name}!")
 
         d.insert("c", 1.23455)
@@ -220,6 +223,17 @@ class TestHTree(unittest.TestCase):
         d.insert("c", {"a": "hello world", "b": 3.141567})
         self.assertEqual(d["c"][1]["b"], 3.141567)
         self.assertEqual(d.get("c/1/b"), 3.141567)
+
+    def test_list_default_child_value(self):
+        cache = [{"a": 6}, {"a": 7}, {"a": 8}, {}]
+        d = List(cache, default_value={"a": 1, "b": 2, "c": 3})
+
+        self.assertEqual(d[0]["a"], 6)
+        self.assertEqual(d[0]["b"], 2)
+        self.assertEqual(d[0]["c"], 3)
+        self.assertEqual(d[-1]["a"], 1)
+        self.assertEqual(d[-1]["b"], 2)
+        self.assertEqual(d[-1]["c"], 3)
 
 
 # class TestQuery(unittest.TestCase):

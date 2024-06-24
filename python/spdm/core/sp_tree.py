@@ -45,10 +45,8 @@ import typing
 from copy import deepcopy
 from _thread import RLock
 
-from spdm.core.entry import Entry
-from spdm.core.aos import AoS
 from spdm.core.htree import HTree, Dict, HTreeNode
-from spdm.core.path import update_tree, Path
+from spdm.core.path import update_tree
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_, _undefined_
 
@@ -65,17 +63,11 @@ def _copy(obj, *args, **kwargs):
 
         for k, attr in inspect.getmembers(obj.__class__, lambda c: isinstance(c, SpProperty)):
             if attr.getter is None and attr.alias is None:
-                try:
-                    value = getattr(obj, k, _not_found_)
-                except Exception as error:
-                    value = _not_found_
+
+                value = getattr(obj, k, _not_found_)
 
                 if value is not _not_found_:
-                    try:
-                        cache[k] = _copy(value, *args, **kwargs)
-                    except Exception as error:
-                        logger.exception(f"{obj} {value}")
-                        raise error
+                    cache[k] = _copy(value, *args, **kwargs)
 
         return cache
 
@@ -86,7 +78,10 @@ def _copy(obj, *args, **kwargs):
         return deepcopy(obj)
 
 
-class SpTree(Dict):
+_T = typing.TypeVar("_T")
+
+
+class SpTree(Dict[_T]):
     """支持 sp_property 的 Dict"""
 
     def __init_subclass__(cls) -> None:
@@ -145,69 +140,6 @@ class SpTree(Dict):
                     cache[k] = HTreeNode._do_fetch(value, *args, **kwargs)
 
         return self.__duplicate__(cache, _parent=None)
-
-
-class PropertyTree(SpTree):
-    """属性树，通过 __getattr__ 访问成员，并转换为对应的类型"""
-
-    def __new__(cls, *args, **kwargs):
-        if cls is PropertyTree and len(args) == 1 and not isinstance(args[0], (dict, Entry)):
-            return args[0]
-        else:
-            return super().__new__(cls)
-
-    def __getattr__(self, key: str, *args, **kwargs) -> PropertyTree | AoS:
-        if key.startswith("_"):
-            return super().__getattribute__(key)
-
-        _entry = self._entry.child(key) if self._entry is not None else None
-        value = Path.do_get(self._cache, [key], *args, **kwargs)
-        if value is _not_found_ and _entry is not None:
-            value = _entry.get(default_value=_not_found_)
-            _entry = None
-
-        if isinstance(value, dict):
-            return PropertyTree(value, _entry=_entry, _parent=self)
-        elif isinstance(value, list) and (len(value) == 0 or isinstance(value[0], (dict, HTree))):
-            return AoS[PropertyTree](value, _entry=_entry, _parent=self)
-        elif value is _not_found_:
-            if _entry is not None:
-                return PropertyTree(value, _entry=_entry, _parent=self)
-            else:
-                return self.__missing__(key)
-        else:
-            return value
-
-    def __missing__(self, key) -> typing.Any:
-        return _not_found_
-
-    def _type_hint_(self, *args, **kwargs):
-        return PropertyTree
-
-    # def _type_convert(self, value: typing.Any, *args, _type_hint=None, **kwargs) -> _T:
-    #     if _type_hint is None or _type_hint is _not_found_:
-    #         return value
-    #     else:
-    #         return super()._type_convert(value, *args, _type_hint=_type_hint, **kwargs)
-
-    def dump(self, entry: Entry | None = None, force=False, quiet=True) -> Entry:
-        """
-        Dumps the cache entries into an Entry object.
-
-        Args:
-            entry (Entry | None): An optional Entry object to update with the cache entries.
-                If None, a deepcopy of the cache entries is returned.
-            force (bool): If True, forces the update of the entry with the cache entries.
-            quiet (bool): If True, suppresses any output during the update.
-
-        Returns:
-            Entry: The updated Entry object if entry is not None, otherwise a deepcopy of the cache entries.
-        """
-        if entry is None:
-            return deepcopy(self._cache)
-        else:
-            entry.update(self._cache)
-            return entry
 
 
 _T = typing.TypeVar("_T")

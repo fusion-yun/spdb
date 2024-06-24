@@ -15,10 +15,10 @@ from spdm.core.time_sequence import TimeSequence, TimeSlice
 from spdm.core.port import Ports, Port
 from spdm.core.path import Path
 from spdm.core.entity import Entity
-from spdm.core.sp_tree import sp_property
 
+_TSlice = typing.TypeVar("_TSlice")
 
-class Actor(Entity):
+class Actor(Entity[_TSlice]):
     """执行体，追踪一个随时间演化的对象，其一个时间点的状态树称为 __时间片__ (time_slice),
     由时间片的构成的序列，代表状态演化历史。
     """
@@ -41,7 +41,7 @@ class Actor(Entity):
         self._inports = Ports(inputs, _parent=self)
         self._outports = Ports(_parent=self)
 
-    time_slice: TimeSequence[TimeSlice] = sp_property(default_value=[])
+    time_slice: TimeSequence[_TSlice]
     """时间片序列，保存 Actor 历史状态。
         @note: TimeSeriesAoS 长度为 n(=3) 循环队列。当压入序列的 TimeSlice 数量超出 n 时，会调用 TimeSeriesAoS.__full__(first_slice)
         """
@@ -107,7 +107,7 @@ class Actor(Entity):
         for k in [*kwargs.keys()]:
             if isinstance(kwargs[k], HTreeNode):
                 self.inports[k] = kwargs.pop(k)
-                
+
         # inputs = {k: kwargs.pop(k) for k in [*kwargs.keys()] if isinstance(kwargs[k], HTreeNode)}
         # self.inports.update(inputs)
 

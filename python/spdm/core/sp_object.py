@@ -4,8 +4,10 @@ import inspect
 from spdm.core.pluggable import Pluggable
 from spdm.core.sp_tree import SpTree, PropertyTree, sp_property
 
+_Ts = typing.TypeVarTuple("_Ts")
 
-class SpObject(SpTree, Pluggable):
+
+class SpObject(SpTree[*_Ts], Pluggable):
     """对象的基类/抽象类"""
 
     def __new__(cls, *args, **kwargs):

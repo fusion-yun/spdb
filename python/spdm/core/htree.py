@@ -304,7 +304,7 @@ class HTreeNode:
     #     )
 
 
-_T = typing.TypeVar("_T", *primary_type, HTreeNode)
+_T = typing.TypeVar("_T")
 _TR = typing.TypeVar("_TR")  # return value type
 
 
@@ -324,6 +324,8 @@ class HTree(GenericHelper[_T], HTreeNode):
     ## Path：
       - path 指向
     """
+
+    _DEFAULT_TYPE_HINT = _T
 
     @property
     def is_leaf(self) -> bool:
@@ -464,15 +466,13 @@ class HTree(GenericHelper[_T], HTreeNode):
     # -----------------------------------------------------------------------------
     # API as container
 
-    def __get_node__(
-        self, key, *args, _type_hint=None, _getter=None, default_value=_not_found_, **kwargs
-    ) -> typing.Any:
+    def __get_node__(self, key, _type_hint=None, _entry=None, _getter=None, default_value=_not_found_, **kwargs) -> _T:
 
-        if key is None and len(args) + len(kwargs) == 0:
+        if key is None and len(kwargs) == 0:
             return self
 
         if callable(_getter):
-            value = _getter(self, key, *args, **kwargs)
+            value = _getter(self, key, **kwargs)
 
         else:
             value = Path([key]).find(self._cache, default_value=_not_found_)
@@ -480,14 +480,16 @@ class HTree(GenericHelper[_T], HTreeNode):
         if value is _not_found_ or (isinstance(value, dict) and isinstance(default_value, dict)):
             value = Path().update(deepcopy(default_value), value)
 
-        entry = self._entry.child(key) if self._entry is not None else None
+        if _entry is None and self._entry is not None:
+            _entry = self._entry.child(key)
+
+        orig_cls = typing.get_origin(self.__class__) or self.__class__
 
         if _type_hint is None and isinstance(key, str) and key.isidentifier():
-            cls = typing.get_origin(self.__class__) or self.__class__
-            _type_hint = typing.get_type_hints(cls).get(key, None)
+            _type_hint = typing.get_type_hints(orig_cls).get(key, None)
 
         if _type_hint is None:
-            _type_hint = getattr(self.__class__, "__args__", None)
+            _type_hint = self._DEFAULT_TYPE_HINT
 
         if _type_hint is None or _type_hint is _not_found_:
             node = value
@@ -501,9 +503,9 @@ class HTree(GenericHelper[_T], HTreeNode):
             elif isinstance(value, _type_hint):
                 node = value
             elif issubclass(_type_hint, HTreeNode):
-                node = _type_hint(value, _entry=entry, _parent=self)
+                node = _type_hint(value, _entry=_entry, _parent=self, **kwargs)
             else:
-                node = type_convert(_type_hint, value)
+                node = type_convert(_type_hint, value, **kwargs)
 
         if isinstance(node, HTreeNode):
             if node._parent is None:

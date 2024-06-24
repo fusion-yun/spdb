@@ -1,13 +1,12 @@
 import uuid
 import typing
 
-from .htree import HTree
-from .pluggable import Pluggable
-from .sp_tree import SpTree
-from .sp_object import sp_object, SpObject
+from spdm.core.sp_object import sp_object, SpObject
+
+_Ts = typing.TypeVarTuple("_Ts")
 
 
-class Entity(SpObject):
+class Entity(SpObject[*_Ts]):
     """实体的基类/抽象类"""
 
     @property

@@ -1,10 +1,9 @@
 import unittest
-
+import typing
 import numpy as np
-from spdm.core.htree import List
+from spdm.core.htree import List,Dict
 from spdm.core.sp_tree import SpTree
-from spdm.core.time_sequence import TimeSequence
-from spdm.core.aos import AoS
+
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 
@@ -65,9 +64,8 @@ class EqTimeSlice(SpTree):
 
 
 class Eq(SpTree):
-
     time: np.ndarray
-    time_slice: TimeSequence[EqTimeSlice]
+    time_slice: List[EqTimeSlice]
 
 
 class TestSpTree(unittest.TestCase):
@@ -125,21 +123,11 @@ class TestSpTree(unittest.TestCase):
         with self.assertRaises(AttributeError):
             d.doo
 
-    def test_list_default_child_value(self):
-        cache = [{"a": 6}, {"a": 7}, {"a": 8}, {}]
-        d = AoS[Foo](cache, default_value={"a": 1, "b": 2, "c": 3})
-        self.assertEqual(d[0].a, 6)
-        self.assertEqual(d[0].b, 2)
-        self.assertEqual(d[0].c, 3)
-        self.assertEqual(d[-1].a, 1)
-        self.assertEqual(d[-1].b, 2)
-        self.assertEqual(d[-1].c, 3)
-
     def test_sp_data(self):
 
         eq = Eq(eq_data)
 
-        self.assertTrue(isinstance(eq.time_slice, TimeSequence))
+        self.assertTrue(isinstance(eq.time_slice, List))
         self.assertTrue(isinstance(eq.time_slice[0], EqTimeSlice))
         time_slice: EqTimeSlice = eq.time_slice[0]
         profiles_2d: EquilibriumProfiles2d = time_slice.profiles_2d
@@ -147,6 +135,7 @@ class TestSpTree(unittest.TestCase):
             profiles_2d.grid.dim1,
             eq_data["time_slice"][0]["profiles_2d"]["grid"]["dim1"],
         )
+
 
 
 if __name__ == "__main__":

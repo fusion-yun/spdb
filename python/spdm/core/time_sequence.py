@@ -49,7 +49,7 @@ class TimeSequence(List[_TSlice]):
         else:
             self._cache_depth = self._cache_cursor + 1
 
-    def __missing__(self, idx: int):
+    def __missing__(self, idx: int) -> _TSlice:
         """当循环队列满了或序号出界的时候调用
         :param o: 最老的 time_slice
         """
@@ -69,12 +69,12 @@ class TimeSequence(List[_TSlice]):
 
     @property
     def current(self) -> _TSlice:
-        return self._find_(0)
+        return self.__get_node__(0)
 
     @property
     def previous(self) -> typing.Generator[_TSlice, None, None]:
         for i in range(len(self._cache)):
-            yield self._find_(-(i + 1))
+            yield self.__get_node__(-(i + 1))
 
     @property
     def is_initializied(self) -> bool:
@@ -130,15 +130,17 @@ class TimeSequence(List[_TSlice]):
 
         return pos, time
 
-    def _find_(self, idx: int, *args, **kwargs) -> _TSlice:
-        if not isinstance(idx, int):
-            return _not_found_
-        elif not self.is_initializied:
+    def __get_node__(self, idx: int, *args, **kwargs) -> _TSlice:
+        if isinstance(idx, int):
+            return super().__get_node__(idx)
+
+        if not self.is_initializied:
             self.initialize(*args, **kwargs)
 
         cache_pos = (self._cache_cursor + idx + self._cache_depth) % self._cache_depth
 
         value = self._cache[cache_pos]
+        entry = None
 
         if not (value is _not_found_ or isinstance(value, TimeSlice)):
             if isinstance(self._entry, Entry) and self._entry_cursor is not None:
@@ -146,13 +148,10 @@ class TimeSequence(List[_TSlice]):
                 entry = self._entry.child(entry_cursor)
             else:
                 entry_cursor = 0
-                entry = None
-
-            value = self._type_convert(value, cache_pos, _entry=entry, _parent=self._parent)
 
             self._cache[cache_pos] = value
 
-        return value
+        return super().__get_node__(idx, _entry=entry)
 
     def initialize(self, *args, **kwargs):
         """初始化 TimeSeries"""
