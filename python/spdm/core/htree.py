@@ -489,7 +489,13 @@ class HTree(GenericHelper[_T], HTreeNode):
             _type_hint = typing.get_type_hints(orig_cls).get(key, None)
 
         if _type_hint is None:
-            _type_hint = self._DEFAULT_TYPE_HINT
+            _type_hint = self._DEFAULT_TYPE_HINT if not isinstance(self._DEFAULT_TYPE_HINT, typing.TypeVar) else None
+
+        if _type_hint is None and isinstance(value, dict):
+            _type_hint = Dict
+
+        if _type_hint is None and isinstance(value, list):
+            _type_hint = List
 
         if _type_hint is None or _type_hint is _not_found_:
             node = value
@@ -607,6 +613,10 @@ class Dict(HTree[_T]):
     """Dict 类型的 HTree 对象"""
 
     def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
+
+        d = {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")}
+        cache = Path().update(cache, d)
+
         super().__init__(cache, _entry=_entry, _parent=_parent, **kwargs)
         if self._cache is _not_found_:
             self._cache = {}
