@@ -1,7 +1,7 @@
 import unittest
 import typing
 import numpy as np
-from spdm.core.htree import List,Dict
+from spdm.core.htree import List, Dict
 from spdm.core.sp_tree import SpTree
 
 from spdm.utils.tags import _not_found_
@@ -98,12 +98,12 @@ class TestSpTree(unittest.TestCase):
             ]
         }
 
-        d = Doo(cache)
+        d = Doo[Foo](cache)
 
         self.assertFalse(isinstance(cache["foo_list"], Foo))
         self.assertTrue(isinstance(d.foo_list, List))
         # self.assertTrue(isinstance(cache["foo_list"], List))
-        self.assertTrue(isinstance(d.foo_list[0], Foo))
+        self.assertEqual(d.foo_list[0].__class__, Foo)
 
         self.assertEqual(d.foo_list[0]["a"], 1234)
 
@@ -135,7 +135,6 @@ class TestSpTree(unittest.TestCase):
             profiles_2d.grid.dim1,
             eq_data["time_slice"][0]["profiles_2d"]["grid"]["dim1"],
         )
-
 
 
 if __name__ == "__main__":

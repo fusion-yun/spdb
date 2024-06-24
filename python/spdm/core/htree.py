@@ -483,21 +483,25 @@ class HTree(GenericHelper[_T], HTreeNode):
         if _entry is None and self._entry is not None:
             _entry = self._entry.child(key)
 
-        orig_cls = typing.get_origin(self.__class__) or self.__class__
+        if _type_hint is _not_found_:
+            _type_hint = None
 
         if _type_hint is None and isinstance(key, str) and key.isidentifier():
+            orig_cls = typing.get_origin(self.__class__) or self.__class__
             _type_hint = typing.get_type_hints(orig_cls).get(key, None)
 
+        if _type_hint is None and isinstance(self._DEFAULT_TYPE_HINT, type):
+            _type_hint = self._DEFAULT_TYPE_HINT
+
         if _type_hint is None:
-            _type_hint = self._DEFAULT_TYPE_HINT if not isinstance(self._DEFAULT_TYPE_HINT, typing.TypeVar) else None
+            if isinstance(value, dict):
+                _type_hint = Dict
+            elif isinstance(value, list):
+                _type_hint = List
+            elif value is _not_found_ and _entry is not None:
+                _type_hint = HTree[self._DEFAULT_TYPE_HINT]
 
-        if _type_hint is None and isinstance(value, dict):
-            _type_hint = Dict
-
-        if _type_hint is None and isinstance(value, list):
-            _type_hint = List
-
-        if _type_hint is None or _type_hint is _not_found_:
+        if _type_hint is None:
             node = value
 
         else:
@@ -524,6 +528,9 @@ class HTree(GenericHelper[_T], HTreeNode):
                 node._metadata.setdefault("index", key)
                 if self._metadata.get("name", _not_found_) in (_not_found_, None, "unnamed"):
                     self._metadata["name"] = str(key)
+
+        if node is _not_found_:
+            return self.__missing__(key)
 
         self._cache = Path([key]).update(self._cache, node)
 

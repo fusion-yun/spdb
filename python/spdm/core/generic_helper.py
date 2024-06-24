@@ -50,7 +50,7 @@ def generic_specification(tp: type | typing.TypeVar, specification: dict, name=N
 class GenericHelper(typing.Generic[*_Ts]):
     """A helper class for typing generic."""
 
-    # @typing._tp_cache
+    @typing._tp_cache
     def __class_getitem__(cls, item):
 
         alias = super().__class_getitem__(item)
@@ -62,9 +62,13 @@ class GenericHelper(typing.Generic[*_Ts]):
 
         specification = dict(zip(cls.__parameters__, alias.__args__))
 
-        # tp_spec = {k: generic_specification(getattr(cls, k, None), specification, k) for k in dir(cls)}
+        # specification = {k: v for k, v in specification.items() if k is not v}
 
-        # tp_spec = {k: v for k, v in tp_spec.items() if v is not None}
+        # if len(specification) == 0:
+        #     return alias
+            # tp_spec = {k: generic_specification(getattr(cls, k, None), specification, k) for k in dir(cls)}
+
+            # tp_spec = {k: v for k, v in tp_spec.items() if v is not None}
         members = generic_specification(
             {
                 k: member
@@ -100,10 +104,10 @@ class GenericHelper(typing.Generic[*_Ts]):
         else:
             return n_cls
 
-        # return _TGenericAlias(
-        #     alias.__origin__,
-        #     alias.__args__,
-        #     inst=alias._inst,
-        #     name=alias._name,
-        #     _paramspec_tvars=alias._paramspec_tvars,
-        # )[()]
+    # return _TGenericAlias(
+    #     alias.__origin__,
+    #     alias.__args__,
+    #     inst=alias._inst,
+    #     name=alias._name,
+    #     _paramspec_tvars=alias._paramspec_tvars,
+    # )[()]

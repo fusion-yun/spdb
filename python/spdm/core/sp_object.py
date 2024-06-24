@@ -2,12 +2,12 @@ import typing
 import inspect
 
 from spdm.core.pluggable import Pluggable
-from spdm.core.sp_tree import SpTree, PropertyTree, sp_property
+from spdm.core.sp_tree import SpTree, sp_property
+from spdm.core.property_tree import PropertyTree
 
-_Ts = typing.TypeVarTuple("_Ts")
 
 
-class SpObject(SpTree[*_Ts], Pluggable):
+class SpObject(SpTree, Pluggable):
     """对象的基类/抽象类"""
 
     def __new__(cls, *args, **kwargs):
@@ -48,9 +48,7 @@ class SpObject(SpTree[*_Ts], Pluggable):
         """
         return self._metadata
 
-
-_T = typing.TypeVar("_T")
-
+_T = typing.TypeVar("_T ")
 
 def sp_object(cls: _T = None, /, **kwargs) -> _T:
     """

@@ -107,7 +107,7 @@ class SpTree(Dict[_T]):
             cls._metadata = {}
 
     def __getstate__(self) -> dict:
-        data = {}
+        data = super().__getstate__()
         for k, prop in inspect.getmembers(self.__class__, lambda c: is_sp_property(c)):
             if prop.getter is not None:
                 continue
@@ -119,7 +119,7 @@ class SpTree(Dict[_T]):
 
             data[k] = value
 
-        return super()._do_serialize(data, dumper)
+        return data
 
     def fetch(self, *args, exclude=[], **kwargs) -> typing.Self:
         if len(args) + len(kwargs) == 0:  # FIXME: 在 flush 的时候会有问题，需要 debug
