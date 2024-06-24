@@ -27,7 +27,7 @@ class PropertyTree(Dict):
             value = _entry.get(default_value=_not_found_)
             _entry = None
 
-        if isinstance(value, dict):
+        if isinstance(value, dict) :
             value = PropertyTree(value, _entry=_entry, _parent=self)
         elif isinstance(value, list) and (len(value) == 0 or isinstance(value[0], (dict, HTree))):
             value = AoS[PropertyTree](value, _entry=_entry, _parent=self)

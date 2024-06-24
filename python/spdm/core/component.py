@@ -1,8 +1,7 @@
 import typing
-import abc
+
 from spdm.core.entity import Entity
 from spdm.core.signal import Signal
-from spdm.core.sp_tree import PropertyTree
 from spdm.core.geo_object import GeoObject
 
 
@@ -15,11 +14,12 @@ class Component(Entity):
     - 组件是一个聚合，其中的实体各自独立随时间演化（Signal）
     """
 
+    _DEFAULT_TYPE_HINT = Signal
+
     def time_slice(self, time=None) -> typing.Self:
         """返回当前时间点的状态树"""
-        raise NotImplementedError(f"TODO: time_slice ")
+        raise NotImplementedError("TODO: time_slice ")
 
-    # @abc.abstractmethod
     @property
     def geometry(self) -> typing.Type[GeoObject]:
         return {}

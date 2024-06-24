@@ -45,7 +45,7 @@ import typing
 from copy import deepcopy
 from _thread import RLock
 
-from spdm.core.htree import HTree, Dict, HTreeNode
+from spdm.core.htree import HTree, HTreeNode
 from spdm.core.path import update_tree
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_, _undefined_
@@ -78,10 +78,7 @@ def _copy(obj, *args, **kwargs):
         return deepcopy(obj)
 
 
-_T = typing.TypeVar("_T")
-
-
-class SpTree(Dict[_T]):
+class SpTree(HTree):
     """支持 sp_property 的 Dict"""
 
     def __init_subclass__(cls) -> None:

@@ -1,12 +1,10 @@
 import uuid
 import typing
 
-from spdm.core.sp_object import sp_object, SpObject
-
-_Ts = typing.TypeVarTuple("_Ts")
+from spdm.core.sp_object import SpObject
 
 
-class Entity(SpObject[*_Ts]):
+class Entity(SpObject):
     """实体的基类/抽象类"""
 
     @property
@@ -16,7 +14,7 @@ class Entity(SpObject[*_Ts]):
         return self._uuid
 
     def _repr_svg_(self):
-        from ..view import sp_view as sp_view
+        from spdm.view import sp_view as sp_view
 
         return sp_view.display(self.__view__(), output="svg")
 

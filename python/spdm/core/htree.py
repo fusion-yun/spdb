@@ -308,7 +308,7 @@ _T = typing.TypeVar("_T")
 _TR = typing.TypeVar("_TR")  # return value type
 
 
-class HTree(GenericHelper[_T], HTreeNode):
+class HTree(HTreeNode):
     """Hierarchical Tree:
     - 其成员类型为 _T，用于存储一组数据或对象，如列表，字典等
 
@@ -451,17 +451,17 @@ class HTree(GenericHelper[_T], HTreeNode):
     def __equal__(self, other) -> bool:
         return self.query({Query.tags.equal: other})
 
-    @abc.abstractmethod
     def __iter__(self) -> typing.Generator[_T, None, None]:
         """遍历子节点"""
+        yield from self.children()
 
-    @abc.abstractmethod
     def children(self) -> typing.Generator[HTreeNode | PrimaryType, None, None]:
         """遍历子节点 (for HTree)"""
+        yield from self.search(["*"])
 
-    @abc.abstractmethod
     def __len__(self) -> int:
         """返回子节点的数量"""
+        return self.__query__(Query.tags.count)
 
     # -----------------------------------------------------------------------------
     # API as container
@@ -616,7 +616,7 @@ class HTree(GenericHelper[_T], HTreeNode):
         #         yield k, v
 
 
-class Dict(HTree[_T]):
+class Dict(GenericHelper[_T], HTree):
     """Dict 类型的 HTree 对象"""
 
     def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
@@ -673,7 +673,7 @@ class Dict(HTree[_T]):
 collections.abc.MutableMapping.register(Dict)
 
 
-class List(HTree[_T]):
+class List(GenericHelper[_T], HTree):
     """List 类型的 HTree 对象"""
 
     def __init__(self, *args, **kwargs):
@@ -729,11 +729,6 @@ class List(HTree[_T]):
         """遍历子节点"""
         for idx in range(len(self)):
             yield self.__get_node__(idx)
-
-    @typing.final
-    def __iter__(self) -> typing.Generator[_T, None, None]:
-        """遍历子节点"""
-        yield from self.children()
 
     def __get_node__(self, key, *args, default_value=_not_found_, **kwargs) -> _T:
         if default_value is _not_found_:

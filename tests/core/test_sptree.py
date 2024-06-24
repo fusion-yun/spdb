@@ -98,7 +98,7 @@ class TestSpTree(unittest.TestCase):
             ]
         }
 
-        d = Doo[Foo](cache)
+        d = Doo(cache)
 
         self.assertFalse(isinstance(cache["foo_list"], Foo))
         self.assertTrue(isinstance(d.foo_list, List))
