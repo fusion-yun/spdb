@@ -616,7 +616,7 @@ class EntryProxy(Entry):
         **kwargs,
     ):
         """检索并导入 mapping files"""
-        from .file import File
+        from spdm.core.file import File
 
         if len(EntryProxy._mapping_path) == 0:
             EntryProxy._mapping_path.extend(

@@ -81,6 +81,11 @@ def _copy(obj, *args, **kwargs):
 class SpTree(HTree):
     """支持 sp_property 的 Dict"""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self._cache is _not_found_:
+            self._cache = {}
+
     def __init_subclass__(cls) -> None:
 
         for _name, _type_hint in typing.get_type_hints(cls).items():

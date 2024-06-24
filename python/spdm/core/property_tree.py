@@ -2,9 +2,9 @@ from __future__ import annotations
 import typing
 
 from spdm.core.aos import AoS
-from spdm.core.htree import HTree, Dict
-from spdm.core.path import Path
+from spdm.core.htree import HTree, Dict, List
 from spdm.utils.tags import _not_found_
+from spdm.utils.logger import logger
 
 
 class PropertyTree(Dict):
@@ -15,23 +15,17 @@ class PropertyTree(Dict):
             return super().__getattribute__(key)
         return self.__get_node__(key, default_value=_not_found_)
 
-    def __get_node__(self, key, *args, _type_hint=None, _getter=None, _entry=None, default_value=_not_found_, **kwargs):
+    def __get_node__(self, key, *args, _type_hint=None, **kwargs):
 
-        if _entry is None and self._entry is not None:
-            _entry = self._entry.child(key)
+        value = super().__get_node__(key, *args, **kwargs)
+        if value.__class__ is HTree:
+            value = self._entry.get()
+            
 
-        value = Path([key]).get(self._cache, default_value=default_value)
-
-        if value is _not_found_ and _entry is not None:
-            value = _entry.get(default_value=_not_found_)
-            _entry = None
-
-        if isinstance(value, dict):
-            value = PropertyTree(value, _entry=_entry, _parent=self)
-        elif isinstance(value, list) and (len(value) == 0 or isinstance(value[0], (dict, HTree))):
-            value = AoS[PropertyTree](value, _entry=_entry, _parent=self)
-        elif value is _not_found_ and _entry is not None:
-            value = PropertyTree(value, _entry=_entry, _parent=self)
+        if value.__class__ is Dict:
+            value.__class__ = PropertyTree
+        elif value.__class__ is List:
+            value.__class__ = AoS[PropertyTree]
 
         return value
 

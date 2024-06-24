@@ -207,7 +207,9 @@ class HTreeNode:
 
     @property
     def __value__(self) -> typing.Any:
-        return self.read()
+        if self._cache is _not_found_ and self._entry is not None:
+            self._cache = self._entry.get()
+        return self._cache
 
     def __array__(self) -> ArrayType:  # for numpy
         return as_array(self.read())
@@ -495,11 +497,11 @@ class HTree(HTreeNode):
 
         if _type_hint is None:
             if isinstance(value, dict):
-                _type_hint = Dict
+                _type_hint = Dict[self._DEFAULT_TYPE_HINT]
             elif isinstance(value, list):
-                _type_hint = List
+                _type_hint = List[self._DEFAULT_TYPE_HINT]
             elif value is _not_found_ and _entry is not None:
-                _type_hint = HTree[self._DEFAULT_TYPE_HINT]
+                _type_hint = HTree
 
         if _type_hint is None:
             node = value
