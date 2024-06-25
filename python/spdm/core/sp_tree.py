@@ -85,8 +85,9 @@ class SpTree(HTree):
         super().__init__(*args, **kwargs)
         if self._cache is _not_found_:
             self._cache = {}
+      
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, **kwargs) -> None:
 
         for _name, _type_hint in typing.get_type_hints(cls).items():
             attr = getattr(cls, _name, _not_found_)
@@ -107,6 +108,8 @@ class SpTree(HTree):
 
         if not hasattr(cls, "_metadata"):
             cls._metadata = {}
+            
+        cls._metadata.update(kwargs)
 
     def __getstate__(self) -> dict:
         data = super().__getstate__()

@@ -69,7 +69,7 @@ class Field(Expression):
     def _repr_svg_(self) -> str:
         from ..view import sp_view
 
-        return sp_view.display(self.__view__(), label=self.__label__, output="svg")
+        return sp_view.display(self.__view__(), title=self.__label__, output="svg")
 
     def __view__(self, **kwargs):
         if self.domain is None:

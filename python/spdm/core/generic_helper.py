@@ -16,7 +16,9 @@ def generic_specification(tp: type | typing.TypeVar, tp_map: dict) -> type:
     """
 
     if isinstance(tp, typing.TypeVar):
-        new_tp = tp_map.get(tp, None)
+        new_tp = tp_map.get(tp, tp)
+    elif isinstance(tp, dict):
+        new_tp = {k: generic_specification(v, tp_map) for k, v in tp.items()}
     elif isinstance(tp, typing._GenericAlias):
         args = tuple([generic_specification(a, tp_map) for a in tp.__args__ if a is not type(None)])
         args = tuple([a for a in args if a is not None])
@@ -46,8 +48,10 @@ def spec_members(members: dict, cls, tp_map) -> dict:
         members = {}
 
     for k, m in inspect.getmembers(cls):
-        if k not in members and not k.startswith("__") and (tp_hint := generic_specification(m, tp_map)) is not None:
-            members[k] = tp_hint
+        if k not in members and k in cls.__dict__ and not k.startswith("__"):
+            tp_hint = generic_specification(m, tp_map)
+            if tp_hint is not None:
+                members[k] = tp_hint
 
     ann = members.get("__annotations__", {})
 
@@ -77,6 +81,35 @@ def spec_members(members: dict, cls, tp_map) -> dict:
     return members
 
 
+class _TGenericAlias(typing._GenericAlias, _root=True):
+
+    @typing._tp_cache
+    def __getitem__(self, args):
+        if len(args) > 0:
+            alias = super().__getitem__(args)
+        else:
+            alias = self
+
+        if len(alias.__parameters__) > 0:
+            return alias
+
+        orig_cls = alias.__origin__
+
+        cls_name = f"{orig_cls.__name__}[" + ",".join(typing._type_repr(a) for a in alias.__args__) + "]"
+
+        n_cls = type(
+            cls_name,
+            (orig_cls,),
+            {
+                **spec_members(None, orig_cls, dict(zip(orig_cls.__parameters__, alias.__args__))),
+                "__module__": orig_cls.__module__,
+                "__package__": getattr(orig_cls, "__package__", None),
+            },
+        )
+
+        return n_cls
+
+
 class GenericHelper(typing.Generic[*_Ts]):
     """A helper class for typing generic."""
 
@@ -84,24 +117,12 @@ class GenericHelper(typing.Generic[*_Ts]):
     def __class_getitem__(cls, item):
         alias = super().__class_getitem__(item)
 
-        if cls is GenericHelper or len(alias.__parameters__) > 0:
+        alias.__class__ = _TGenericAlias
+
+        if cls is not GenericHelper and len(alias.__parameters__) == 0:
+            return alias[()]
+        else:
             return alias
-
-        orig_cls = alias.__origin__
-
-        cls_name = f"{cls.__name__}[" + ",".join(typing._type_repr(a) for a in alias.__args__) + "]"
-
-        n_cls = type(
-            cls_name,
-            (cls,),
-            {
-                **spec_members(None, orig_cls, dict(zip(orig_cls.__parameters__, alias.__args__))),
-                "__module__": cls.__module__,
-                "__package__": getattr(cls, "__package__", None),
-            },
-        )
-
-        return n_cls
 
 
 __all__ = ["GenericHelper"]

@@ -57,7 +57,7 @@ class HTreeNode:
         self._cache = cache
         self._entry = open_entry(_entry)
         self._parent = _parent
-        self._metadata = metadata
+        self._metadata = {**metadata, **getattr(self.__class__, "_metadata", {})}
 
     @property
     def is_leaf(self) -> bool:
@@ -468,7 +468,7 @@ class HTree(HTreeNode):
     # -----------------------------------------------------------------------------
     # API as container
 
-    def __get_node__(self, key, _type_hint=None, _entry=None, _getter=None, default_value=_not_found_, **kwargs) -> _T:
+    def __get_node__(self, key, _type_hint=None, _entry=None, _getter=None, default_value=_not_found_, **kwargs):
 
         if key is None and len(kwargs) == 0:
             return self
@@ -492,6 +492,9 @@ class HTree(HTreeNode):
             orig_cls = typing.get_origin(self.__class__) or self.__class__
             _type_hint = typing.get_type_hints(orig_cls).get(key, None)
 
+        # if _type_hint is None:
+        #     _type_hint = typing.get_type_hints(self.__class__.__get_node__).get("return", None)
+
         if _type_hint is None and isinstance(self._DEFAULT_TYPE_HINT, type):
             _type_hint = self._DEFAULT_TYPE_HINT
 
@@ -510,12 +513,18 @@ class HTree(HTreeNode):
             if isinstance(_type_hint, tuple):
                 _type_hint = _type_hint[-1]
 
-            if not inspect.isclass(_type_hint):
+            if isinstance(_type_hint, typing._GenericAlias):
+                if issubclass(_type_hint.__origin__, HTreeNode):
+                    node = _type_hint(value, _entry=_entry, _parent=self, **kwargs)
+                else:
+                    node = _type_hint(value)
+            elif not inspect.isclass(_type_hint):
                 node = value
             elif isinstance(value, _type_hint):
                 node = value
             elif issubclass(_type_hint, HTreeNode):
                 node = _type_hint(value, _entry=_entry, _parent=self, **kwargs)
+
             else:
                 node = type_convert(_type_hint, value, **kwargs)
 
@@ -621,6 +630,8 @@ class HTree(HTreeNode):
 class Dict(GenericHelper[_T], HTree):
     """Dict 类型的 HTree 对象"""
 
+    _DEFAULT_TYPE_HINT = _T
+
     def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
 
         d = {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")}
@@ -677,6 +688,8 @@ collections.abc.MutableMapping.register(Dict)
 
 class List(GenericHelper[_T], HTree):
     """List 类型的 HTree 对象"""
+
+    _DEFAULT_TYPE_HINT = _T
 
     def __init__(self, *args, **kwargs):
         # if len(args) == 1:

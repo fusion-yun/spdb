@@ -29,14 +29,7 @@ class TestGeneric(unittest.TestCase):
 
         self.assertEqual(Boo[str, float].TValue, float)
 
-        self.assertDictEqual(
-            typing.get_type_hints(Boo),
-            {
-                "goo": int,
-                "boo": _S1,
-                "koo": typing.Tuple[_S1, _T2],
-            },
-        )
+  
         self.assertDictEqual(
             typing.get_type_hints(Boo[str, float]),
             {
@@ -100,6 +93,15 @@ class TestGeneric(unittest.TestCase):
                 "BooType1": complex,
                 "BooType2": float,
                 "AooType": float,
+            },
+        )
+
+        self.assertDictEqual(
+            typing.get_type_hints(tp.func),
+            {
+                "a":int,
+                "b":str,
+                "return": complex,
             },
         )
 

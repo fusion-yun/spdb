@@ -131,7 +131,7 @@ class TimeSequence(List[_TSlice]):
         return pos, time
 
     def __get_node__(self, idx: int, *args, **kwargs) -> _TSlice:
-        if isinstance(idx, int):
+        if not isinstance(idx, int):
             return super().__get_node__(idx)
 
         if not self.is_initializied:
@@ -151,7 +151,7 @@ class TimeSequence(List[_TSlice]):
 
             self._cache[cache_pos] = value
 
-        return super().__get_node__(idx, _entry=entry)
+        return super().__get_node__(cache_pos, _entry=entry)
 
     def initialize(self, *args, **kwargs):
         """初始化 TimeSeries"""

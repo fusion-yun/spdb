@@ -3,7 +3,7 @@ import unittest
 from spdm.core.property_tree import PropertyTree
 
 
-class TestSpTree(unittest.TestCase):
+class TestPropertyTree(unittest.TestCase):
     def test_get(self):
         cache = {
             "time": [0.0],
