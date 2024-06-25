@@ -106,16 +106,10 @@ class Entry(Pluggable):
         return self.get(key)
 
     def get(self, *args, **kwargs) -> typing.Any:
-        if len(args) > 0:
-            return self.child(*args).get(**kwargs)
-        else:
-            return self._path.get(self._data, **kwargs)
+        return self.child(*args[:1]).find(*args[1:], **kwargs)
 
     def put(self, *args, **kwargs) -> Entry:
-        if len(args) > 1:
-            return self.child(*args[:-1]).put(*args[-1:], **kwargs)
-        else:
-            return self._path.put(self._data, *args[-1:], **kwargs)
+        return self.child(*args[:-1]).update(*args[-1:], **kwargs)
 
     def dump(self, *args, **kwargs) -> typing.Any:
         return self.query(Query.tags.dump, *args, **kwargs)

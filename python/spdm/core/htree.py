@@ -497,9 +497,9 @@ class HTree(HTreeNode):
 
         if _type_hint is None:
             if isinstance(value, dict):
-                _type_hint = Dict[self._DEFAULT_TYPE_HINT]
+                _type_hint = Dict[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else Dict
             elif isinstance(value, list):
-                _type_hint = List[self._DEFAULT_TYPE_HINT]
+                _type_hint = List[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else List
             elif value is _not_found_ and _entry is not None:
                 _type_hint = HTree
 

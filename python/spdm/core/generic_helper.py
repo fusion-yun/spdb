@@ -2,8 +2,7 @@
 
 import typing
 import inspect
-from copy import deepcopy, copy
-import functools
+from copy import copy
 from spdm.utils.logger import logger
 
 _Ts = typing.TypeVarTuple("_Ts")
@@ -32,7 +31,7 @@ def generic_specification(tp: type | typing.TypeVar, tp_map: dict) -> type:
         if annotations is None:
             new_tp = None
         else:
-            new_tp = deepcopy(tp)
+            new_tp = copy(tp)
             new_tp.__annotations__.update(annotations)
     else:
         new_tp = None
@@ -52,7 +51,13 @@ def spec_members(members: dict, cls, tp_map) -> dict:
 
     ann = members.get("__annotations__", {})
 
-    ann.update({k: generic_specification(v, tp_map) for k, v in cls.__annotations__.items() if k not in ann})
+    ann.update(
+        {
+            k: generic_specification(v, tp_map)
+            for k, v in typing.get_type_hints(cls).items()
+            if k not in ann and k in cls.__annotations__
+        }
+    )
 
     members["__annotations__"] = ann
 
@@ -62,8 +67,9 @@ def spec_members(members: dict, cls, tp_map) -> dict:
 
         base = cls.__bases__[idx]
 
-        if not issubclass(base, typing.Generic) or base is typing.Generic:
+        if not issubclass(base, typing.Generic) or base is typing.Generic or base is GenericHelper:
             continue
+
         base_tp_map = {k: generic_specification(v, tp_map) for k, v in (zip(base.__parameters__, orig_base.__args__))}
 
         members = spec_members(members, base, base_tp_map)

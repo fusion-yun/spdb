@@ -1092,7 +1092,7 @@ class Path(list):
             if key is None:
                 res = Path._find(source, sub_path)
             elif isinstance(key, tuple):
-                res=[Path._find(source, Path(k)[:] + sub_path) for k in key]
+                res = [Path._find(source, Path(k)[:] + sub_path) for k in key]
                 res = tuple(res)
             elif isinstance(key, list):
                 res = [Path._find(source, Path(k)[:] + sub_path) for k in key]
@@ -1261,10 +1261,10 @@ def merge_tree(*args, **kwargs) -> _T:
     return update_tree({}, *args, **kwargs)
 
 
-def as_path(path):
-    if path is None or path is _not_found_:
+def as_path(*args):
+    if len(args) == 0 or (len(args) == 1 and (args[0] is None or args[0] is _not_found_)):
         return Path()
-    elif not isinstance(path, Path):
-        return Path(path)
+    elif not isinstance(args[0], Path):
+        return Path(*args)
     else:
-        return path
+        return args[0]

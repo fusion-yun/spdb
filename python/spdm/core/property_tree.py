@@ -19,13 +19,16 @@ class PropertyTree(Dict):
 
         value = super().__get_node__(key, *args, **kwargs)
         if value.__class__ is HTree:
-            value = self._entry.get()
-            
+            value = self._entry.get(key)
 
         if value.__class__ is Dict:
             value.__class__ = PropertyTree
         elif value.__class__ is List:
-            value.__class__ = AoS[PropertyTree]
+            value.__class__ = List[PropertyTree]
+        elif isinstance(value, list):
+            value = List[PropertyTree](value)
+        elif isinstance(value, dict):
+            value = PropertyTree(value)
 
         return value
 

@@ -412,7 +412,7 @@ def type_convert(tp: typing.Type, value: typing.Any, *args, **kwargs) -> typing.
         else:
             raise TypeError(f"Can not convert {value} to {tp}")
 
-    else:
+    elif tp is not None and tp is not type(None):
         try:
             value = tp(value, *args, **kwargs)
         except Exception as error:
