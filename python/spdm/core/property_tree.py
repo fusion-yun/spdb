@@ -2,12 +2,11 @@ from __future__ import annotations
 import typing
 
 from spdm.core.aos import AoS
-from spdm.core.htree import HTree, Dict, List
-from spdm.core.sp_tree import SpTree
+from spdm.core.htree import HTree,List
 from spdm.utils.tags import _not_found_
 
 
-class PropertyTree(SpTree):
+class PropertyTree(HTree):
     """属性树，通过 __getattr__ 访问成员，并转换为对应的类型"""
 
     def __getattr__(self, key: str) -> typing.Self | AoS[typing.Self]:
@@ -15,17 +14,19 @@ class PropertyTree(SpTree):
             return super().__getattribute__(key)
         return self.__get_node__(key, default_value=_not_found_)
 
-    def __get_node__(self, key, *args, _type_hint=None, **kwargs):
+    def __get_node__(self, key, *args, **kwargs):
 
         value = super().__get_node__(key, *args, **kwargs)
+        
         if value.__class__ is HTree:
             value = self._entry.get(key)
 
-        if value.__class__ is Dict:
-            value.__class__ = PropertyTree
-        elif value.__class__ is List:
-            value.__class__ = List[PropertyTree]
-        elif isinstance(value, list):
+        # if value.__class__ is Dict:
+        #     value.__class__ = PropertyTree
+        # elif value.__class__ is List:
+        #     value.__class__ = List[PropertyTree]
+
+        if isinstance(value, list):
             value = List[PropertyTree](value)
         elif isinstance(value, dict):
             value = PropertyTree(value)

@@ -21,7 +21,7 @@ from .path import update_tree, Path
 from .functor import Functor, DerivativeOp
 from .expression import Expression
 
-class Piecewise1(Expression):
+class Piecewise(Expression):
     """PiecewiseFunction
     A piecewise function. 一维或多维，分段函数
     """
@@ -30,7 +30,7 @@ class Piecewise1(Expression):
         super().__init__(None, **kwargs)
         self._piecewise = piecewise_func
 
-    def __copy__(self) -> Piecewise:
+    def __copy__(self) -> typing.Self:
         res = super().__copy__()
         res._piecewise = self._piecewise
         return res

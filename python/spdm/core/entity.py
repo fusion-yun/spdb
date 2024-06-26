@@ -1,5 +1,4 @@
 import uuid
-import typing
 
 from spdm.core.sp_object import SpObject
 

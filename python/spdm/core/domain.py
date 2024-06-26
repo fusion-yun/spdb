@@ -3,26 +3,21 @@ import abc
 import typing
 import numpy as np
 import numpy.typing as np_tp
-import functools
-from enum import Enum
 import collections.abc
 import collections
-from copy import deepcopy
-from spdm.core.pluggable import Pluggable
+from spdm.core.sp_object import SpObject
 from spdm.utils.type_hint import ArrayType, array_type
 from spdm.core.functor import Functor
-from spdm.core.path import update_tree
-from spdm.core.geo_object import GeoObject, as_geo_object
+from spdm.core.geo_object import GeoObject
 
-from spdm.numlib.numeric import float_nan, meshgrid, bitwise_and
+from spdm.numlib.numeric import float_nan, bitwise_and
 from spdm.numlib.interpolate import interpolate
 
 
 from spdm.utils.tags import _not_found_
-from spdm.utils.logger import logger
 
 
-class Domain(Pluggable):
+class Domain(SpObject):
     """函数/场的定义域，用以描述函数/场所在流形
     - geometry  ：几何边界
     - shape     ：网格所对应数组形状， 例如，均匀网格 的形状为 （n,m) 其中 n,m 都是整数
@@ -34,23 +29,16 @@ class Domain(Pluggable):
     _metadata = {"fill_value": float_nan}
 
     def __new__(cls, *args, **kwargs):
-
         if cls is Domain and all([isinstance(d, np.ndarray) for d in args]):
             return super().__new__(PPolyDomain)
-        else:
-            return super().__new__(cls, *args, **kwargs)
 
-    def __init__(self, *args, geometry=None, **kwargs) -> None:
+        return super().__new__(cls, *args, **kwargs)
 
-        self._geometry = as_geo_object(geometry)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        # self._geometry = as_geo_object(geometry)
 
-        if len(args) == 1 and isinstance(args[0], collections.abc.Mapping):
-            desc = args[0]
-        else:
-            if len(args) >= 1:
-                logger.warning(f"Ignore args {args}")
-            desc = {}
-        self._metadata = collections.ChainMap(desc, kwargs, self.__class__._metadata)
+    geometry: GeoObject
 
     @property
     def label(self) -> str:
@@ -61,41 +49,37 @@ class Domain(Pluggable):
         return self._metadata.get("name", "unamed")
 
     @property
-    def type(self) -> str:
-        return self._metadata.get("type", "unknown")
-
-    @property
     def units(self) -> typing.Tuple[str, ...]:
         return tuple(self._metadata.get("units", ["-"]))
 
     @property
     def is_simple(self) -> bool:
-        return self._dims is not None and len(self._dims) > 0
+        return self.shape is not None and len(self.shape) > 0
 
     @property
     def is_empty(self) -> bool:
-        return self._dims is None or len(self._dims) == 0 or any([d == 0 for d in self._dims])
+        return self.shape is None or len(self.shape) == 0 or any([d == 0 for d in self.shape])
 
     @property
     def is_full(self) -> bool:
-        return all([d is None for d in self._dims])
-
-    @property
-    def geometry(self) -> typing.Type[GeoObject]:
-        return self._geometry
+        return all(d is None for d in self.shape)
 
     @property
     @abc.abstractmethod
     def shape(self) -> typing.Tuple[int, ...]:
         """domain 内网格对应的数组形状。"""
-        pass
 
     @property
     @abc.abstractmethod
     def points(self) -> typing.Tuple[ArrayType, ...]:
-        pass
+        """domain 内网格对应的网格点坐标，形如(x,y,z)， 其中 x,y,z 为形状为 Domain.shape 的数组。"""
+
+    @property
+    def ndim(self) -> int:
+        return len(self.shape)
 
     def view(self, obj, **kwargs):
+        """将 obj 画在 domain 上，默认为 n维 contour。"""
         return {
             "$type": "contour",
             "$data": (*self.points, np.asarray(obj)),
@@ -115,14 +99,14 @@ class Domain(Pluggable):
 
     def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
         # or self._metadata.get("extrapolate", 0) != 1:
-        if self.dims is None or len(self.dims) == 0 or self._metadata.get("extrapolate", 0) != "raise":
+        if self.shape is None or len(self.shape) == 0 or self._metadata.get("extrapolate", 0) != "raise":
             return True
 
-        if len(args) != self.ndim:
-            raise RuntimeError(f"len(args) != len(self.dims) {len(args)}!={len(self.dims)}")
+        if len(args) != len(self.shape):
+            raise RuntimeError(f"len(args) != len(self.dims) {len(args)}!={len(self.shape)}")
 
         v = []
-        for i, (xmin, xmax) in enumerate(self.bbox):
+        for i, (xmin, xmax) in enumerate(self.geometry.bbox):
             v.append((args[i] >= xmin) & (args[i] <= xmax))
 
         return bitwise_and.reduce(v)
@@ -152,19 +136,14 @@ class Domain(Pluggable):
 
         if not isinstance(mask, array_type) and not isinstance(mask, (bool, np.bool_)):
             raise RuntimeError(f"Illegal mask {mask} {type(mask)}")
-        elif masked_num == 0:
+
+        if masked_num == 0:
             raise RuntimeError(f"Out of domain! {self} {xargs} ")
 
         if masked_num < mask_size:
             xargs = tuple(
-                [
-                    (
-                        arg[mask]
-                        if isinstance(mask, array_type) and isinstance(arg, array_type) and arg.ndim > 0
-                        else arg
-                    )
-                    for arg in xargs
-                ]
+                (arg[mask] if isinstance(mask, array_type) and isinstance(arg, array_type) and arg.ndim > 0 else arg)
+                for arg in xargs
             )
         else:
             mask = None

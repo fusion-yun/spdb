@@ -150,20 +150,18 @@ class MatplotlibView(SpView):
         g_styles = update_tree(g_styles, *styles)
         s_styles = g_styles.get("$matplotlib", {})
 
-        if obj is None or obj is _not_found_:
-            pass
-
-        elif hasattr(obj.__class__, "__view__"):
+        if hasattr(obj.__class__, "__view__"):
             try:
                 obj = obj.__view__(view_point=view_point, **kwargs)
-            except Exception as error:
+            except RuntimeError as error:
+
                 if SP_DEBUG == "strict":
                     raise RuntimeError(f"ignore unsupported view {obj.__class__.__name__} {obj}! ") from error
-                else:
-                    logger.exception(f"ignore unsupported view {obj.__class__.__name__} {obj}! ")
 
-            else:
-                self._draw(canvas, obj, *styles, view_point=view_point, **kwargs)
+                logger.exception(f"ignore unsupported view {obj.__class__.__name__} {obj}! ", exc_info=error)
+
+        if obj is None or obj is _not_found_:
+            pass
 
         elif isinstance(obj, list):
             for idx, g in enumerate(obj):
@@ -244,7 +242,8 @@ class MatplotlibView(SpView):
             canvas.add_patch(plt.Rectangle(obj.origin, *obj.dimensions, fill=False, **s_styles))
 
         else:
-            raise RuntimeError(f"Unsupport type {(obj)} {obj}")
+            # raise RuntimeError(f"Unsupport type {(obj)} {obj}")
+            logger.warning(f"ignore unsupported view {obj.__class__.__name__}! ")
 
         text_styles = g_styles.get("text", False)
 

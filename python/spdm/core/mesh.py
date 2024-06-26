@@ -1,21 +1,21 @@
 from __future__ import annotations
-
-import abc
 import collections.abc
 import typing
-import numpy as np
-from functools import cached_property
+from functools import cache
 from enum import Enum
 
-from spdm.core.geo_object import GeoObject, as_geo_object
+import numpy as np
+
 from spdm.core.domain import Domain
 from spdm.core.path import Path
+from spdm.core.sp_tree import sp_property
 
 from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, as_array
 from spdm.utils.tags import _not_found_
 from spdm.utils.misc import group_dict_by_prefix
 from spdm.utils.logger import logger
-from spdm.numlib.numeric import float_nan, meshgrid, bitwise_and
+
+# from spdm.numlib.numeric import float_nan, meshgrid, bitwise_and
 
 
 def guess_mesh(holder, prefix="mesh", **kwargs):
@@ -87,7 +87,7 @@ class Mesh(Domain):
         if len(args) > 0 and isinstance(args[0], collections.abc.Mapping):
             desc = collections.ChainMap(args[0], kwargs)
             if len(args) > 1:
-                logger.warning(f"ignore args {args[1:]}")
+                logger.warning("ignore args %s", args[1:])
         else:
             desc = kwargs
 
@@ -117,34 +117,25 @@ class Mesh(Domain):
 
         return desc
 
-    def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
+    def __new__(cls, *args, **kwargs):
         if cls is not Mesh:
-            return super().__new__(cls, *args, **kwargs)
+            return super().__new__(cls)
+        return super().__new__(cls, *args, **kwargs)
 
-        desc = cls._guess_mesh(*args, **kwargs)
-
-        mesh_type = desc.get("$type", None) or desc.get("@type", None) or desc.get("type", None)
-
-        if not isinstance(mesh_type, str):
-            raise RuntimeError(f"Unable to determine mesh type! {desc} ")
-
-        return super().__new__(cls, mesh_type)
-
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, _entry=None, _parent=None, **kwargs) -> None:
         """
         Usage:
             Mesh(x,y) => Mesh(type="structured",dims=(x,y),**kwargs)
         """
         desc = self.__class__._guess_mesh(*args, **kwargs)
-        geometry = desc.pop("geometry", None)
-        super().__init__(desc, geometry=geometry)
+
+        super().__init__(desc, _entry=_entry, _parent=_parent)
 
     @property
     def axis_label(self) -> typing.Tuple[str]:
         return self._metadata.get("axis_label", ["[-]"] * self.ndim)
 
     @property
-    @abc.abstractmethod
     def shape(self) -> typing.Tuple[int, ...]:
         """
         存储网格点数组的形状
@@ -152,7 +143,6 @@ class Mesh(Domain):
         结构化网格 shape   如 [n,m] n,m 为网格的长度dimension
         非结构化网格 shape 如 [<number of vertices>]
         """
-        pass
 
     def parametric_coordinates(self, *xyz) -> ArrayType:
         """parametric coordinates
@@ -177,28 +167,30 @@ class Mesh(Domain):
         return self.geometry.coordinates(uvw if len(uvw) > 0 else self.parametric_coordinates())
 
     def uvw(self) -> ArrayType:
-        return self.parametric_coordinates(*xyz)
-        """ alias of parametric_coordiantes"""
+        """alias of parametric_coordiantes"""
+        return self.parametric_coordinates(*self.xyz)
 
-    @cached_property
+    @property
+    @cache
     def vertices(self) -> ArrayType:
         """coordinates of vertice of mesh  [<shape...>, geometry.ndim]"""
         return self.geometry.coordinates(self.parametric_coordinates())
 
-    @cached_property
+    @property
+    @cache
     def points(self) -> typing.List[ArrayType]:
         """alias of vertices, change the shape to tuple"""
         return [self.vertices[..., idx] for idx in range(self.ndim)]
 
-    @cached_property
+    @property
+    @cache
     def xyz(self) -> typing.List[ArrayType]:
         return self.points
 
     @property
     def cells(self) -> typing.Any:
+        """refer to the individual units that make up the mesh"""
         raise NotImplementedError(f"{self.__class__.__name__}.cells")
-
-    """ refer to the individual units that make up the mesh"""
 
     def interpolator(self, y: NumericType, *args, **kwargs) -> typing.Callable[..., NumericType]:
         raise NotImplementedError(f"{self.__class__.__name__}.interpolator")

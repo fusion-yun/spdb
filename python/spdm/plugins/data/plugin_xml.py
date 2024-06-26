@@ -121,8 +121,7 @@ def tree_to_xml(root: str | Element, d, *args, **kwargs) -> _XMLElement:
     return root
 
 
-@Entry.register("xml")
-class XMLEntry(Entry):
+class EntryXML(Entry, plugin_name="xml"):
     def __init__(self, data: _XMLElement | str, *args, envs={}, **kwargs):
         super().__init__({}, *args, **kwargs)
 
@@ -142,7 +141,7 @@ class XMLEntry(Entry):
         return f'<{self._data.tag}  path="{self._path}" />'
 
     def __copy__(self) -> Entry:
-        other: XMLEntry = super().__copy__()  # type:ignore
+        other: EntryXML = super().__copy__()  # type:ignore
         other._envs = self._envs
         other._data = self._data
         return other
@@ -281,7 +280,7 @@ class XMLEntry(Entry):
                 res["@text"] = text
 
         else:
-            res = XMLEntry(element, prefix=[], envs=envs)
+            res = EntryXML(element, prefix=[], envs=envs)
 
         if envs is not None and isinstance(res, (str, collections.abc.Mapping)):
             res = format_string_recursive(res, collections.ChainMap(envs, self._envs))
@@ -291,10 +290,10 @@ class XMLEntry(Entry):
     #############################
     # API
 
-    def insert(self, *args, **kwargs) -> XMLEntry:
+    def insert(self, *args, **kwargs) -> EntryXML:
         raise NotImplementedError(f"")
 
-    def update(self, *args, **kwargs) -> XMLEntry:
+    def update(self, *args, **kwargs) -> EntryXML:
         raise NotImplementedError(f"")
 
     def delete(self, *args, **kwargs) -> int:
@@ -305,7 +304,7 @@ class XMLEntry(Entry):
         path = self._path[:]
         xp, envs = self.xpath(path)
 
-        obj: typing.List[_XMLElement] = xp.evaluate(self._data)
+        obj: typing.List[_XMLElement] = xp(self._data)
 
         if op is Query.tags.exists:
             return len(obj) > 0
@@ -454,8 +453,7 @@ class XMLEntry(Entry):
         return serialize(self.find(default_value=_not_found_))
 
 
-@File.register(["xml"])
-class FILEPLUGINxml(File):
+class FileXML(File, plugin_name="xml"):
     def __init__(self, *args, root=None, **kwargs):
         super().__init__(*args, **kwargs)
         if self.mode == File.Mode.read:
@@ -464,12 +462,9 @@ class FILEPLUGINxml(File):
             self._root = Element(root or "root")
 
     def read(self, lazy=True) -> Entry:
-        return XMLEntry(self._root, writable=False)
+        return EntryXML(self._root, writable=False)
 
     def write(self, data, *args, **kwargs) -> None:
         tree_to_xml(self._root, data, *args, **kwargs)
         with open(self.url.path, "w") as f:
             f.write(tostring(self._root, pretty_print=True).decode())
-
-
-__SP_EXPORT__ = FILEPLUGINxml

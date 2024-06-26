@@ -47,9 +47,9 @@ def spec_members(members: dict, cls, tp_map) -> dict:
     if members is None:
         members = {}
 
-    for k, m in inspect.getmembers(cls):
-        if k not in members and k in cls.__dict__ and not k.startswith("__"):
-            tp_hint = generic_specification(m, tp_map)
+    for k in cls.__dict__:  # inspect.getmembers(cls):
+        if k not in members and not k.startswith("__"):
+            tp_hint = generic_specification(getattr(cls, k), tp_map)
             if tp_hint is not None:
                 members[k] = tp_hint
 

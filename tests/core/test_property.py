@@ -21,7 +21,7 @@ class TestPropertyTree(unittest.TestCase):
         }
         ptree = PropertyTree(cache)
 
-        self.assertEqual(ptree.time[0], 0.0)
+        self.assertEqual(ptree.time[0].__value__, 0.0)
         self.assertEqual(ptree.vacuum_toroidal_field.r0, 6.2)
         self.assertEqual(ptree.time_slice[0].profiles_2d.grid.dim1, 129)
 

@@ -26,10 +26,10 @@ classifiers = [
 requires-python = ">=3.11"
 
 dependencies = [
-    "f90nml",
-    "h5py",
-    "netcdf4",
-    "pyyaml",
+    # "f90nml",
+    # "h5py",
+    # "netcdf4",
+    # "pyyaml",
     "lxml",
     "numpy",
     "scipy",

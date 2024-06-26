@@ -43,5 +43,5 @@ if __name__ == '__main__':
         "equilibrium": {"time_slice": [entry.child(f"equilibrium/time_slice/{time_slice}")]}
     }
 
-    with File(f"{OUTPUT_PATH}/g{shot_num}.gfile", mode="w", format="geqdsk") as fid:
+    with File(f"{OUTPUT_PATH}/g{shot_num}.gfile", mode="w", scheme="geqdsk") as fid:
         fid.write(data, description="equilibrium")

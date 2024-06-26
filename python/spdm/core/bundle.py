@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ..utils.logger import logger
-from .entity import Entity
+from spdm.utils.logger import logger
+from spdm.core.entity import Entity
 
 
 class Bundle(Entity):

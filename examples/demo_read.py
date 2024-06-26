@@ -8,7 +8,7 @@ DATA_PATH = pathlib.Path(f"{WORKSPACE}/fytok_data/data")
 
 if __name__ == '__main__':
 
-    with File("/home/salmon/workspace/gacode/neo/tools/input/profile_data/iterdb141459.03890", mode="r", format="iterdb") as fid:
+    with File("/home/salmon/workspace/gacode/neo/tools/input/profile_data/iterdb141459.03890", mode="r", scheme="iterdb") as fid:
         doc = fid.read()
         eq = doc.dump()
 

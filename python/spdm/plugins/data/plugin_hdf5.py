@@ -1,14 +1,15 @@
 from __future__ import annotations
 import collections
 import collections.abc
-import pathlib
 import typing
 
 import h5py
 import numpy
+
 from spdm.core.entry import Entry
 from spdm.core.file import File
 from spdm.core.path import Path
+
 from spdm.utils.logger import logger
 from spdm.utils.tags import _undefined_
 
@@ -157,8 +158,7 @@ def h5_dump(grp):
     return h5_get_value(grp, [])
 
 
-@File.register(["h5", "hdf5", "HDF5"])
-class HDF5File(File):
+class FileHDF5(File, plugin_name=["h5", "hdf5"]):
     MOD_MAP = {
         File.Mode.read: "r",
         File.Mode.read | File.Mode.write: "r+",
@@ -181,7 +181,7 @@ class HDF5File(File):
 
     @property
     def mode_str(self) -> str:
-        return HDF5File.MOD_MAP[self.mode]
+        return FileHDF5.MOD_MAP[self.mode]
 
     def open(self) -> File:
         if self.is_open:
@@ -209,22 +209,21 @@ class HDF5File(File):
 
     @property
     def entry(self) -> Entry:
-        return H5Entry(self.open())
+        return EntryHDF5(self.open())
 
     def read(self, lazy=True) -> Entry:
-        return H5Entry(self.open())
+        return EntryHDF5(self.open())
 
     def write(self, *args, **kwargs):
-        H5Entry(self.open()).insert(*args, **kwargs)
+        EntryHDF5(self.open()).insert(*args, **kwargs)
 
 
-@Entry.register(["h5", "hdf5", "HDF5"])
-class H5Entry(Entry):
-    def __init__(self, uri: str | HDF5File, *args, **kwargs):
+class EntryHDF5(Entry, plugin_name=["h5", "hdf5"]):
+    def __init__(self, uri: str | FileHDF5, *args, **kwargs):
         super().__init__(None, *args, **kwargs)
 
         if isinstance(uri, str):
-            self._file = HDF5File(uri)
+            self._file = FileHDF5(uri)
         elif isinstance(uri, File):
             self._file = uri
         else:
@@ -232,9 +231,9 @@ class H5Entry(Entry):
 
         self._data = self._file._fid
 
-    def __copy_from__(self, other: H5Entry) -> Entry:
-        super().__copy_from__(other)
-        self._file = other._file
+    def __copy__(self) -> Entry:
+        other = super().__copy__()
+        other._file = self._file
         return self
 
     @property

@@ -1,54 +1,32 @@
 import typing
 import inspect
+from copy import copy
+from functools import cache
 
 from spdm.core.pluggable import Pluggable
-from spdm.core.sp_tree import SpTree, sp_property
+from spdm.core.sp_tree import SpTree
 from spdm.core.property_tree import PropertyTree
-
 
 
 class SpObject(SpTree, Pluggable):
     """对象的基类/抽象类"""
 
-    def __new__(cls, *args, **kwargs):
-        """
-        Create a new instance of SpObject.
+    _PLUGIN_TAGS = ("$class", "@class", "class", "$type", "@type", "type", "plugin")
 
-        Args:
-            *args: Variable length argument list.
-            **kwargs: Arbitrary keyword arguments.
-
-        Returns:
-            typing.Type[typing.Self]: The new instance of SpObject.
-        """
-
-        cls_name = (
-            args[0].get("$class", None) if len(args) == 1 and isinstance(args[0], dict) else kwargs.get("plugin", None)
-        )
-
-        return super().__new__(cls, cls_name)
-
-    def __init__(self, *args, **kwargs) -> None:
-        """
-        Initialize the SpObject.
-
-        Args:
-            *args: Variable length argument list.
-            **kwargs: Arbitrary keyword arguments.
-        """
-        SpTree.__init__(self, *args, **kwargs)
-
-    @sp_property
-    def metadata(self) -> PropertyTree:
+    @property
+    @cache
+    def metadata(self):
         """
         Return the metadata.
 
         Returns:
             PropertyTree: The metadata.
         """
-        return self._metadata
+        return PropertyTree(self._metadata)
 
-_T = typing.TypeVar("_T ")
+
+_T = typing.TypeVar("_T")
+
 
 def sp_object(cls: _T = None, /, **kwargs) -> _T:
     """
@@ -64,7 +42,7 @@ def sp_object(cls: _T = None, /, **kwargs) -> _T:
 
     from spdm.core.sp_tree import _process_sptree
 
-    def wrap(_cls, _kwargs=kwargs):
+    def wrap(_cls, _kwargs=copy(kwargs)):
         if not inspect.isclass(_cls):
             raise TypeError(f"Not a class {_cls}")
 
@@ -78,7 +56,4 @@ def sp_object(cls: _T = None, /, **kwargs) -> _T:
 
         return n_cls
 
-    if cls is None:
-        return wrap
-    else:
-        return wrap(cls)
+    return wrap if cls is None else wrap(cls)

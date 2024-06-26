@@ -10,8 +10,11 @@ import typing
 import collections
 import abc  # Abstract Base Classes
 
-from ..utils.logger import logger
-from ..utils.sp_export import sp_load_module, walk_namespace_modules
+from spdm.core.path import as_path
+
+from spdm.utils.tags import _not_found_
+from spdm.utils.sp_export import sp_load_module, walk_namespace_modules
+from spdm.utils.logger import logger
 
 
 class Pluggable(abc.ABC):
@@ -21,6 +24,8 @@ class Pluggable(abc.ABC):
     Attributes:
     - _plugin_registry: A dictionary to store the registered plugins.
     """
+
+    _PLUGIN_TAGS = ("plugin_name",)
 
     _plugin_registry = {}
 
@@ -37,12 +42,12 @@ class Pluggable(abc.ABC):
         """
         if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
             return None
-        else:
-            prefix = getattr(cls, "_plugin_prefix", None)
-            if prefix is None:
-                prefix = cls.__module__ + "."
 
-            return prefix + f"{plugin_name}"
+        prefix = getattr(cls, "_plugin_prefix", None)
+        if prefix is None:
+            prefix = cls.__module__ + "."
+
+        return prefix + f"{plugin_name}"
 
     @classmethod
     def register(cls, plugin_name: str | list | None = None, plugin_cls=None):
@@ -62,15 +67,15 @@ class Pluggable(abc.ABC):
                     continue
                 cls._plugin_registry[cls._complete_path(name)] = plugin_cls
 
-        else:
+            return None
 
-            def decorator(o_cls):
-                cls.register(plugin_name, o_cls)
-                return o_cls
+        def decorator(o_cls):
+            cls.register(plugin_name, o_cls)
+            return o_cls
 
-            return decorator
+        return decorator
 
-    def __new__(cls, *args, **kwargs) -> typing.Type[typing.Self]:
+    def __new__(cls, *args, _entry=None, **kwargs) -> typing.Type[typing.Self]:
         """
         Create a new instance of the class.
 
@@ -81,25 +86,9 @@ class Pluggable(abc.ABC):
         Returns:
         - typing.Type[typing.Self]: The new instance of the class.
         """
-        if len(args) != 1:
-            desc = kwargs
-        elif isinstance(args[0], str) and args[0].isidentifier():
-            desc = collections.ChainMap({"$type": args[0]}, kwargs)
-        elif isinstance(args[0], dict):
-            desc = collections.ChainMap(args[0], kwargs)
-        else:
-            desc = kwargs
 
-        plugin_name = desc.get("$type", None) or desc.get("@type", None) or desc.get("type", None)
-
-        if (
-            (plugin_singletons := getattr(cls, "_plugin_singletons", None)) is not None
-            and plugin_name in plugin_singletons
-        ):
-            return plugin_singletons[plugin_name]
-
-        if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
-            return super().__new__(cls)
+        if len(args) + len(kwargs) == 0:
+            return object.__new__(cls)
 
         if cls is Pluggable:
             # Can not create instance of Pluggable
@@ -107,8 +96,36 @@ class Pluggable(abc.ABC):
 
         if not issubclass(cls, Pluggable):
             # Not pluggable
-            logger.error(f"{cls.__name__} is not pluggable!")
+            logger.error("%s is not pluggable!", cls.__name__)
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
+
+        plugin_name = None
+
+        if len(args) > 0 and isinstance(args[0], str):
+            plugin_name = args[0]
+        else:
+            if len(args) > 0 and isinstance(args[0], dict):
+                desc = collections.ChainMap(kwargs, args[0])
+            else:
+                desc = kwargs
+
+            for pth in map(as_path, cls._PLUGIN_TAGS):
+                plugin_name = pth.get(desc, None)
+                if plugin_name is None and _entry is not None:
+                    plugin_name = _entry.get(pth, None)
+
+                if plugin_name is not None and plugin_name is not _not_found_:
+                    break
+
+        if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
+            raise RuntimeError(
+                f"Illegal type name {plugin_name}! {cls._PLUGIN_TAGS} _entry={_entry} args={args} kwargs={kwargs}"
+            )
+
+        if (
+            plugin_singletons := getattr(cls, "_plugin_singletons", None)
+        ) is not None and plugin_name in plugin_singletons:
+            return plugin_singletons[plugin_name]
 
         # Check if the plugin path is provided
         plugin_path = cls._complete_path(plugin_name)
@@ -134,7 +151,9 @@ class Pluggable(abc.ABC):
 
         if not (inspect.isclass(n_cls) and issubclass(n_cls, cls)):
             # Plugin not found in the registry
-            raise ModuleNotFoundError(f"Can not find module '{plugin_path}' as subclass of '{cls.__name__}'! [{n_cls}]")
+            raise ModuleNotFoundError(
+                f"Can not find module '{plugin_path}' as subclass of '{cls.__name__}'! [{plugin_path}]"
+            )
 
         instance = super(Pluggable, cls).__new__(n_cls)
 
@@ -143,6 +162,11 @@ class Pluggable(abc.ABC):
 
         # Return the plugin class
         return instance
+
+    def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
+        if plugin_name is not None:
+            cls.register(plugin_name, cls)
+        return super().__init_subclass__(*args, **kwargs)
 
     @classmethod
     def _find_plugins(cls) -> typing.Generator[None, None, str]:
@@ -153,6 +177,6 @@ class Pluggable(abc.ABC):
         - str: The names of the plugins.
         """
         yield from cls._plugin_registry.keys()
-        for p in walk_namespace_modules(cls._complete_path()):
+        for p in walk_namespace_modules(cls._complete_path("")):
             if p not in cls._plugin_registry:
                 yield p

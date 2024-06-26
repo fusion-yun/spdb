@@ -60,8 +60,8 @@ class TestHTree(unittest.TestCase):
         self.assertEqual(d["b"], cache["b"])
         self.assertIs(d["c"], cache["c"])
 
-        self.assertTrue(isinstance(d["d"], List))
-        self.assertTrue(isinstance(d["e"], Dict))
+        # self.assertTrue(isinstance(d["d"], List))
+        # self.assertTrue(isinstance(d["e"], Dict))
 
         # self.assertEqual(len(n) == 0)
 

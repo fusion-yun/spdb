@@ -1,14 +1,12 @@
 from __future__ import annotations
-
+import abc
 import collections.abc
 import typing
-import uuid
 from copy import copy
 import numpy as np
 
-from .pluggable import Pluggable
-
-from spdm.utils.type_hint import ArrayLike, ArrayType, NumericType, ScalarType, array_type, nTupleType, numeric_type
+from spdm.core.sp_object import SpObject
+from spdm.utils.type_hint import ArrayLike, ArrayType, array_type
 from spdm.utils.logger import logger
 
 
@@ -113,35 +111,31 @@ class BBox:
             raise TypeError(f"args has wrong type {type(args[0])} {args}")
 
     def union(self, other: BBox) -> BBox:
-        raise NotImplementedError(f"intersection")
+        """Return the union of self with other."""
 
-    """ Return the union of self with other. """
+        raise NotImplementedError(f"intersection")
 
     def intersection(self, other: BBox):
+        """Return the intersection of self with other."""
         raise NotImplementedError(f"intersection")
 
-    """ Return the intersection of self with other. """
-
     def reflect(self, point0, pointt1):
+        """reflect  by line"""
         raise NotImplementedError(f"reflect")
 
-    """ reflect  by line"""
-
     def rotate(self, angle, axis=None):
+        """rotate  by angle and axis"""
         raise NotImplementedError(f"rotate")
 
-    """ rotate  by angle and axis"""
-
     def scale(self, *s, point=None):
+        """scale self by *s, point"""
         raise NotImplementedError(f"scale")
-
-    """ scale self by *s, point """
 
     def translate(self, *shift):
         raise NotImplementedError(f"translate")
 
 
-class GeoObject(Pluggable):
+class GeoObject(SpObject):
     """Geomertic object
     几何对象，包括点、线、面、体等
 
@@ -150,34 +144,19 @@ class GeoObject(Pluggable):
 
     """
 
+    def __new__(cls, *args, **kwargs):
+        if cls is not GeoObject:
+            return super().__new__(cls)
+        return super().__new__(cls, *args, **kwargs)
+
     _plugin_prefix = "spdm.geometry."
     _plugin_registry = {}
 
-    def __new__(cls, *args, **kwargs) -> None:
-        """ """
-
-        if len(args) > 0 and isinstance(args[0], dict):
-            geo_type = args[0].get("$class", None)
-        else:
-            geo_type = kwargs.pop("type", None)
-
-        # if isinstance(_geo_type, str):
-        #     _geo_type = [_geo_type,
-        #                  f"spdm.geometry.{_geo_type}#{_geo_type}",
-        #                  f"spdm.geometry.{_geo_type}{cls.__name__}#{_geo_type}{cls.__name__}",
-        #                  f"spdm.geometry.{_geo_type.capitalize()}#{_geo_type.capitalize()}",
-        #                  f"spdm.geometry.{_geo_type.capitalize()}{cls.__name__}#{_geo_type.capitalize()}{cls.__name__}",
-        #                  f"spdm.geometry.{cls.__name__}#{_geo_type}"
-        #                  ]
-        return super().__new__(cls, geo_type)
-
     def __init__(self, *args, ndim: int = 0, rank: int = -1, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self._ndim = ndim
         self._rank = rank if rank >= 0 else ndim
-
-        self._metadata: dict = kwargs.pop("metadata", {})
-        self._metadata.update(kwargs)
-        self._metadata.setdefault("name", f"{self.__class__.__name__}_{uuid.uuid1()}")
+        # self._metadata.setdefault("name", f"{self.__class__.__name__}_{uuid.uuid1()}")
 
     def __copy__(self) -> GeoObject:
         other: GeoObject = super().__new__(self.__class__)
@@ -187,17 +166,13 @@ class GeoObject(Pluggable):
         return other
         # return self.__class__(rank=self.rank, ndim=self.ndim, **self._metadata)
 
+    def __view__(self):
+        return self
+
     # def _repr_html_(self) -> str:
     #     """Jupyter 通过调用 _repr_html_ 显示对象"""
     #     from ..view.View import display
     #     return display(self, schema="html")
-
-    def _repr_svg_(self) -> str:
-        """Jupyter 通过调用 _repr_html_ 显示对象"""
-
-        from ..view.sp_view import display
-
-        return display(self, schema="svg")
 
     def __equal__(self, other: GeoObject) -> bool:
         return (
@@ -213,9 +188,7 @@ class GeoObject(Pluggable):
 
     @property
     def rank(self) -> int:
-        return self._rank
-
-    """ 几何体（流形）维度  rank <=ndims
+        """几何体（流形）维度  rank <=ndims
 
             0: point
             1: curve
@@ -225,26 +198,25 @@ class GeoObject(Pluggable):
         The rank of a geometric object refers to the number of independent directions
         in which it extends. For example, a point has rank 0, a line has rank 1,
         a plane has rank 2, and a volume has rank 3.
-    """
+        """
+        return self._rank
 
     @property
     def number_of_dimensions(self) -> int:
-        return self._ndim
-
-    """ 几何体所处的空间维度， = 0，1，2，3 ,...
+        """几何体所处的空间维度， = 0，1，2，3 ,...
         The dimension of a geometric object, on the other hand, refers to the minimum number of
         coordinates needed to specify any point within it. In general, the rank and dimension of
         a geometric object are the same. However, there are some cases where they can differ.
         For example, a curve that is embedded in three-dimensional space has rank 1 because
         it extends in only one independent direction, but it has dimension 3 because three
         coordinates are needed to specify any point on the curve.
-    """
+        """
+        return self._ndim
 
     @property
     def ndim(self) -> int:
+        """alias of number_of_dimensions"""
         return self._ndim
-
-    """ alias of dimension """
 
     @property
     def boundary(self) -> GeoObject | None:
@@ -256,25 +228,23 @@ class GeoObject(Pluggable):
 
     @property
     def is_convex(self) -> bool:
+        """is convex"""
         return self._metadata.get("convex", True)
-
-    """ is convex """
 
     @property
     def is_closed(self) -> bool:
         return self._metadata.get("closed", True)
 
     @property
+    @abc.abstractmethod
     def bbox(self) -> BBox:
+        """boundary box of geometry [ [...min], [...max] ]"""
         raise NotImplementedError(f"{self.__class__.__name__}.bbox")
-
-    """ boundary box of geometry [ [...min], [...max] ] """
 
     @property
     def measure(self) -> float:
+        """measure of geometry, length,area,volume,etc. 默认为 bbox 的体积"""
         return self.bbox.measure
-
-    """ measure of geometry, length,area,volume,etc. 默认为 bbox 的体积 """
 
     def enclose(self, *args) -> bool | array_type:
         """Return True if all args are inside the geometry, False otherwise."""
@@ -298,16 +268,16 @@ class GeoObject(Pluggable):
         other.bbox.rotate(angle, axis=axis)
         return other
 
-    def scale(self, *s, point=None) -> GeoObject:
+    def scale(self, *s, point=None) -> typing.Self:
         """scale self by *s, point"""
         other = copy(self)
         other._metadata["name"] = f"{self.name}_scale"
         other.bbox.scale(*s, point=point)
         return other
 
-    def translate(self, *shift) -> GeoObject:
+    def translate(self, *shift) -> typing.Self:
         other = copy(self)
-        other._metadata["name"] = f"{self.name}_translate"
+        other.metadata["name"] = f"{self.name}_translate"
         other.bbox.translate(*shift)
         return other
 
@@ -328,10 +298,7 @@ class GeoObject(Pluggable):
             raise TypeError(f"args has wrong type {type(args[0])} {args}")
 
 
-_TG = typing.TypeVar("_TG")
-
-
-class GeoObjectSet(typing.List[GeoObject]):
+class GeoObjectSet(GeoObject, typing.List[GeoObject]):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args)
         rank = kwargs.pop("rank", None)

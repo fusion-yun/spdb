@@ -41,24 +41,13 @@ class AoS(List[_T]):
 
         return value
 
-    def _find_(self, key, *args, default_value=_undefined_, **kwargs) -> _T:
+    def __get_node__(self, key, default_value=_undefined_, **kwargs) -> _T:
         """AoS._find_ 当键值不存在时，默认强制调用 __missing__"""
         self._sync_cache()
         if default_value is _not_found_:
             default_value = _undefined_
 
-        return super()._find_(key, *args, default_value=default_value, **kwargs)
-
-    def _update_(self, key, *args, **kwargs) -> typing.Self:
-        if (key is None or key is _not_found_) and op is not Path.tags.extend:
-            key = as_path(f"@{Path.id_tag_name}").get(value, None)
-
-            if key is _not_found_ or key is None:
-                raise KeyError(f"key is not found in {value} {op}")
-
-        super()._update_(key, value, op, *args, **kwargs)
-
-        return self
+        return super().__get_node__(key, default_value=default_value, **kwargs)
 
     def _sync_cache(self):
         if len(self._cache) == 0 and self._entry is not None:
@@ -67,21 +56,21 @@ class AoS(List[_T]):
                 keys = set([k for k in keys if k is not _not_found_ and k is not None])
                 self._cache = [{f"@{Path.id_tag_name}": k} for k in keys]
 
-    def _for_each_(self, *args, **kwargs) -> typing.Generator[typing.Tuple[int | str, HTreeNode], None, None]:
+    def __search__(self, *args, **kwargs) -> typing.Generator[typing.Tuple[int | str, HTreeNode], None, None]:
         self._sync_cache()
         tag = f"@{Path.id_tag_name}"
         if len(self._cache) > 0:
             for idx, v in enumerate(self._cache):
                 if isinstance(v, (dict, HTree)) and (key := Path(tag).get(v, _not_found_)) is not _not_found_:
-                    yield idx, self._find_(key, *args, **kwargs)
+                    yield idx, self.__get_node__(key, *args, **kwargs)
                 else:
-                    yield idx, self._find_(idx, *args, **kwargs)
+                    yield idx, self.__get_node__(idx, *args, **kwargs)
         elif self._entry is not None:
-            for idx, e in self._entry.for_each():
+            for idx, e in self._entry.search():
                 if isinstance(e, Entry):
-                    yield idx, self._type_convert(_not_found_, idx, _entry=e)
+                    yield idx, self.__get_node__(idx, _entry=e)
                 else:
-                    yield idx, self._type_convert(e, idx, _entry=self._entry.child(idx))
+                    yield idx, self.__get_node__(idx, default_value=e, _entry=self._entry.child(idx))
 
         # if self._entry is None:
         #     _entry = None

@@ -206,7 +206,7 @@ class HTreeNode:
     # Python special methods
 
     @property
-    def __value__(self) -> typing.Any:
+    def __value__(self) -> primary_type:
         if self._cache is _not_found_ and self._entry is not None:
             self._cache = self._entry.get()
         return self._cache
@@ -498,13 +498,13 @@ class HTree(HTreeNode):
         if _type_hint is None and isinstance(self._DEFAULT_TYPE_HINT, type):
             _type_hint = self._DEFAULT_TYPE_HINT
 
-        if _type_hint is None:
-            if isinstance(value, dict):
-                _type_hint = Dict[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else Dict
-            elif isinstance(value, list):
-                _type_hint = List[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else List
-            elif value is _not_found_ and _entry is not None:
-                _type_hint = HTree
+        # if _type_hint is None:
+        #     if isinstance(value, dict):
+        #         _type_hint = Dict[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else Dict
+        #     elif isinstance(value, list):
+        #         _type_hint = List[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else List
+        #     elif value is _not_found_ and _entry is not None:
+        #         _type_hint = HTree
 
         if _type_hint is None:
             node = value
@@ -524,8 +524,9 @@ class HTree(HTreeNode):
                 node = value
             elif issubclass(_type_hint, HTreeNode):
                 node = _type_hint(value, _entry=_entry, _parent=self, **kwargs)
-
             else:
+                if _entry is not None:
+                    value = Path().update(value, _entry.get())
                 node = type_convert(_type_hint, value, **kwargs)
 
         if isinstance(node, HTreeNode):
@@ -613,6 +614,9 @@ class HTree(HTreeNode):
         if res is _not_found_ and self._entry is not None:
             res = self._entry.child(*args[:1]).query(*args[1:], **kwargs)
         return res
+
+    def __search__(self, *args, **kwargs) -> typing.Generator[HTreeNode, None, None]:
+        raise NotImplementedError(f"{self.__class__.__name__}.__search__ is not implemented!")
         # if (self._cache is _not_found_ or len(self._cache) == 0) and self._entry is not None:
         #     for k, v in self._entry.search(path, **kwargs):
         #         if not isinstance(v, Entry):

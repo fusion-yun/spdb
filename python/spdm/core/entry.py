@@ -9,40 +9,31 @@ import typing
 from copy import copy, deepcopy
 import numpy as np
 
+
 from spdm.utils.logger import logger
-from spdm.utils.plugin import Pluggable
 from spdm.utils.tags import _not_found_, _undefined_
 from spdm.utils.uri_utils import URITuple, uri_split
-from spdm.core.path import Path, PathLike, as_path, update_tree, update_tree, Query
 from spdm.utils.type_hint import array_type, as_array, is_scalar
 
-PROTOCOL_LIST = ["local", "file", "http", "https", "ssh", "mdsplus"]
+from spdm.core.pluggable import Pluggable
+from spdm.core.path import Path, as_path, update_tree, Query
 
 
 class Entry(Pluggable):
+    PROTOCOL_LIST = ["local", "file", "http", "https", "ssh", "mdsplus"]
+
     _plugin_prefix = "spdm.plugins.data.plugin_"
     _plugin_registry = {}
 
-    def __init__(
-        self,
-        data: typing.Any = _not_found_,
-        path: Path | PathLike = None,
-        *args,
-        scheme=None,
-        **kwargs,
-    ):
-        if self.__class__ is not Entry:
-            pass
-        elif scheme is not None or isinstance(data, (str, URITuple, pathlib.Path)):
-            if scheme is None:
-                scheme = uri_split(data).protocol
+    def __new__(cls, *args, scheme=None, **kwargs):
+        if cls is not Entry or scheme is None:
+            return super().__new__(cls)
+        else:
+            return super().__new__(cls, scheme)
 
-            if isinstance(scheme, str) and scheme != "":
-                super().__dispatch_init__([scheme, EntryProxy], self, data, *args, **kwargs)
-                return
-
-        self._data = data
-        self._path = as_path(path)
+    def __init__(self, *args, **kwargs):
+        self._data = args[0] if len(args) > 0 else _not_found_
+        self._path = as_path(*args[1:])
 
     def __copy__(self) -> typing.Self:
         other = object.__new__(self.__class__)
@@ -75,15 +66,15 @@ class Entry(Pluggable):
 
     @property
     def is_leaf(self) -> bool:
-        return self.find(Query.is_leaf)
+        return self.query(Query.is_leaf)
 
     @property
     def is_list(self) -> bool:
-        return self.find(Query.is_list)
+        return self.query(Query.is_list)
 
     @property
     def is_dict(self) -> bool:
-        return self.find(Query.is_dict)
+        return self.query(Query.is_dict)
 
     @property
     def is_root(self) -> bool:
@@ -94,10 +85,6 @@ class Entry(Pluggable):
         return self._path.is_generator
 
     ###########################################################
-
-    @property
-    def value(self) -> typing.Any:
-        return self._data if len(self._path) == 0 else self.get(default_value=_not_found_)
 
     def __setitem__(self, key, value) -> None:
         return self.put(key, value)
@@ -111,14 +98,9 @@ class Entry(Pluggable):
     def put(self, *args, **kwargs) -> Entry:
         return self.child(*args[:-1]).update(*args[-1:], **kwargs)
 
-    def dump(self, *args, **kwargs) -> typing.Any:
-        return self.query(Query.tags.dump, *args, **kwargs)
-
-    def equal(self, other) -> bool:
-        if isinstance(other, Entry):
-            return self.query(Query.equal, other.__value__)
-        else:
-            return self.query(Query.equal, other)
+    @property
+    def value(self) -> typing.Any:
+        return self.get(default_value=_not_found_)
 
     @property
     def count(self) -> int:
@@ -130,6 +112,11 @@ class Entry(Pluggable):
 
     def check_type(self, tp: typing.Type) -> bool:
         return self.query(Query.check_type, tp)
+
+    def equal(self, other) -> bool:
+        if isinstance(other, Entry):
+            return self.query(Query.equal, other.__value__)
+        return self.query(Query.equal, other)
 
     ###########################################################
 
@@ -165,8 +152,7 @@ class Entry(Pluggable):
         if not isinstance(self._path[-1], int) and not np.issubdtype(type(self._path[-1]), np.integer):
             raise RuntimeError(f"Path must be end with int! {self._path[-1]} {type(self._path[-1])}")
 
-        next_ = self.__copy__()
-
+        next_ = copy(self)
         next_._path[-1] += inc
 
         return next_
@@ -186,30 +172,26 @@ class Entry(Pluggable):
         return self._path.delete(self._data)
 
     def find(self, *args, **kwargs) -> typing.Any:
-        """
-        Query the Entry.
-        Same function as `find`, but put result into a contianer.
-        Could be overridden by subclasses.
-        """
+        """find the value in the Entry."""
         return self._path.find(self._data, *args, **kwargs)
 
     def query(self, *args, **kwargs) -> typing.Any:
-        """
-        Query the Entry.
-        Same function as `find`, but put result into a contianer.
-        Could be overridden by subclasses.
-        """
+        """alias of find"""
         return self._path.query(self._data, *args, **kwargs)
 
     def keys(self) -> typing.Generator[str, None, None]:
-        yield from self._path.keys(self._data)
+        yield from self.search(self._data, Query.tags.get_key)
 
-    def for_each(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
-        """Return a generator of the results."""
+    def values(self) -> typing.Generator[str, None, None]:
+        yield from self.search(self._data, Query.tags.get_value)
+
+    def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
+        """search all the results."""
         yield from self._path.search(self._data, *args, **kwargs)
 
-    def search(self, *args, **kwargs) -> Entry:
-        raise NotImplementedError()
+    def for_each(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
+        """alis of search"""
+        yield from self.search(*args, **kwargs)
 
     ###########################################################
 
@@ -354,7 +336,7 @@ def _open_entry(entry: str | URITuple | pathlib.Path | Entry, mapping_files=None
     schemas = [s for s in uri.protocol.split("+") if s != ""]
 
     local_schema = local_schema or query.pop("local_schema", None) or query.pop("device", None)
-    if len(schemas) > 0 and schemas[0] not in PROTOCOL_LIST:
+    if len(schemas) > 0 and schemas[0] not in Entry.PROTOCOL_LIST:
         local_schema = schemas[0]
         schemas = schemas[1:]
 
@@ -671,7 +653,7 @@ class EntryProxy(Entry):
                     f"Can not find mapping files for {map_tag} MAPPING_PATH={EntryProxy._mapping_path} !"
                 )
 
-            mapper = File(mapping_files, mode="r", format="XML").read()
+            mapper = File(mapping_files, mode="r", scheme="XML").read()
 
             mapper_list[map_tag_str] = mapper
 
@@ -736,7 +718,7 @@ class EntryProxy(Entry):
     def find(self, *args, default_value=_not_found_, **kwargs) -> typing.Any:
         request = self._mapper.child(self._path).find(*args, default_value=_not_found_, lazy=False, **kwargs)
 
-        return self._op_find(request, default_value=default_value)
+        return self._op_find(request, default_value)
 
     def for_each(self, *args, **kwargs) -> typing.Generator[typing.Tuple[int, typing.Any], None, None]:
         """Return a generator of the results."""
@@ -767,11 +749,11 @@ class EntryProxy(Entry):
         #     request = uri_split_as_dict(request)
 
         if request is _not_found_ or request is None:
-            defaultentry = self._get_entry_by_name("*", None)
-            if defaultentry is None:
+            default_entry = self._get_entry_by_name("*", None)
+            if default_entry is None:
                 res = _not_found_
             else:
-                res = defaultentry.child(self._path).find(None, *args, **kwargs)
+                res = default_entry.child(self._path).find(*args, **kwargs)
 
         elif isinstance(request, Entry):
             res = EntryProxy(request, self._entry_list)

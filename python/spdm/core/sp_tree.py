@@ -85,7 +85,6 @@ class SpTree(HTree):
         super().__init__(*args, **kwargs)
         if self._cache is _not_found_:
             self._cache = {}
-      
 
     def __init_subclass__(cls, **kwargs) -> None:
 
@@ -94,7 +93,8 @@ class SpTree(HTree):
 
             if isinstance(attr, property):
                 continue
-            elif isinstance(attr, SpProperty):
+
+            if isinstance(attr, SpProperty):
                 if not (_name in cls.__dict__):
                     attr = SpProperty(getter=attr.getter, setter=attr.setter, deleter=attr.deleter, **attr.metadata)
             else:
@@ -108,8 +108,9 @@ class SpTree(HTree):
 
         if not hasattr(cls, "_metadata"):
             cls._metadata = {}
-            
+
         cls._metadata.update(kwargs)
+        super().__init_subclass__()
 
     def __getstate__(self) -> dict:
         data = super().__getstate__()

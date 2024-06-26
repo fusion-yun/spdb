@@ -14,7 +14,16 @@ from spdm.utils.misc import group_dict_by_prefix
 from spdm.numlib.interpolate import interpolate
 
 
-from spdm.utils.type_hint import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
+from spdm.utils.type_hint import (
+    ArrayType,
+    NumericType,
+    array_type,
+    as_array,
+    is_scalar,
+    is_array,
+    numeric_type,
+    primary_type,
+)
 
 
 from spdm.core.functor import Functor
@@ -288,13 +297,18 @@ class Expression(HTreeNode):
         else:
             return Expression(ufunc, *args)
 
-    def __array__(self, dtype=None) -> array_type:
+    @property
+    def __value__(self) -> primary_type:
         """在定义域上计算表达式，返回数组。"""
-
-        if self._cache is None or self._cache is _not_found_:
+        value = super().__value__
+        if value is _not_found_:
             # 缓存表达式结果
-            self._cache = self.__call__(*self.domain.points)
-        return self._cache
+            value = self.__call__(*self.domain.points)
+            self._cache = value
+        return value
+
+    def __array__(self, *args, **kwargs) -> np.ndarray:
+        return np.asarray(self.__value__, *args, **kwargs)
 
     def __compile__(self) -> typing.Callable[..., array_type]:
         """返回编译后的表达式，如近似插值多项式
