@@ -122,8 +122,8 @@ def tree_to_xml(root: str | Element, d, *args, **kwargs) -> _XMLElement:
 
 
 class EntryXML(Entry, plugin_name="xml"):
-    def __init__(self, data: _XMLElement | str, *args, envs={}, **kwargs):
-        super().__init__({}, *args, **kwargs)
+    def __init__(self, data: _XMLElement | str, *args, envs=None, **kwargs):
+        super().__init__(None, *args, **kwargs)
 
         if not isinstance(data, str):
             pass
@@ -181,10 +181,9 @@ class EntryXML(Entry, plugin_name="xml"):
     def _dump(
         self,
         element: _XMLElement | list,
-        path=[],
+        path=None,
         lazy=False,
         envs=None,
-        only_one=False,
         **kwargs,
     ):
         if not isinstance(element, list):
@@ -283,7 +282,10 @@ class EntryXML(Entry, plugin_name="xml"):
             res = EntryXML(element, prefix=[], envs=envs)
 
         if envs is not None and isinstance(res, (str, collections.abc.Mapping)):
-            res = format_string_recursive(res, collections.ChainMap(envs, self._envs))
+            if self._envs is not None:
+                envs = collections.ChainMap(envs, self._envs)
+
+            res = format_string_recursive(res, envs)
 
         return res
 
@@ -291,79 +293,55 @@ class EntryXML(Entry, plugin_name="xml"):
     # API
 
     def insert(self, *args, **kwargs) -> EntryXML:
-        raise NotImplementedError(f"")
+        return super().insert(*args, **kwargs)
 
     def update(self, *args, **kwargs) -> EntryXML:
-        raise NotImplementedError(f"")
+        return super().update(*args, **kwargs)
 
     def delete(self, *args, **kwargs) -> int:
-        raise NotImplementedError(f"")
+        return super().delete(*args, **kwargs)
 
-    def find(self, op=None, *args, **kwargs) -> typing.Any:
+    def find(self, *args, **kwargs) -> typing.Any:
 
         path = self._path[:]
         xp, envs = self.xpath(path)
 
         obj: typing.List[_XMLElement] = xp(self._data)
 
-        if op is Query.tags.exists:
-            return len(obj) > 0
-        elif op is Query.tags.count:
-            return len(obj)
-        elif op is Query.tags.is_leaf:
-            if len(obj) == 0:
-                return _not_found_
-            elif len(obj) > 1:
-                return False
-            else:
-                return len(obj[0]) == 0
-
-        elif op is Query.tags.is_list:
-            return len(obj) > 1 or (len(obj) == 1 and obj[0].attrib.get("id", None) != None)
-
-        elif op is Query.tags.is_dict:
-            return len(obj) == 1
-
-        elif op is None or op is Query.tags.read:
-            return self._dump(obj, path=path, envs=envs, **kwargs)
-
+        # res = Path._project(obj, *args, **kwargs)
+        if len(args) > 0:
+            op = args[0]
+            args = args[1:]
         else:
-            target = self._dump(obj, path=path, envs=envs, **kwargs)
+            op = Query.tags.get_value
 
-            return Path._project(target, op, [], *args)
+        match op:
+            case Query.tags.exists:
+                res = len(obj) > 0
+            case Query.tags.count:
+                res = len(obj)
+            case Query.tags.is_leaf:
+                if len(obj) == 0:
+                    res = _not_found_
+                elif len(obj) > 1:
+                    res = False
+                else:
+                    res = len(obj[0]) == 0
+            case Query.tags.is_list:
+                res = len(obj) > 1 or (len(obj) == 1 and obj[0].attrib.get("id", None) != None)
+            case Query.tags.is_dict:
+                res = len(obj) == 1
 
-    def search_next(self, start=None, **kwargs) -> typing.Tuple[typing.Any, int | None]:
+            case Query.tags.get_value:
+                res = self._dump(obj, path=path, envs=envs, **kwargs)
 
-        if len(self._path) > 0 and isinstance(self._path[-1], slice):
-            start = self._path[-1].start or start or 0
-            stop = self._path[-1].stop
-            step = self._path[-1].step or 1
-            path = self._path[:-1] + [start]
+            case _:
+                target = self._dump(obj, path=path, envs=envs, **kwargs)
+                res = Path._project(target, op, *args, **kwargs)
 
-        elif isinstance(self._path[-1], dict):
-            raise NotImplementedError(f"Can not search next element from dict!")
+        return res
 
-        else:
-            if start is None or start is _not_found_:
-                start = 0
-            path = self._path[:] + [start]
-            stop = None
-            step = 1
-
-        if stop is not None and start >= stop:
-            raise StopIteration(f"{start}>{stop}")
-
-        xp, envs = self.xpath(path)
-        data = xp.evaluate(self._data)
-        if len(data) == 0:
-            raise StopIteration(f"Can not search next element from {path}")
-        elif len(data) == 1:
-            res = self._dump(data[0], lazy=True, path=path, envs=envs, **kwargs)
-            return res, start + step
-        else:
-            raise RuntimeError(f"Invalid path {path}")
-
-    def for_each(self, *args, **kwargs) -> typing.Generator[typing.Tuple[int, typing.Any], None, None]:
+    def search(self, *args, **kwargs) -> typing.Generator[typing.Tuple[int, typing.Any], None, None]:
         """Return a generator of the results."""
         if len(self._path) > 0 and isinstance(self._path[-1], slice):
             start = self._path[-1].start or 0
@@ -391,7 +369,7 @@ class EntryXML(Entry, plugin_name="xml"):
             if len(data) == 0:
                 # raise StopIteration(f"Can not search next element from {path}")
                 break
-            elif len(data) == 1:
+            if len(data) == 1:
                 res = self._dump(data[0], lazy=True, path=path, envs=envs, **kwargs)
                 yield next_id, res
                 next_id += step
@@ -399,58 +377,84 @@ class EntryXML(Entry, plugin_name="xml"):
                 raise RuntimeError(f"Invalid path {path}")
 
     #############################
+    # def search_next(self, start=None, **kwargs) -> typing.Tuple[typing.Any, int | None]:
 
-    def _get_value(self, path: PathLike = None, *args, only_one=False, default_value=_not_found_, **kwargs):
+    #     if len(self._path) > 0 and isinstance(self._path[-1], slice):
+    #         start = self._path[-1].start or start or 0
+    #         stop = self._path[-1].stop
+    #         step = self._path[-1].step or 1
+    #         path = self._path[:-1] + [start]
 
-        if not only_one:
-            return PathTraverser(path).apply(lambda p: self._get_value(p, only_one=True, **kwargs))
-        else:
-            path = self._prefix + normalize_path(path)
-            xp, envs = self.xpath(path)
-            obj = xp.evaluate(self._data)
-            if isinstance(obj, collections.abc.Sequence) and len(obj) == 1:
-                obj = obj[0]
-            return self._dump(obj, lazy=False, path=path, envs=envs, **kwargs)
+    #     elif isinstance(self._path[-1], dict):
+    #         raise NotImplementedError(f"Can not search next element from dict!")
 
-    def search(self, *args, envs={}, **kwargs):
-        # path, s_envs = self._xpath(self._path[:])
-        # TODO: PathTraverser(path):
-        for s_path in self._path.traversal():
-            s_path, s_envs = self._xpath(s_path)
-            res = _XPath(s_path).evaluate(self._data)
+    #     else:
+    #         if start is None or start is _not_found_:
+    #             start = 0
+    #         path = self._path[:] + [start]
+    #         stop = None
+    #         step = 1
 
-            if len(res) == 0:
-                break
-            for child in res:
-                if child.tag is not _XMLComment:
-                    yield self._dump(child, path=s_path, envs=collections.ChainMap(s_envs, envs))
+    #     if stop is not None and start >= stop:
+    #         raise StopIteration(f"{start}>{stop}")
 
-    def items(self, *args, envs={}, **kwargs):
-        path = self._path
-        for spath in PathTraverser(path):
-            xp, s_envs = self.xpath(spath)
-            for child in xp.evaluate(self._data):
-                if child.tag is _XMLComment:
-                    continue
-                res = self._dump(child, path=spath, envs=collections.ChainMap(s_envs, envs))
-                yield child.tag, res
+    #     xp, envs = self.xpath(path)
+    #     data = xp.evaluate(self._data)
+    #     if len(data) == 0:
+    #         raise StopIteration(f"Can not search next element from {path}")
+    #     elif len(data) == 1:
+    #         res = self._dump(data[0], lazy=True, path=path, envs=envs, **kwargs)
+    #         return res, start + step
+    #     else:
+    #         raise RuntimeError(f"Invalid path {path}")
 
-    def values(self, *args, envs={}, **kwargs):
-        path = self._path
-        for spath in PathTraverser(path):
-            xp, s_envs = self.xpath(spath)
-            for child in xp.evaluate(self._data):
-                if child.tag is _XMLComment:
-                    continue
-                res = self._dump(child, path=spath, envs=collections.ChainMap(s_envs, envs))
-                yield res
+    # def _get_value(self, path: PathLike = None, *args, only_one=False, default_value=_not_found_, **kwargs):
+    #     if not only_one:
+    #         return PathTraverser(path).apply(lambda p: self._get_value(p, only_one=True, **kwargs))
+    #     else:
+    #         path = self._prefix + normalize_path(path)
+    #         xp, envs = self.xpath(path)
+    #         obj = xp.evaluate(self._data)
+    #         if isinstance(obj, collections.abc.Sequence) and len(obj) == 1:
+    #             obj = obj[0]
+    #         return self._dump(obj, lazy=False, path=path, envs=envs, **kwargs)
+
+    # def search(self, *args, envs=None, **kwargs):
+    #     # path, s_envs = self._xpath(self._path[:])
+    #     # TODO: PathTraverser(path):
+    #     for s_path in self._path.traversal():
+    #         s_path, s_envs = self._xpath(s_path)
+    #         res = _XPath(s_path).evaluate(self._data)
+
+    #         if len(res) == 0:
+    #             break
+    #         for child in res:
+    #             if child.tag is not _XMLComment:
+    #                 yield self._dump(child, path=s_path, envs=collections.ChainMap(s_envs, envs))
+
+    # def items(self, *args, envs={}, **kwargs):
+    #     path = self._path
+    #     for spath in PathTraverser(path):
+    #         xp, s_envs = self.xpath(spath)
+    #         for child in xp.evaluate(self._data):
+    #             if child.tag is _XMLComment:
+    #                 continue
+    #             res = self._dump(child, path=spath, envs=collections.ChainMap(s_envs, envs))
+    #             yield child.tag, res
+
+    # def values(self, *args, envs={}, **kwargs):
+    #     path = self._path
+    #     for spath in PathTraverser(path):
+    #         xp, s_envs = self.xpath(spath)
+    #         for child in xp.evaluate(self._data):
+    #             if child.tag is _XMLComment:
+    #                 continue
+    #             res = self._dump(child, path=spath, envs=collections.ChainMap(s_envs, envs))
+    #             yield res
 
     @property
     def attribute(self):
         return self._data.attrib
-
-    def __serialize__(self):
-        return serialize(self.find(default_value=_not_found_))
 
 
 class FileXML(File, plugin_name="xml"):

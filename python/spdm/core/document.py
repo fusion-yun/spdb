@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import abc
 import typing
 from enum import Flag, auto
 
@@ -128,12 +128,14 @@ class Document(Pluggable):
     def __exit__(self, exc_type, exc_value, traceback):
         return self.close()
 
-    def read(self, lazy=False) -> Entry:
-        raise NotImplementedError()
+    @abc.abstractmethod
+    def read(self) -> Entry:
+        "读取"
 
-    def write(self, data=None, lazy=False, **kwargs) -> Entry:
-        raise NotImplementedError()
+    @abc.abstractmethod
+    def write(self, *args, **kwargs) -> Entry:
+        "写入"
 
-    @property
-    def entry(self) -> Entry:
-        raise NotImplementedError()
+    # @property
+    # def entry(self) -> Entry:
+    #     raise NotImplementedError()

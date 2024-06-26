@@ -90,17 +90,17 @@ class Entry(Pluggable):
         return self.put(key, value)
 
     def __getitem__(self, key) -> typing.Type[Entry]:
-        return self.get(key)
+        return self.child(key)
 
-    def get(self, *args, **kwargs) -> typing.Any:
-        return self.child(*args[:1]).find(*args[1:], **kwargs)
+    def get(self, path=None, default_value=_not_found_) -> typing.Any:
+        return self.child(path).find(default_value=default_value)
 
     def put(self, *args, **kwargs) -> Entry:
         return self.child(*args[:-1]).update(*args[-1:], **kwargs)
 
     @property
     def value(self) -> typing.Any:
-        return self.get(default_value=_not_found_)
+        return self.get(None, _not_found_)
 
     @property
     def count(self) -> int:
@@ -144,7 +144,7 @@ class Entry(Pluggable):
         else:
             self._data = []
 
-        other: Path = self.__copy__()
+        other: Path = copy(self)
         other._path.append(path)
         return other
 
@@ -157,12 +157,14 @@ class Entry(Pluggable):
 
         return next_
 
+    def children(self) -> typing.Generator[typing.Type[Entry], None, None]:
+        yield self.search()
+
     ###########################################################
     # API: CRUD  operation
 
     def insert(self, value, *args, **kwargs) -> Entry:
-        self._data, *others = self._path.insert(self._data, value, *args, **kwargs)
-        return self.__class__(self._data, *others)
+        return self.child(Path.tags.append).update(value, *args, **kwargs)
 
     def update(self, value, *args, **kwargs) -> Entry:
         self._data = self._path.update(self._data, value, *args, **kwargs)
@@ -175,19 +177,20 @@ class Entry(Pluggable):
         """find the value in the Entry."""
         return self._path.find(self._data, *args, **kwargs)
 
+    def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
+        """search all the results."""
+        yield from self._path.search(self._data, *args, **kwargs)
+
+    # -----------------------------------------------------------
     def query(self, *args, **kwargs) -> typing.Any:
         """alias of find"""
-        return self._path.query(self._data, *args, **kwargs)
+        return self.find(*args, **kwargs)
 
     def keys(self) -> typing.Generator[str, None, None]:
         yield from self.search(self._data, Query.tags.get_key)
 
     def values(self) -> typing.Generator[str, None, None]:
         yield from self.search(self._data, Query.tags.get_value)
-
-    def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
-        """search all the results."""
-        yield from self._path.search(self._data, *args, **kwargs)
 
     def for_each(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """alis of search"""

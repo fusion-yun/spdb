@@ -18,11 +18,21 @@ class TestFileXML(unittest.TestCase):
 
         self.assertEqual(entry.child("coil/0/name").value, "PF1")
 
-    def test_iter(self):
+    def test_exists(self):
+        entry = File(xml_file).read()
+
+        self.assertTrue(entry.child("coil/0/name").exists)
+        self.assertFalse(entry.child("coil/0/key").exists)
+
+    def test_count(self):
+        entry = File(xml_file).read()
+        self.assertEqual(entry.child("coil").count, 16)
+
+    def test_for_each(self):
 
         entry = File(xml_file).read()
 
-        name_list = [v.child("name").value for v in entry.child("coil")]
+        name_list = [value for value in entry.child("coil/*/name").search()]
 
         name_list_expect = [
             "PF1",
@@ -44,16 +54,6 @@ class TestFileXML(unittest.TestCase):
         ]
 
         self.assertListEqual(name_list, name_list_expect)
-
-    def test_exists(self):
-        entry = File(xml_file).read()
-
-        self.assertTrue(entry.child("coil/0/name").exists)
-        self.assertFalse(entry.child("coil/0/key").exists)
-
-    def test_count(self):
-        entry = File(xml_file).read()
-        self.assertEqual(entry.child("coil").count, 16)
 
 
 if __name__ == "__main__":

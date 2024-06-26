@@ -14,16 +14,16 @@ class TestEntry(unittest.TestCase):
 
     def test_get(self):
 
-        d =Entry(deepcopy(self.data))
+        d = Entry(deepcopy(self.data))
 
-        self.assertEqual(d.get("c")  , self.data["c"])
+        self.assertEqual(d.get("c"), self.data["c"])
         self.assertEqual(d.get("d/e"), self.data["d"]["e"])
         self.assertEqual(d.get("d/f"), self.data["d"]["f"])
         self.assertEqual(d.get("a/0"), self.data["a"][0])
         self.assertEqual(d.get("a/1"), self.data["a"][1])
 
     def test_exists(self):
-        d =Entry(deepcopy(self.data))
+        d = Entry(deepcopy(self.data))
 
         self.assertTrue(d.exists)
         self.assertTrue(d.child("a").exists)
@@ -32,7 +32,7 @@ class TestEntry(unittest.TestCase):
         self.assertFalse(d.child("f/g").exists)
 
     def test_count(self):
-        d =Entry(deepcopy(self.data))
+        d = Entry(deepcopy(self.data))
 
         self.assertEqual(d.count, 3)
         self.assertEqual(d.child("a").count, 6)
@@ -82,10 +82,15 @@ class TestEntry(unittest.TestCase):
 
     def test_iter(self):
         data = [1, 2, 3, 4, 5]
+        d0 = Entry(data)
+        self.assertListEqual([v for v in d0.for_each()], data)
 
         d0 = Entry(data)
-
         self.assertListEqual([v for v in d0.for_each()], data)
+
+        d1 = Entry([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}])
+
+        self.assertListEqual([v for v in d1.child("*/id").search()], data)
 
     # def test_find_next(self):
     #     data = [1, 2, 3, 4, 5]

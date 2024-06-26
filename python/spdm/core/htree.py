@@ -463,12 +463,12 @@ class HTree(HTreeNode):
 
     def __len__(self) -> int:
         """返回子节点的数量"""
-        return self.__query__(Query.tags.count)
+        return self.__find__(Query.tags.count)
 
     # -----------------------------------------------------------------------------
     # API as container
 
-    def __get_node__(self, key, _type_hint=None, _entry=None, _getter=None, default_value=_not_found_, **kwargs):
+    def __get_node__(self, key, default_value=_not_found_, _type_hint=None, _entry=None, _getter=None, **kwargs):
 
         if key is None and len(kwargs) == 0:
             return self
@@ -609,10 +609,10 @@ class HTree(HTreeNode):
         else:
             return False
 
-    def __query__(self, *args, **kwargs) -> typing.Any:
-        res = Path(*args[:1]).query(self._cache, *args[1:], **kwargs)
+    def __find__(self, *args, **kwargs) -> typing.Any:
+        res = Path(*args[:1]).find(self._cache, *args[1:], **kwargs)
         if res is _not_found_ and self._entry is not None:
-            res = self._entry.child(*args[:1]).query(*args[1:], **kwargs)
+            res = self._entry.child(*args[:1]).find(*args[1:], **kwargs)
         return res
 
     def __search__(self, *args, **kwargs) -> typing.Generator[HTreeNode, None, None]:
@@ -749,10 +749,10 @@ class List(GenericHelper[_T], HTree):
         for idx in range(len(self)):
             yield self.__get_node__(idx)
 
-    def __get_node__(self, key, *args, default_value=_not_found_, **kwargs) -> _T:
+    def __get_node__(self, key, default_value=_not_found_, **kwargs) -> _T:
         if default_value is _not_found_:
             default_value = self._metadata.get("default_value", _not_found_)
-        return super().__get_node__(key, *args, default_value=default_value, **kwargs)
+        return super().__get_node__(key, default_value=default_value, **kwargs)
 
 
 collections.abc.MutableSequence.register(List)
