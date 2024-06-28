@@ -7,12 +7,8 @@ Classes:
 
 import inspect
 import typing
-import collections
 import abc  # Abstract Base Classes
 
-from spdm.core.path import as_path
-
-from spdm.utils.tags import _not_found_
 from spdm.utils.sp_export import sp_load_module, walk_namespace_modules
 from spdm.utils.logger import logger
 
@@ -75,7 +71,7 @@ class Pluggable(abc.ABC):
 
         return decorator
 
-    def __new__(cls, *args, _entry=None, **kwargs) -> typing.Type[typing.Self]:
+    def __new__(cls, plugin_name=None) -> typing.Type[typing.Self]:
         """
         Create a new instance of the class.
 
@@ -96,31 +92,8 @@ class Pluggable(abc.ABC):
             logger.error("%s is not pluggable!", cls.__name__)
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
 
-        if len(args) + len(kwargs) == 0 or (len(args) == 1 and args[0] is None):
-            return object.__new__(cls)
-
-        plugin_name = None
-
-        if len(args) > 0 and isinstance(args[0], str):
-            plugin_name = args[0]
-        else:
-            if len(args) > 0 and isinstance(args[0], dict):
-                desc = collections.ChainMap(kwargs, args[0])
-            else:
-                desc = kwargs
-
-            for pth in map(as_path, cls._PLUGIN_TAGS):
-                plugin_name = pth.get(desc, None)
-                if plugin_name is None and _entry is not None:
-                    plugin_name = _entry.get(pth, None)
-
-                if plugin_name is not None and plugin_name is not _not_found_:
-                    break
-
-        if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
-            raise RuntimeError(
-                f"Illegal type name {plugin_name}! {cls._PLUGIN_TAGS} _entry={_entry} args={args} kwargs={kwargs}"
-            )
+        if plugin_name is not None and (not isinstance(plugin_name, str) or not plugin_name.isidentifier()):
+            raise RuntimeError(f"Illegal type name {plugin_name}! {cls._PLUGIN_TAGS} plugin_name={plugin_name}")
 
         if (
             plugin_singletons := getattr(cls, "_plugin_singletons", None)

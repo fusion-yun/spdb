@@ -158,7 +158,7 @@ def h5_dump(grp):
     return h5_get_value(grp, [])
 
 
-class FileHDF5(File, plugin_name=["h5", "hdf5"]):
+class FileHDF5(File):
     MOD_MAP = {
         File.Mode.read: "r",
         File.Mode.read | File.Mode.write: "r+",
@@ -218,16 +218,14 @@ class FileHDF5(File, plugin_name=["h5", "hdf5"]):
         EntryHDF5(self.open()).insert(*args, **kwargs)
 
 
-class EntryHDF5(Entry, plugin_name=["h5", "hdf5"]):
+class EntryHDF5(File.Entry, plugin_name=["h5", "hdf5"]):
     def __init__(self, uri: str | FileHDF5, *args, **kwargs):
-        super().__init__(None, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-        if isinstance(uri, str):
-            self._file = FileHDF5(uri)
-        elif isinstance(uri, File):
+        if isinstance(uri, File):
             self._file = uri
         else:
-            raise TypeError(f"cache must be HDF5File or str, but got {type(uri)}")
+            self._file = FileHDF5(uri)
 
         self._data = self._file._fid
 

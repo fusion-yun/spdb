@@ -33,21 +33,19 @@ from spdm.core.generic_helper import as_native
 #                          ** kwargs)
 
 
-@File.register(["yaml", "YAML"])
-class FILEPLUGINyaml(File):
-    def __init__(self,  *args, **kwargs):
+class EntryYAML(File.Entry, plugin_name=["yaml"]):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._fid: typing.Optional[typing.IO[typing.Any]] = None
 
     def open(self) -> File:
         super().open()
         try:
-            self._fid = open(self.path,  mode=self.mode_str)
+            self._fid = open(self.path, mode=self.mode_str)
         except OSError as error:
             raise FileExistsError(f"Can not open file {self.path}! {error}")
         else:
-            logger.debug(
-                f"Open {self.__class__.__name__} File {self.path} mode={self.mode}")
+            logger.debug(f"Open {self.__class__.__name__} File {self.path} mode={self.mode}")
         return self
 
     def close(self):
@@ -56,13 +54,13 @@ class FILEPLUGINyaml(File):
             self._fid = None
         return super().close()
 
-    def read(self, *args,   **kwargs) -> Entry:
+    def read(self, *args, **kwargs) -> Entry:
         if not hasattr(self, "_fid"):
             self.open()
         return Entry(yaml.load(self._fid, Loader=yaml.CLoader))
 
-    def write(self,   d, *args,  **kwargs):
-        yaml.dump(as_native(d, enable_ndarray=False), self._fid,  Dumper=yaml.CDumper)
+    def write(self, d, *args, **kwargs):
+        yaml.dump(as_native(d, enable_ndarray=False), self._fid, Dumper=yaml.CDumper)
 
 
 __SP_EXPORT__ = FILEPLUGINyaml

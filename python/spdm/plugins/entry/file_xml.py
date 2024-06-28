@@ -121,8 +121,8 @@ def tree_to_xml(root: str | Element, d, *args, **kwargs) -> _XMLElement:
     return root
 
 
-class EntryXML(Entry, plugin_name="xml"):
-    def __init__(self, data: _XMLElement | str, *args, envs=None, **kwargs):
+class EntryXML(File.Entry, plugin_name="xml"):
+    def __init__(self, uri, *args, envs=None, **kwargs):
         super().__init__(None, *args, **kwargs)
 
         if not isinstance(data, str):
@@ -362,15 +362,14 @@ class EntryXML(Entry, plugin_name="xml"):
 
 
 class FileXML(File, plugin_name="xml"):
-    def __init__(self, *args, root=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.mode == File.Mode.read:
-            self._root = load_xml(self.url.path, mode=self.mode)
-        else:
-            self._root = Element(root or "root")
+    Entry = EntryXML
 
-    def read(self) -> EntryXML:
-        return EntryXML(self._root, writable=False)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._root = load_xml(self.url.path, mode=self.mode)
+
+    # def read(self) -> EntryXML:
+    #     return EntryXML(self._root, writable=False)
 
     def write(self, *args, **kwargs) -> None:
         tree_to_xml(self._root, *args, **kwargs)

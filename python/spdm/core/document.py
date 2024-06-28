@@ -4,17 +4,29 @@ import typing
 from enum import Flag, auto
 
 from spdm.utils.uri_utils import URITuple, uri_split
-from spdm.core.entry import Entry
-from spdm.core.pluggable import Pluggable
+from spdm.utils.tags import _not_found_
+
+from spdm.core.entry import Entry as EntryBase
 
 
-class Document(Pluggable):
+class Document:
     """
     Connection like object
     """
 
-    _plugin_registry = {}
-    _plugin_prefix = "spdm.plugins.data.plugin_"
+    class Entry(EntryBase):
+        def __init__(self, doc, *args, **kwargs):
+            super().__init__(_not_found_, *args, **kwargs)
+            self._doc = doc
+
+        def __copy__(self) -> typing.Self:
+            other = super().__copy__()
+            other._doc = self._doc
+            return other
+
+        def flush(self):
+            self._doc.write(self._path, self._cache)
+            self._cache = _not_found_
 
     class Mode(Flag):
         """
@@ -50,15 +62,6 @@ class Document(Pluggable):
         opened = auto()
         closed = auto()
 
-    def __new__(cls, *args, scheme=None, **kwargs):
-        if scheme is None and len(args) > 0 and isinstance(args[0], str):
-            scheme = uri_split(args[0]).protocol
-
-        if scheme is None or not scheme:
-            return super().__new__(cls)
-
-        return super().__new__(cls, plugin_name=scheme)
-
     def __init__(self, uri, *args, mode: typing.Any = Mode.read, **kwargs):
         """
         r       Readonly, file must exist (default)
@@ -70,11 +73,7 @@ class Document(Pluggable):
 
         self._url = uri_split(uri)
         self._mode = Document.INV_MOD_MAP[mode] if isinstance(mode, str) else mode
-        self._is_open = False
-
-    def __del__(self):
-        if getattr(self, "_is_open", False):
-            self.close()
+        self._entry = self.__class__.Entry(uri, *args, **kwargs)
 
     def __str__(self):
         return f"<{self.__class__.__name__}  {self.url} >"
@@ -94,6 +93,9 @@ class Document(Pluggable):
     # @property
     # def mode_str(self) -> str:
     #     return ''.join([(m.name[0]) for m in list(Connection.Mode) if m & self._mode])
+    @property
+    def is_ready(self) -> bool:
+        return False
 
     @property
     def is_readable(self) -> bool:
@@ -111,31 +113,29 @@ class Document(Pluggable):
     def is_temporary(self) -> bool:
         return bool(self._mode & Document.Mode.temporary)
 
-    @property
-    def is_open(self) -> bool:
-        return self._is_open
-
-    def open(self) -> Document:
-        self._is_open = True
-        return self
+    def open(self) -> None:
+        pass
 
     def close(self) -> None:
-        self._is_open = False
+        pass
 
-    def __enter__(self) -> Document:
-        return self.open()
+    def __del__(self):
+        self.close()
 
     def __exit__(self, exc_type, exc_value, traceback):
         return self.close()
 
-    @abc.abstractmethod
-    def read(self) -> Entry:
+    def __enter__(self) -> Entry:
+        return self.entry
+
+    @property
+    def entry(self) -> Entry:
+        return self._entry if self._entry is not None else self.__class__.Entry(self)
+
+    def read(self, *args, **kwargs) -> typing.Any:
         "读取"
+        return self.entry.find(*args, **kwargs)
 
-    @abc.abstractmethod
-    def write(self, *args, **kwargs) -> Entry:
+    def write(self, *args, **kwargs):
         "写入"
-
-    # @property
-    # def entry(self) -> Entry:
-    #     raise NotImplementedError()
+        return self.entry.update(*args, **kwargs)
