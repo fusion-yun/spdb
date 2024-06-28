@@ -80,10 +80,10 @@ class TestEntry(unittest.TestCase):
 
         self.assertDictEqual(res, {"a/2": cache["a"][2], "c": cache["c"], "d/e": cache["d"]["e"], "e": _not_found_})
 
-    def test_iter(self):
+    def test_search(self):
         data = [1, 2, 3, 4, 5]
         d0 = Entry(data)
-        self.assertListEqual([v for v in d0.for_each()], data)
+        self.assertListEqual([v for v in d0.search()], data)
 
         d0 = Entry(data)
         self.assertListEqual([v for v in d0.for_each()], data)

@@ -166,7 +166,7 @@ class GeoObject(SpObject):
         return other
         # return self.__class__(rank=self.rank, ndim=self.ndim, **self._metadata)
 
-    def __view__(self):
+    def __view__(self, *args, **kwargs):
         return self
 
     # def _repr_html_(self) -> str:

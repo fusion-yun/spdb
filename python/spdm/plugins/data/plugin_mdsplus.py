@@ -247,13 +247,13 @@ class MDSplusEntry(Entry):
         super().__init__(cache, *args, **kwargs)
 
     def find(self, request, *args, **kwargs):
-        return self._data.query(request, *args, prefix=self._path, **kwargs)
+        return self._cache.query(request, *args, prefix=self._path, **kwargs)
 
     def update(self, *args, **kwargs):
-        return self._data.update(*args, prefix=self._path, **kwargs)
+        return self._cache.update(*args, prefix=self._path, **kwargs)
 
     def search(self, *args, **kwargs):
-        yield from self._data.search(*args, prefix=self._path, **kwargs)
+        yield from self._cache.search(*args, prefix=self._path, **kwargs)
 
 
 def open_mdstree(tree_name, shot, mode="NORMAL", path=None):

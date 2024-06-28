@@ -81,11 +81,6 @@ def _copy(obj, *args, **kwargs):
 class SpTree(HTree):
     """支持 sp_property 的 Dict"""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self._cache is _not_found_:
-            self._cache = {}
-
     def __init_subclass__(cls, **kwargs) -> None:
 
         for _name, _type_hint in typing.get_type_hints(cls).items():
@@ -114,38 +109,36 @@ class SpTree(HTree):
 
     def __getstate__(self) -> dict:
         data = super().__getstate__()
-        for k, prop in inspect.getmembers(self.__class__, lambda c: is_sp_property(c)):
+        for k, prop in inspect.getmembers(self.__class__, is_sp_property):
             if prop.getter is not None:
                 continue
+            
             value = getattr(self, k, _not_found_)
+
             if value is _not_found_:
                 continue
-            # elif isinstance(value, Expression):
-            #     value = value.__array__()
+          
 
             data[k] = value
 
         return data
 
-    def fetch(self, *args, exclude=[], **kwargs) -> typing.Self:
-        if len(args) + len(kwargs) == 0:  # FIXME: 在 flush 的时候会有问题，需要 debug
-            return super().fetch()
-
-        cache = {}
-
-        for k, attr in inspect.getmembers(self.__class__, lambda c: isinstance(c, SpProperty)):
-            if k in exclude:
-                continue
-            if attr.getter is None and attr.alias is None:
-                value = getattr(self, k, _not_found_)
-                if value is _not_found_:
-                    continue
-                elif isinstance(value, HTreeNode):
-                    cache[k] = value.fetch(*args, **kwargs)
-                else:
-                    cache[k] = HTreeNode._do_fetch(value, *args, **kwargs)
-
-        return self.__duplicate__(cache, _parent=None)
+    # def fetch(self, *args, exclude=None, **kwargs) -> typing.Self:
+    #     if len(args) + len(kwargs) == 0:  # FIXME: 在 flush 的时候会有问题，需要 debug
+    #         return super().fetch()
+    #     cache = {}
+    #     for k, attr in inspect.getmembers(self.__class__, lambda c: isinstance(c, SpProperty)):
+    #         if k in exclude:
+    #             continue
+    #         if attr.getter is None and attr.alias is None:
+    #             value = getattr(self, k, _not_found_)
+    #             if value is _not_found_:
+    #                 continue
+    #             elif isinstance(value, HTreeNode):
+    #                 cache[k] = value.fetch(*args, **kwargs)
+    #             else:
+    #                 cache[k] = HTreeNode._do_fetch(value, *args, **kwargs)
+    #     return self.__duplicate__(cache, _parent=None)
 
 
 _T = typing.TypeVar("_T")

@@ -1,37 +1,31 @@
 from __future__ import annotations
 import typing
 
-from spdm.core.aos import AoS
-from spdm.core.htree import HTree,List
+from spdm.core.htree import HTree, List
 from spdm.utils.tags import _not_found_
+from spdm.utils.type_hint import primary_type
 
 
 class PropertyTree(HTree):
     """属性树，通过 __getattr__ 访问成员，并转换为对应的类型"""
 
-    def __getattr__(self, key: str) -> typing.Self | AoS[typing.Self]:
+    def __getattr__(self, key: str) -> typing.Self | List[typing.Self]:
         if key.startswith("_"):
             return super().__getattribute__(key)
         return self.__get_node__(key, default_value=_not_found_)
 
-    def __get_node__(self, key, *args, **kwargs):
+    def __as_node__(self, key, value, /, **kwargs):
 
-        value = super().__get_node__(key, *args, **kwargs)
-        
-        if value.__class__ is HTree:
-            value = self._entry.get(key)
+        node: HTree = super().__as_node__(key, value, **kwargs)
 
-        # if value.__class__ is Dict:
-        #     value.__class__ = PropertyTree
-        # elif value.__class__ is List:
-        #     value.__class__ = List[PropertyTree]
+        if node is _not_found_:
+            node = super().__as_node__(key, {}, **kwargs)
+        elif isinstance(node, list) and (len(node) == 0 or any(not isinstance(v, primary_type) for v in node)):
+            node = List[PropertyTree](node)
+        elif isinstance(node, dict):
+            node = PropertyTree(node)
 
-        if isinstance(value, list):
-            value = List[PropertyTree](value)
-        elif isinstance(value, dict):
-            value = PropertyTree(value)
-
-        return value
+        return node
 
     def __setattr__(self, key: str, value: typing.Any):
         if key.startswith("_"):

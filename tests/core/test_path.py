@@ -1,13 +1,15 @@
 import unittest
 from copy import deepcopy
-from spdm.core.path import Path,Query
+from spdm.core.path import Path, Query
 from spdm.utils.tags import _not_found_
 
 
 class TestPath(unittest.TestCase):
     def test_init(self):
         p = ["a", "b", {"c": slice(4, 10, 2)}]
-        self.assertEqual(Path(p)[:], p)
+        self.assertEqual(Path(p)[:2], p[:2])
+        self.assertIsInstance(Path(p)[-1], Query)
+        self.assertEqual(Path(p)[-1]._query["c"], p[-1]["c"])
 
     def test_parser(self):
         self.assertEqual(Path.parser("a/b/c"), ["a", "b", "c"])
@@ -97,7 +99,7 @@ class TestPath(unittest.TestCase):
         self.assertEqual(cache["d"]["g"], 5)
 
     def test_update_many(self):
-        cache =  deepcopy(self.data)
+        cache = deepcopy(self.data)
 
         Path({"a/2", "c", "d/e", "e"}).update(cache, True)
 
@@ -131,12 +133,9 @@ class TestPath(unittest.TestCase):
 
     def test_find_many(self):
 
-        res = Path(("a/2", "c",  "d/e", "e")).find(self.data, default_value=_not_found_)
+        res = Path(("a/2", "c", "d/e", "e")).find(self.data, default_value=_not_found_)
 
-        self.assertListEqual(list(res), [self.data['a'][2],
-                                   self.data['c'],
-                                   self.data['d']['e'],
-                                   _not_found_])
+        self.assertListEqual(list(res), [self.data["a"][2], self.data["c"], self.data["d"]["e"], _not_found_])
 
 
 if __name__ == "__main__":

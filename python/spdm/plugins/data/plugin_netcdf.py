@@ -98,13 +98,13 @@ class NetCDFEntry(Entry):
         self.update(other)
 
     def insert(self,  value, *args, **kwargs):
-        return nc_put_value(self._data, self._path, value, *args, **kwargs)
+        return nc_put_value(self._cache, self._path, value, *args, **kwargs)
 
     def find(self,   *args, **kwargs) -> typing.Any:
-        return nc_get_value(self._data, self._path, *args, **kwargs)
+        return nc_get_value(self._cache, self._path, *args, **kwargs)
 
     def dump(self):
-        return nc_dump(self._data)
+        return nc_dump(self._cache)
 
     def iter(self,  path, *args, **kwargs):
         raise NotImplementedError()

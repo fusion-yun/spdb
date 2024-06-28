@@ -1,6 +1,7 @@
 import unittest
 import pathlib
 from spdm.core.file import File
+from spdm.core.entry import Entry
 
 xml_file = pathlib.Path(__file__).parent.joinpath("data/pf_active.xml")
 
@@ -28,11 +29,11 @@ class TestFileXML(unittest.TestCase):
         entry = File(xml_file).read()
         self.assertEqual(entry.child("coil").count, 16)
 
-    def test_for_each(self):
+    def test_search(self):
 
-        entry = File(xml_file).read()
+        entry: Entry = File(xml_file).read()
 
-        name_list = [value for value in entry.child("coil/*/name").search()]
+        name_list = [value for value in entry.child("coil/*/name").for_each()]
 
         name_list_expect = [
             "PF1",

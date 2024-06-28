@@ -5,9 +5,7 @@ from __future__ import annotations
 import collections.abc
 import typing
 import inspect
-import abc
 from copy import deepcopy
-
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, as_array, primary_type, PrimaryType, type_convert
@@ -29,7 +27,9 @@ def get_state(obj: typing.Any) -> dict:
 
 
 class HTreeNode:
-    """HTreeNode is a node in the hierarchical tree."""
+    """HTreeNode is a node in the hierarchical tree.
+    (Hierarchical Tree Structured Data)
+    """
 
     # def __new__(cls, *args, **kwargs):
     #     if cls is not HTreeNode and cls is not HTree:
@@ -52,10 +52,10 @@ class HTreeNode:
     #     else:
     #         return super().__new__(cls)
 
-    def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **metadata):
+    def __init__(self, cache=_not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **metadata):
         """Initialize a HTreeNode object."""
         self._cache = cache
-        self._entry = open_entry(_entry)
+        self._entry = open_entry(_entry) if _entry is not None else None
         self._parent = _parent
         self._metadata = {**metadata, **getattr(self.__class__, "_metadata", {})}
 
@@ -206,7 +206,7 @@ class HTreeNode:
     # Python special methods
 
     @property
-    def __value__(self) -> primary_type:
+    def __value__(self) -> PrimaryType:
         if self._cache is _not_found_ and self._entry is not None:
             self._cache = self._entry.get()
         return self._cache
@@ -357,35 +357,36 @@ class HTree(HTreeNode):
         return Path(*args).delete(self, **kwargs)
 
     @typing.final
-    def put(self, path, value, **kwargs):
+    def put(self, *path_and_value):
         """Put, alias of update"""
-        return self.update(path, value, **kwargs)
+        return self.update(*path_and_value)
 
     @typing.final
-    def get(self, path, default_value=None, **kwargs) -> _T:
+    def get(self, key=None, default_value=_not_found_) -> _T:
         """Get , alias of query"""
-        return self.query(path, default_value=default_value, **kwargs)
+        return self.find(key, default_value=default_value)
 
     @typing.final
-    def pop(self, path, default_value=_not_found_, **kwargs) -> typing.Any:
+    def pop(self, path, default_value=_not_found_) -> typing.Any:
         """Pop , query and delete"""
-        node = self.get(path, default_value=_not_found_, **kwargs)
+        node = self.find(path, default_value=_not_found_)
+
         if node is not _not_found_:
-            self.delete(path, **kwargs)
+            self.delete(path)
             return node
-        else:
-            return default_value
+
+        return default_value
 
     @typing.final
     def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
-        """搜索（Search ）符合条件节点或属性。查询是一个幂等操作，它不会改变树的状态。"""
+        """搜索（Search ）符合条件节点或属性。查询是一个幂等操作，它不会改变树的状态。
+        - 返回一个迭代器，允许用户在遍历过程中处理每个节点。
+        """
         yield from Path(*args).search(self, **kwargs)
 
     @typing.final
     def traversal(self, *args, **kwargs) -> typing.Generator[_T, None, None]:
-        """遍历（Traversal），遍历树中的子节点 。 alias of search
-        - 返回一个迭代器，允许用户在遍历过程中处理每个节点。
-        """
+        """遍历（Traversal），遍历树中的子节点 。 alias of search"""
         yield from self.search(*args, **kwargs)
 
     @typing.final
@@ -398,27 +399,7 @@ class HTree(HTreeNode):
         """查询（Query）， args[-1] 为 projection"""
         return Path(*args[:1]).query(self, *args[1:], **kwargs)
 
-    # @typing.final
-    # def for_each(self, op: typing.Callable[[_T], _TR], **kwargs) -> typing.Generator[_TR, None, None]:
-    #     """alias of search
-    #     这通常是一个函数或方法，用于对集合中的每个元素执行某种操作。这个操作通常是由一个函数或者一个lambda表达式定义的。
-    #     for_each不关心元素的顺序或者它们如何被存储，它只是简单地对每个元素执行相同的操作。"""
-    #     yield from self.search(projection=projection, **kwargs)
-    # @typing.final
-    # def find_cache(self, path, *args, default_value=_not_found_, **kwargs) -> typing.Any:
-    #     """find value from cache"""
-    #     res = Path.do_find(self._cache, path, *args, default_value=_not_found_, **kwargs)
-    #     if res is _not_found_ and self._entry is not None:
-    #         res = self._entry.child(path).find(*args, default_value=_not_found_, **kwargs)
-    #     if res is _not_found_:
-    #         res = default_value
-    #     return res
-
-    # @typing.final
-    # def get_cache(self, path, default_value=_not_found_) -> typing.Any:
-    # """get value from cache"""
-    # return self.find_cache(path, default_value=default_value)
-
+    # -----------------------------------------------------------------------------------
     # Python special methods
 
     @typing.final
@@ -468,22 +449,12 @@ class HTree(HTreeNode):
     # -----------------------------------------------------------------------------
     # API as container
 
-    def __get_node__(self, key, default_value=_not_found_, _type_hint=None, _entry=None, _getter=None, **kwargs):
-
-        if key is None and len(kwargs) == 0:
-            return self
-
-        if callable(_getter):
-            value = _getter(self, key, **kwargs)
-
-        else:
-            value = Path([key]).find(self._cache, default_value=_not_found_)
-
-        if value is _not_found_ or (isinstance(value, dict) and isinstance(default_value, dict)):
+    def __as_node__(self, key, value, /, _type_hint=None, _entry=None, default_value=_not_found_, **kwargs):
+        if value is _not_found_ and _entry is None:
+            value = default_value
+            default_value = _not_found_
+        elif isinstance(default_value, dict):
             value = Path().update(deepcopy(default_value), value)
-
-        if _entry is None and self._entry is not None:
-            _entry = self._entry.child(key)
 
         if _type_hint is _not_found_:
             _type_hint = None
@@ -505,29 +476,27 @@ class HTree(HTreeNode):
         #         _type_hint = List[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else List
         #     elif value is _not_found_ and _entry is not None:
         #         _type_hint = HTree
+        if isinstance(_type_hint, tuple):
+            _type_hint = _type_hint[-1]
 
-        if _type_hint is None:
-            node = value
+        if _type_hint is None and _entry is not None:
+            _type_hint = HTree
 
-        else:
-            if isinstance(_type_hint, tuple):
-                _type_hint = _type_hint[-1]
-
-            if isinstance(_type_hint, typing._GenericAlias):
-                if issubclass(_type_hint.__origin__, HTreeNode):
-                    node = _type_hint(value, _entry=_entry, _parent=self, **kwargs)
-                else:
-                    node = _type_hint(value)
-            elif not inspect.isclass(_type_hint):
-                node = value
-            elif isinstance(value, _type_hint):
-                node = value
-            elif issubclass(_type_hint, HTreeNode):
+        if isinstance(_type_hint, typing._GenericAlias):
+            if issubclass(_type_hint.__origin__, HTreeNode):
                 node = _type_hint(value, _entry=_entry, _parent=self, **kwargs)
             else:
-                if _entry is not None:
-                    value = Path().update(value, _entry.get())
-                node = type_convert(_type_hint, value, **kwargs)
+                node = _type_hint(value)
+        elif not inspect.isclass(_type_hint):
+            node = value
+        elif isinstance(value, _type_hint):
+            node = value
+        elif issubclass(_type_hint, HTreeNode):
+            node = _type_hint(value, _entry=_entry, _parent=self, default_value=default_value, **kwargs)
+        else:
+            if _entry is not None:
+                value = Path().update(value, _entry.get())
+            node = type_convert(_type_hint, value, **kwargs)
 
         if isinstance(node, HTreeNode):
             if node._parent is None:
@@ -541,10 +510,27 @@ class HTree(HTreeNode):
                 if self._metadata.get("name", _not_found_) in (_not_found_, None, "unnamed"):
                     self._metadata["name"] = str(key)
 
-        if node is _not_found_:
-            return self.__missing__(key)
+        return node
 
-        self._cache = Path([key]).update(self._cache, node)
+    def __get_node__(self, key, _type_hint=None, _entry=None, _getter=None, **kwargs):
+        if key is None and len(kwargs) == 0:
+            return self
+
+        value = Path([key]).find(self._cache, default_value=_not_found_)
+
+        if value is _not_found_ and callable(_getter):
+            value = _getter(self, key, **kwargs)
+
+        # if value is _not_found_ or (isinstance(value, dict) and isinstance(default_value, dict)):
+        #     value = Path().update(deepcopy(default_value), value)
+
+        if _entry is None and self._entry is not None:
+            _entry = self._entry.child(key)
+
+        node = self.__as_node__(key, value, _type_hint=_type_hint, _entry=_entry, **kwargs)
+
+        if node is not _not_found_ and key is not None:
+            self._cache = Path([key]).update(self._cache, node)
 
         return node
 
@@ -552,7 +538,7 @@ class HTree(HTreeNode):
         if callable(_setter):
             _setter(self, key, *args, **kwargs)
         else:
-            self._cache = Path([key]).update(self._cache, *args, **kwargs)
+            self._cache = Path([key] if key is not None else []).update(self._cache, *args, **kwargs)
 
         return self
         # key = args[0]
@@ -609,21 +595,36 @@ class HTree(HTreeNode):
         else:
             return False
 
-    def __find__(self, *args, **kwargs) -> typing.Any:
-        res = Path(*args[:1]).find(self._cache, *args[1:], **kwargs)
+    def __find__(self, predicate, *args, **kwargs) -> typing.Any:
+        res = Path().find(self._cache, predicate, *args, **kwargs)
         if res is _not_found_ and self._entry is not None:
-            res = self._entry.child(*args[:1]).find(*args[1:], **kwargs)
+            res = self._entry.find(predicate, args, **kwargs)
         return res
 
-    def __search__(self, *args, **kwargs) -> typing.Generator[HTreeNode, None, None]:
-        raise NotImplementedError(f"{self.__class__.__name__}.__search__ is not implemented!")
+    def __search__(self, predicate, *args, **kwargs) -> typing.Generator[HTreeNode, None, None]:
+        cached_key = []
+        for key, value in Path().search(self._cache, predicate, Query.tags.get_item):
+            if isinstance(key, (str, int)):
+                cached_key.append(key)
+                entry = None if self._entry is None else self._entry.child(key)
+                node = self.__as_node__(key, value, _entry=entry)
+                yield Path().project(node, *args, **kwargs)
+            else:
+                yield Path().project(value, *args, **kwargs)
+
+        if self._entry is not None:
+            for key, entry in self._entry.search(predicate, Query.tags.get_item):
+                if not isinstance(key, (str, int)) or key in cached_key:
+                    continue
+                node = self.__as_node__(key, _not_found_, _entry=entry)
+                yield Path().project(node, *args, **kwargs)
+
         # if (self._cache is _not_found_ or len(self._cache) == 0) and self._entry is not None:
         #     for k, v in self._entry.search(path, **kwargs):
         #         if not isinstance(v, Entry):
         #             yield k, self._type_convert(v, k)
         #         else:
         #             yield k, self._type_convert(_not_found_, k, _entry=v)
-
         # elif self._cache is not None:
         #     for k, v in Path._search(self._cache, [], *args, **kwargs):
         #         _entry = self._entry.child(k) if self._entry is not None else None
@@ -749,7 +750,7 @@ class List(GenericHelper[_T], HTree):
         for idx in range(len(self)):
             yield self.__get_node__(idx)
 
-    def __get_node__(self, key, default_value=_not_found_, **kwargs) -> _T:
+    def __get_node__(self, key, /, default_value=_not_found_, **kwargs) -> _T:
         if default_value is _not_found_:
             default_value = self._metadata.get("default_value", _not_found_)
         return super().__get_node__(key, default_value=default_value, **kwargs)

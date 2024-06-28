@@ -87,9 +87,6 @@ class Pluggable(abc.ABC):
         - typing.Type[typing.Self]: The new instance of the class.
         """
 
-        if len(args) + len(kwargs) == 0:
-            return object.__new__(cls)
-
         if cls is Pluggable:
             # Can not create instance of Pluggable
             raise RuntimeError("Can not create instance of Pluggable!")
@@ -98,6 +95,9 @@ class Pluggable(abc.ABC):
             # Not pluggable
             logger.error("%s is not pluggable!", cls.__name__)
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
+
+        if len(args) + len(kwargs) == 0 or (len(args) == 1 and args[0] is None):
+            return object.__new__(cls)
 
         plugin_name = None
 
