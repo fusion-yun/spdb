@@ -22,6 +22,7 @@ from spdm.utils.misc import normalize_path, serialize
 from spdm.utils.path_traverser import PathTraverser
 from spdm.utils.tags import _not_found_, _undefined_
 from spdm.utils.tree_utils import format_string_recursive
+from spdm.utils.uri_utils import uri_split
 
 
 def merge_xml(first, second):
@@ -122,15 +123,14 @@ def tree_to_xml(root: str | Element, d, *args, **kwargs) -> _XMLElement:
 
 
 class EntryXML(File.Entry, plugin_name="xml"):
-    def __init__(self, uri, *args, envs=None, **kwargs):
-        super().__init__(None, *args, **kwargs)
+    def __init__(self, data, *args, envs=None, **kwargs):
 
-        if not isinstance(data, str):
-            pass
-        elif not data.strip(" ").startswith("<"):
-            data = load_xml(data)
-        else:
+        if isinstance(data, str) and data.strip(" ").startswith("<"):
             data = fromstring(data)
+        else:
+            data = load_xml(data)
+     
+        super().__init__(_not_found_, *args, **kwargs)
 
         self._data: _XMLElement = data
 
@@ -361,7 +361,7 @@ class EntryXML(File.Entry, plugin_name="xml"):
         return self._data.attrib
 
 
-class FileXML(File, plugin_name="xml"):
+class FileXML(File):
     Entry = EntryXML
 
     def __init__(self, *args, **kwargs):

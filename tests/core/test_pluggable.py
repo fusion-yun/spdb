@@ -28,8 +28,7 @@ class TestPluggable(unittest.TestCase):
         class Goo(Dummy, plugin_name="goo"):
             pass
 
-        self.assertIsInstance(Dummy(plugin_name="goo"), Goo)
-        self.assertEqual(Goo.plugin_name, "goo")
+        self.assertIsInstance(Dummy(_plugin_name="goo"), Goo)
 
 
 if __name__ == "__main__":

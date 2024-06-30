@@ -2,7 +2,7 @@ import unittest
 from copy import deepcopy
 
 from spdm.utils.tags import _not_found_
-from spdm.core.entry import Entry
+from spdm.core.entry import Entry, open_entry
 
 
 class TestEntry(unittest.TestCase):
@@ -92,22 +92,15 @@ class TestEntry(unittest.TestCase):
 
         self.assertListEqual([v for v in d1.child("*/id").search()], data)
 
-    # def test_find_next(self):
-    #     data = [1, 2, 3, 4, 5]
+    def test_plugin(self):
+        from spdm.core.file import File
 
-    #     d0 = Entry(data)
+        class Doo(File.Entry, plugin_name=["doo", "do", "DOO"]):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
 
-    #     res = []
-
-    #     next_id = []
-
-    #     while True:
-    #         value, next_id = d0.find_next(*next_id)
-    #         if next_id is None or len(next_id) == 0:
-    #             break
-    #         res.append(value)
-
-    #     self.assertListEqual(res, data)
+        self.assertIsInstance(open_entry("/a/b/c.do"), Doo)
+        self.assertIsInstance(open_entry("file+doo:///a/b/c"), Doo)
 
 
 if __name__ == "__main__":

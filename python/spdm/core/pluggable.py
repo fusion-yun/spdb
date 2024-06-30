@@ -25,7 +25,7 @@ class Pluggable(abc.ABC):
 
     _plugin_registry = {}
 
-    plugin_name = None
+    _plugin_name = None
 
     @classmethod
     def _complete_path(cls, plugin_name) -> str | None:
@@ -38,10 +38,17 @@ class Pluggable(abc.ABC):
         Returns:
         - str | None: The complete name of the plugin, or None if the plugin name is invalid.
         """
-        if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
+
+        if not isinstance(plugin_name, str):
+            raise TypeError(f"Illegal plugin name {plugin_name}!")
+
+        plugin_name = plugin_name.replace("+", "_")
+
+        if not plugin_name.isidentifier():
             raise RuntimeError(f"Illegal plugin name {plugin_name}!")
 
         prefix = getattr(cls, "_plugin_prefix", None)
+
         if prefix is None:
             prefix = cls.__module__ + "."
 
@@ -108,7 +115,7 @@ class Pluggable(abc.ABC):
 
         return n_cls
 
-    def __new__(cls, *args, plugin_name=None, **kwargs):
+    def __new__(cls, *args, _plugin_name=None, **kwargs):
         """
         Create a new instance of the class.
 
@@ -129,14 +136,14 @@ class Pluggable(abc.ABC):
             logger.error("%s is not pluggable!", cls.__name__)
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
 
-        if plugin_name is None:
+        if _plugin_name is None:
             n_cls = cls
         else:
 
-            n_cls = cls._find_plugin(plugin_name)
+            n_cls = cls._find_plugin(_plugin_name)
 
             if not (inspect.isclass(n_cls) and issubclass(n_cls, cls)):
-                raise ModuleNotFoundError(f"Can not find module '{plugin_name}' as subclass of '{cls.__name__}'! ")
+                raise ModuleNotFoundError(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
 
         instance = object.__new__(n_cls)
 
@@ -144,10 +151,10 @@ class Pluggable(abc.ABC):
         return instance
 
     def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
+
         if plugin_name is not None:
             cls.register(plugin_name, cls)
-            cls.plugin_name = plugin_name
-        return super().__init_subclass__(*args, **kwargs)
+        return super().__init_subclass__()
 
     @classmethod
     def _find_plugins(cls) -> typing.Generator[None, None, str]:

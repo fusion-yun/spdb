@@ -50,11 +50,11 @@ class Entry(Pluggable):  # pylint: disable=R0904
 
     _plugin_registry = {}
 
-    def __new__(cls, *args, plugin_name=None, **kwargs):
-        if plugin_name is None:
+    def __new__(cls, *args, _plugin_name=None, **kwargs):
+        if _plugin_name is None:
             return super().__new__(cls)
         else:
-            return super().__new__(cls, *args, plugin_name=plugin_name, **kwargs)
+            return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
 
     def __init__(self, *args, **kwargs):
         self._cache = _not_found_ if len(args) == 0 else args[0]
@@ -277,9 +277,13 @@ class EntryChain(Entry):
 class EntryBundle(Entry):
     """Entry Bundle, 用于管理多个 Entry"""
 
-    def __init__(self, **kwargs: typing.Tuple[str, Entry]):
+    def __init__(self, *args, **kwargs: typing.Tuple[str, Entry]):
         super().__init__()
-        self._bundle = {k: as_entry(v) for k, v in kwargs.items() if v is not None and v is not _not_found_}
+        self._bundle = {
+            k: as_entry(v)
+            for k, v in kwargs.items()
+            if not k.startswith("_") and v is not None and v is not _not_found_
+        }
 
     def __copy__(self) -> typing.Self:
         other = super().__copy__()
@@ -386,144 +390,140 @@ class EntryProxy(Entry):
         yield from super().search(self._map(*args[:1]), *args[1:], **kwargs)
 
 
-SPDB_XML_NAMESPACE = "{http://fusionyun.org/schema/}"
-SPDB_TAG = "spdb"
-
-
 class EntryMapping(EntryProxy, EntryBundle, plugin_name="mapping"):
-    _maps = {}
-    _mapping_path = []
-    _default_local_schema: str = "EAST"
-    _default_global_schema: str = "imas/3"
 
-    def __init__(self, uri, *args, global_schema=None, **kwargs):
-        uri = uri_split(uri)
+    def __init__(self, uri, /, global_schema=None, **kwargs):
 
-        schemas = uri.protocol.split("+")
+        if not isinstance(uri, Entry):
+            uri = uri_split(uri)
 
-        mapper, other_entries = self.__class__._load_mapper(local_schema=schemas[0], global_schema=global_schema)
+            schemas = uri.protocol.split("+")
 
-        uri.protocol = "+".join(schemas[1:])
+            mapper, other_entries = _load_mapper(local_schema=schemas[0], global_schema=global_schema)
 
-        super().__init__(mapper, _=as_entry(uri, *args, **kwargs), **other_entries)
+            uri.protocol = "+".join(schemas[1:])
 
-    @classmethod
-    def _load_mapper(
-        cls, local_schema: str, global_schema: str = None, mapping_path=None
-    ) -> typing.Tuple[Entry, typing.Dict[str, Entry]]:
-        """
-        mapping files 目录结构约定为 :
-            ```{text}
-            - <local schema>/<global schema>
-                    config.xml
-                - static            # 存储静态数据，例如装置描述文件
-                    - config.xml
-                    - <...>
-                - protocol0         # 存储 protocol0 所对应mapping，例如 mdsplus
-                    - config.xml
-                    - <...>
-                - protocol1         # 存储 protocol1 所对应mapping，例如 hdf5
-                    - config.xml
-                    - <...>
-            ```
-            Example:   east+mdsplus://.... 对应的目录结构为
-            ```{text}
-            - east/imas/3
-                - static
-                    - config.xml
-                    - wall.xml
-                    - pf_active.xml  (包含 pf 线圈几何信息)
-                    - ...
-                - mdsplus
-                    - config.xml (包含<spdb > 描述子数据库entry )
-                    - pf_active.xml
-            ```
-        """
+            super().__init__(mapper, uri, **other_entries, **kwargs)
 
-        mapping_path = cls._mapping_path
-        mapping_files = {}
-        if len(mapping_path) == 0:
-            mapping_path.extend(
-                [pathlib.Path(p) for p in os.environ.get("SP_DATA_MAPPING_PATH", "").split(":") if p != ""]
-            )
-        mapper_list = EntryMapping._maps
 
-        if local_schema is None:
-            local_schema = EntryMapping._default_local_schema
+mapping_path = [pathlib.Path(p) for p in os.environ.get("SP_DATA_MAPPING_PATH", "").split(":") if p != ""]
 
-        if global_schema is None:
-            global_schema = EntryMapping._default_global_schema
+_maps = {}
 
-        map_tag = [local_schema.lower(), global_schema.lower()]
+_default_local_schema: str = "EAST"
+_default_global_schema: str = "imas/3"
 
-        map_tag_str = "/".join(map_tag)
 
-        mapper = mapper_list.get(map_tag_str, _not_found_)
+def _load_mapper(local_schema: str, global_schema: str = None) -> typing.Tuple[Entry, typing.Dict[str, Entry]]:
+    """
+    mapping files 目录结构约定为 :
+        ```{text}
+        - <local schema>/<global schema>
+                config.xml
+            - static            # 存储静态数据，例如装置描述文件
+                - config.xml
+                - <...>
+            - protocol0         # 存储 protocol0 所对应mapping，例如 mdsplus
+                - config.xml
+                - <...>
+            - protocol1         # 存储 protocol1 所对应mapping，例如 hdf5
+                - config.xml
+                - <...>
+        ```
+        Example:   east+mdsplus://.... 对应的目录结构为
+        ```{text}
+        - east/imas/3
+            - static
+                - config.xml
+                - wall.xml
+                - pf_active.xml  (包含 pf 线圈几何信息)
+                - ...
+            - mdsplus
+                - config.xml (包含<spdb > 描述子数据库entry )
+                - pf_active.xml
+        ```
+    """
 
-        if mapper is _not_found_:
-            prefix = "/".join(map_tag[:2])
+    mapping_files = []
 
-            config_files = [
-                f"{prefix}/config.xml",
-                f"{prefix}/static/config.xml",
-                f"{prefix}/{local_schema.lower()}.xml",
-            ]
+    mapper_list = _maps
 
-            if len(map_tag) > 2:
-                config_files.append(f"{'/'.join(map_tag[:3])}/config.xml")
+    if local_schema is None:
+        local_schema = _default_local_schema
 
-            for m_dir in mapping_path:
-                if not m_dir:
-                    continue
+    if global_schema is None:
+        global_schema = _default_global_schema
 
-                if isinstance(m_dir, str):
-                    m_dir = pathlib.Path(m_dir)
+    map_tag = [local_schema.lower(), global_schema.lower()]
 
-                for file_name in config_files:
-                    p = m_dir / file_name
-                    if p.exists():
-                        mapping_files.append(p)
+    map_tag_str = "/".join(map_tag)
 
-            if len(mapping_files) == 0:
-                raise FileNotFoundError(f"Can not find mapping files for {map_tag} MAPPING_PATH={_mapping_path} !")
+    mapper = mapper_list.get(map_tag_str, _not_found_)
 
-            mapper = open_entry(mapping_files, mode="r", scheme="XML")
+    if mapper is _not_found_:
+        prefix = "/".join(map_tag[:2])
 
-            mapper_list[map_tag_str] = mapper
+        config_files = [
+            f"{prefix}/config.xml",
+            f"{prefix}/static/config.xml",
+            f"{prefix}/{local_schema.lower()}.xml",
+        ]
 
-        entry_list = {}
+        if len(map_tag) > 2:
+            config_files.append(f"{'/'.join(map_tag[:3])}/config.xml")
 
-        spdb = mapper.child("spdb").find()
+        for m_dir in mapping_path:
+            if not m_dir:
+                continue
 
-        if not isinstance(spdb, dict):
-            entry_list["*"] = _url
-        else:
-            attr = {k[1:]: v for k, v in spdb.items() if k.startswith("@")}
+            if isinstance(m_dir, str):
+                m_dir = pathlib.Path(m_dir)
 
-            attr["prefix"] = f"{_url.protocol}://{_url.authority}{_url.path}"
+            for file_name in config_files:
+                p = m_dir / file_name
+                if p.exists():
+                    mapping_files.append(p)
 
-            attr.update(kwargs)
+        if len(mapping_files) == 0:
+            raise FileNotFoundError(f"Can not find mapping files for {map_tag} MAPPING_PATH={mapping_path} !")
 
-            for entry in spdb.get("entry", []):
-                nid = entry.get("@id", None)
+        mapper = open_entry(mapping_files, mode="r", plugin_name="file+xml")
 
-                enable = entry.get("@enable", "true") == "true"
+        mapper_list[map_tag_str] = mapper
 
-                if nid is None:
-                    continue
-                elif not enable and nid not in enabled_entry:
-                    continue
+    entry_list = {}
 
-                entry_list[id] = entry.get("_text", "").format(**attr)
+    spdb = mapper.child("spdb").get()
 
-        return mapper, entry_list
+    # if not isinstance(spdb, dict):
+    #     entry_list["*"] = _url
+    # else:
+    #     attr = {k[1:]: v for k, v in spdb.items() if k.startswith("@")}
+
+    #     attr["prefix"] = f"{_url.protocol}://{_url.authority}{_url.path}"
+
+    #     attr.update(kwargs)
+
+    #     for entry in spdb.get("entry", []):
+    #         nid = entry.get("@id", None)
+
+    #         enable = entry.get("@enable", "true") == "true"
+
+    #         if nid is None:
+    #             continue
+    #         elif not enable and nid not in enabled_entry:
+    #             continue
+
+    #         entry_list[id] = entry.get("_text", "").format(**attr)
+
+    return mapper, entry_list
 
 
 def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, plugin_name=None, **kwargs):
     """open entry from uri"""
 
     if plugin_name is not None:
-        return Entry(uri, *args, plugin_name=plugin_name, **kwargs)
+        return Entry(uri, *args, _plugin_name=plugin_name, **kwargs)
 
     uri = uri_split(uri)
 
@@ -541,15 +541,13 @@ def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, plugin_name=Non
             if sub_uri.protocol == "":
                 sub_uri.protocol = "local"
 
-            entry = plugin(sub_uri, *args, plugin_name=plugin_name, **kwargs)
+            entry = plugin(sub_uri, *args, _plugin_name=plugin_name, **kwargs)
             break
     else:
         try:
-            entry = Entry(uri, *args, plugin_name="mapping", **kwargs)
+            entry = Entry(uri, *args, _plugin_name="mapping", **kwargs)
         except RuntimeError as error:
             raise RuntimeError(f"Can not find plugin for {uri}") from error
-
-    logger.verbose(f"Open entry {uri}!")
 
     return entry
 
@@ -559,7 +557,7 @@ def as_entry(obj, *args, plugin_name=None, **kwargs) -> Entry:
     """Try convert obj to Entry."""
 
     if plugin_name is not None:
-        entry = Entry(obj, *args, plugin_name=plugin_name, **kwargs)
+        entry = Entry(obj, *args, _plugin_name=plugin_name, **kwargs)
     elif hasattr(obj.__class__, "__entry__"):
         if len(args) + len(kwargs) > 0:
             raise RuntimeError(f"Unused arguments {args} {kwargs}")
