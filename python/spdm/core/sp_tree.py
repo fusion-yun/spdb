@@ -90,7 +90,7 @@ class SpTree(HTree):
                 continue
 
             if isinstance(attr, SpProperty):
-                if not (_name in cls.__dict__):
+                if _name not in cls.__dict__:
                     attr = SpProperty(getter=attr.getter, setter=attr.setter, deleter=attr.deleter, **attr.metadata)
             else:
                 attr = SpProperty(default_value=attr)
@@ -101,10 +101,13 @@ class SpTree(HTree):
 
             attr.__set_name__(cls, _name)
 
-        if not hasattr(cls, "_metadata"):
-            cls._metadata = {}
+        if not hasattr(cls, "_metadata") or cls._metadata is None:
+            cls._metadata = kwargs
+        elif isinstance(cls._metadata, dict):
+            cls._metadata.update(kwargs)
+        else:
+            raise TypeError(f"Invalid metadata {cls._metadata}!")
 
-        cls._metadata.update(kwargs)
         super().__init_subclass__()
 
     def __getstate__(self) -> dict:
@@ -112,12 +115,11 @@ class SpTree(HTree):
         for k, prop in inspect.getmembers(self.__class__, is_sp_property):
             if prop.getter is not None:
                 continue
-            
+
             value = getattr(self, k, _not_found_)
 
             if value is _not_found_:
                 continue
-          
 
             data[k] = value
 

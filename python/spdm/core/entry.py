@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import os
 import pathlib
 import typing
 from copy import copy
+import os
+from functools import singledispatch
 
 from spdm.utils.tags import _not_found_, _undefined_
 from spdm.utils.uri_utils import URITuple, uri_split
@@ -11,241 +12,6 @@ from spdm.core.pluggable import Pluggable
 from spdm.core.path import Path, as_path, Query
 
 from spdm.utils.logger import logger
-
-
-SPDB_XML_NAMESPACE = "{http://fusionyun.org/schema/}"
-SPDB_TAG = "spdb"
-
-_maps = {}
-_mapping_path = []
-_default_local_schema: str = "EAST"
-_default_global_schema: str = "imas/3"
-
-
-def load_proxy(
-    url: str | None = None,
-    local_schema: str = None,
-    global_schema: str = None,
-    mapping_files=None,
-    **kwargs,
-):
-    """
-    mapping files 目录结构约定为 :
-           ```{text}
-           - <local schema>/<global schema>
-                config.xml
-               - static            # 存储静态数据，例如装置描述文件
-                   - config.xml
-                   - <...>
-               - protocol0         # 存储 protocol0 所对应mapping，例如 mdsplus
-                   - config.xml
-                   - <...>
-               - protocol1         # 存储 protocol1 所对应mapping，例如 hdf5
-                   - config.xml
-                   - <...>
-           ```
-           Example:   east+mdsplus://.... 对应的目录结构为
-           ```{text}
-           - east/imas/3
-               - static
-                   - config.xml
-                   - wall.xml
-                   - pf_active.xml  (包含 pf 线圈几何信息)
-                   - ...
-               - mdsplus
-                   - config.xml (包含<spdb > 描述子数据库entry )
-                   - pf_active.xml
-           ```
-    """
-
-    if len(_mapping_path) == 0:
-        _mapping_path.extend(
-            [pathlib.Path(p) for p in os.environ.get("SP_DATA_MAPPING_PATH", "").split(":") if p != ""]
-        )
-
-    mapper_list = _maps
-
-    _url = uri_split(url)
-
-    kwargs = Path().update(url.query, kwargs)
-
-    enabled_entry = kwargs.pop("enable", "").split(",")
-
-    if local_schema is None:
-        local_schema = _default_local_schema
-
-    if global_schema is None:
-        global_schema = _default_global_schema
-
-    map_tag = [local_schema.lower(), global_schema.lower()]
-
-    if _url.protocol != "":
-        map_tag.append(_url.protocol)
-
-    map_tag_str = "/".join(map_tag)
-
-    mapper = mapper_list.get(map_tag_str, _not_found_)
-
-    if mapper is _not_found_:
-        prefix = "/".join(map_tag[:2])
-
-        config_files = [
-            f"{prefix}/config.xml",
-            f"{prefix}/static/config.xml",
-            f"{prefix}/{local_schema.lower()}.xml",
-        ]
-
-        if len(map_tag) > 2:
-            config_files.append(f"{'/'.join(map_tag[:3])}/config.xml")
-
-        if mapping_files is None:
-            mapping_files: typing.List[pathlib.Path] = []
-
-        for m_dir in _mapping_path:
-            if not m_dir:
-                continue
-            elif isinstance(m_dir, str):
-                m_dir = pathlib.Path(m_dir)
-
-            for file_name in config_files:
-                p = m_dir / file_name
-                if p.exists():
-                    mapping_files.append(p)
-
-        if len(mapping_files) == 0:
-            raise FileNotFoundError(f"Can not find mapping files for {map_tag} MAPPING_PATH={_mapping_path} !")
-
-        mapper = File(mapping_files, mode="r", scheme="XML").read()
-
-        mapper_list[map_tag_str] = mapper
-
-    entry_list = {}
-
-    spdb = mapper.child("spdb").find()
-
-    if not isinstance(spdb, dict):
-        entry_list["*"] = _url
-    else:
-        attr = {k[1:]: v for k, v in spdb.items() if k.startswith("@")}
-
-        attr["prefix"] = f"{_url.protocol}://{_url.authority}{_url.path}"
-
-        attr.update(kwargs)
-
-        for entry in spdb.get("entry", []):
-            nid = entry.get("@id", None)
-
-            enable = entry.get("@enable", "true") == "true"
-
-            if nid is None:
-                continue
-            elif not enable and nid not in enabled_entry:
-                continue
-
-            entry_list[id] = entry.get("_text", "").format(**attr)
-
-    return mapper, entry_list
-
-
-def _get_plugin_name(*args, local_schema=None, **kwargs) -> str:
-    if len(args) == 0:
-        return None
-
-    if isinstance(args[0], str):
-        # 如果是一个字符串，需要进行解析
-        uri = uri_split(args[0])
-
-    elif isinstance(args[0], pathlib.Path):
-        # 如果是一个pathlib.Path，需要转换
-        uri = URITuple(protocol="file", fragment=kwargs.pop("fragment", ""), query=kwargs, path=args[0])
-
-    else:
-        uri = args[0]
-
-    if not isinstance(uri, URITuple):
-        raise RuntimeError(f"Illegal {uri}")
-
-    fragment = uri.fragment
-
-    query = Path().update(uri.query, kwargs)
-
-    global_schema = query.pop("global_schema", None)
-
-    schemas = [s for s in uri.protocol.split("+") if s != ""]
-
-    local_schema = local_schema or query.pop("local_schema", None) or query.pop("device", None)
-    if len(schemas) > 0 and schemas[0] not in PROTOCOL_LIST:
-        local_schema = schemas[0]
-        schemas = schemas[1:]
-
-    new_url = URITuple(
-        protocol="+".join(schemas),
-        authority=uri.authority,
-        path=uri.path,
-        query=query,
-        fragment="",
-    )
-
-    # if new_url.protocol.startswith(("local+", "file+")):  # or (new_url.protocol == "" and new_url.path != ""):
-    #     # 单一文件不进行 schema 检查，直接读取。因为schema转换在文件plugin中进行。
-    #     from spdm.core.file import File
-
-    #     entry = File(new_url, **query).entry
-
-    # elif new_url.protocol.startswith(("http", "https", "ssh")):
-    #     # http/https/ssh 协议，不进行schema检查，直接读取
-    #     raise NotImplementedError(f"{new_url}")
-    # elif local_schema is not None and global_schema != local_schema:
-    #     # 本地schema和全局schema不一致，需要进行schema转换
-    #     entry = EntryProxy(new_url, local_schema=local_schema, global_schema=global_schema, **query)
-    # else:
-    #     entry = Entry(new_url, **query)
-
-    # if fragment:
-    #     entry = entry.child(fragment.replace(".", "/"))
-
-    return entry
-
-    # url = uri_split(url_s)
-
-    # # scheme = url.protocol.split("+")
-
-    # # local_schema = None
-
-    # # global_schema = schema
-
-    # # match len(scheme):
-    # #     case 0:
-    # #         url.protocol = 'local'
-    # #     case 1:
-    # #         if scheme[0] not in _predefined_protocols:
-    # #             local_schema = scheme[0]
-    # #             url.protocol = ""
-    # #     case _:
-    # #         if scheme[0] in _predefined_protocols:
-    # #             url.protocol = scheme[0]
-    # #             if scheme[1] != kwargs.setdefault("format", scheme[1]):
-    # #                 raise ValueError(f"Format mismatch! {scheme[1]} != {kwargs['format']}")
-    # #         else:
-    # #             local_schema = scheme[0]
-    # #             url.protocol = "+".join(scheme[1:])
-
-    # # if local_schema is not None:
-    # #     kwargs.update(url.query)
-    # #     if url.authority != '' or url.path != '':
-    # #         kwargs['netloc'] = url.authority
-    # #         kwargs['path'] = url.path
-    # #     return EntryProxy(local_schema=local_schema, global_schema=global_schema, ** kwargs)
-
-    # if url.protocol in ["file", "local", "", None]:
-    #     from .file import File
-    #     return File(url, *args, **kwargs).read()
-
-    # elif url.protocol in ["https", "http"]:
-    #     return Entry(url, *args, **kwargs)
-
-    # else:
-    #     raise RuntimeError(f"Unknown url {url} {Entry._plugin_registry}")
 
 
 class Entry(Pluggable):  # pylint: disable=R0904
@@ -284,8 +50,11 @@ class Entry(Pluggable):  # pylint: disable=R0904
 
     _plugin_registry = {}
 
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, plugin_name=_get_plugin_name(*args, **kwargs))
+    def __new__(cls, *args, plugin_name=None, **kwargs):
+        if plugin_name is None:
+            return super().__new__(cls)
+        else:
+            return super().__new__(cls, *args, plugin_name=plugin_name, **kwargs)
 
     def __init__(self, *args, **kwargs):
         self._cache = _not_found_ if len(args) == 0 else args[0]
@@ -426,11 +195,11 @@ class Entry(Pluggable):  # pylint: disable=R0904
         yield self.search()
 
 
-class EntryChain(Entry, plugin_name="chain"):
+class EntryChain(Entry):
     def __init__(self, *args, **kwargs):
         super().__init__()
         self._entries: typing.List[Entry] = [
-            (open_entry_from_uri(v, **kwargs) if not isinstance(v, Entry) else v)
+            (as_entry(v, **kwargs) if not isinstance(v, Entry) else v)
             for v in args
             if v is not _not_found_ and v is not _undefined_ and v is not None
         ]
@@ -505,12 +274,12 @@ class EntryChain(Entry, plugin_name="chain"):
         return any(res)
 
 
-class EntryBundle(Entry, plugin_name="bundle"):
+class EntryBundle(Entry):
     """Entry Bundle, 用于管理多个 Entry"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: typing.Tuple[str, Entry]):
         super().__init__()
-        self._bundle = {k: open_entry(v) for k, v in kwargs.items()}
+        self._bundle = {k: as_entry(v) for k, v in kwargs.items() if v is not None and v is not _not_found_}
 
     def __copy__(self) -> typing.Self:
         other = super().__copy__()
@@ -582,20 +351,20 @@ class EntryBundle(Entry, plugin_name="bundle"):
         yield from self._dispatch(*args[:1]).child(self._path).search(*args[1:], **kwargs)
 
 
-class EntryProxy(Entry, plugin_name="proxy"):
+class EntryProxy(Entry):
     """代理 Entry，通过配置文件进行转换"""
 
     def __init__(self, mapper, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._mapper = open_entry(mapper)
+        self._mapper = mapper
 
     def __copy__(self) -> typing.Self:
         other = super().__copy__()
         other._mapper = self._mapper
         return other
 
-    # def __str__(self) -> str:
-    #     return ",".join([str(e) for e in self._entry_list.values() if isinstance(e, str)])
+    def __str__(self) -> str:
+        return f"{str(self._mapper)} -> {super().__str__()}"
 
     def _map(self, *args) -> str:
         return self._mapper.child(self._path).get(*args)
@@ -617,15 +386,212 @@ class EntryProxy(Entry, plugin_name="proxy"):
         yield from super().search(self._map(*args[:1]), *args[1:], **kwargs)
 
 
-def open_entry(*args, **kwargs):
-    return Entry(*args, **kwargs)
+SPDB_XML_NAMESPACE = "{http://fusionyun.org/schema/}"
+SPDB_TAG = "spdb"
 
 
-def as_entry(obj) -> Entry:
-    if isinstance(obj, Entry):
-        entry = obj
-    elif hasattr(obj.__class__, "__entry__"):
-        entry = obj.__entry__
+class EntryMapping(EntryProxy, EntryBundle, plugin_name="mapping"):
+    _maps = {}
+    _mapping_path = []
+    _default_local_schema: str = "EAST"
+    _default_global_schema: str = "imas/3"
+
+    def __init__(self, uri, *args, global_schema=None, **kwargs):
+        uri = uri_split(uri)
+
+        schemas = uri.protocol.split("+")
+
+        mapper, other_entries = self.__class__._load_mapper(local_schema=schemas[0], global_schema=global_schema)
+
+        uri.protocol = "+".join(schemas[1:])
+
+        super().__init__(mapper, _=as_entry(uri, *args, **kwargs), **other_entries)
+
+    @classmethod
+    def _load_mapper(
+        cls, local_schema: str, global_schema: str = None, mapping_path=None
+    ) -> typing.Tuple[Entry, typing.Dict[str, Entry]]:
+        """
+        mapping files 目录结构约定为 :
+            ```{text}
+            - <local schema>/<global schema>
+                    config.xml
+                - static            # 存储静态数据，例如装置描述文件
+                    - config.xml
+                    - <...>
+                - protocol0         # 存储 protocol0 所对应mapping，例如 mdsplus
+                    - config.xml
+                    - <...>
+                - protocol1         # 存储 protocol1 所对应mapping，例如 hdf5
+                    - config.xml
+                    - <...>
+            ```
+            Example:   east+mdsplus://.... 对应的目录结构为
+            ```{text}
+            - east/imas/3
+                - static
+                    - config.xml
+                    - wall.xml
+                    - pf_active.xml  (包含 pf 线圈几何信息)
+                    - ...
+                - mdsplus
+                    - config.xml (包含<spdb > 描述子数据库entry )
+                    - pf_active.xml
+            ```
+        """
+
+        mapping_path = cls._mapping_path
+        mapping_files = {}
+        if len(mapping_path) == 0:
+            mapping_path.extend(
+                [pathlib.Path(p) for p in os.environ.get("SP_DATA_MAPPING_PATH", "").split(":") if p != ""]
+            )
+        mapper_list = EntryMapping._maps
+
+        if local_schema is None:
+            local_schema = EntryMapping._default_local_schema
+
+        if global_schema is None:
+            global_schema = EntryMapping._default_global_schema
+
+        map_tag = [local_schema.lower(), global_schema.lower()]
+
+        map_tag_str = "/".join(map_tag)
+
+        mapper = mapper_list.get(map_tag_str, _not_found_)
+
+        if mapper is _not_found_:
+            prefix = "/".join(map_tag[:2])
+
+            config_files = [
+                f"{prefix}/config.xml",
+                f"{prefix}/static/config.xml",
+                f"{prefix}/{local_schema.lower()}.xml",
+            ]
+
+            if len(map_tag) > 2:
+                config_files.append(f"{'/'.join(map_tag[:3])}/config.xml")
+
+            for m_dir in mapping_path:
+                if not m_dir:
+                    continue
+
+                if isinstance(m_dir, str):
+                    m_dir = pathlib.Path(m_dir)
+
+                for file_name in config_files:
+                    p = m_dir / file_name
+                    if p.exists():
+                        mapping_files.append(p)
+
+            if len(mapping_files) == 0:
+                raise FileNotFoundError(f"Can not find mapping files for {map_tag} MAPPING_PATH={_mapping_path} !")
+
+            mapper = open_entry(mapping_files, mode="r", scheme="XML")
+
+            mapper_list[map_tag_str] = mapper
+
+        entry_list = {}
+
+        spdb = mapper.child("spdb").find()
+
+        if not isinstance(spdb, dict):
+            entry_list["*"] = _url
+        else:
+            attr = {k[1:]: v for k, v in spdb.items() if k.startswith("@")}
+
+            attr["prefix"] = f"{_url.protocol}://{_url.authority}{_url.path}"
+
+            attr.update(kwargs)
+
+            for entry in spdb.get("entry", []):
+                nid = entry.get("@id", None)
+
+                enable = entry.get("@enable", "true") == "true"
+
+                if nid is None:
+                    continue
+                elif not enable and nid not in enabled_entry:
+                    continue
+
+                entry_list[id] = entry.get("_text", "").format(**attr)
+
+        return mapper, entry_list
+
+
+def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, plugin_name=None, **kwargs):
+    """open entry from uri"""
+
+    if plugin_name is not None:
+        return Entry(uri, *args, plugin_name=plugin_name, **kwargs)
+
+    uri = uri_split(uri)
+
+    schemas = uri.protocol.split("+")
+
+    entry = None
+
+    for pos in range(len(schemas), 0, -1):
+        plugin_name = "_".join(schemas[:pos])
+        plugin = Entry._find_plugin(plugin_name)  # pylint: disable=w0212
+
+        if plugin is not None:
+            sub_uri = copy(uri)
+            sub_uri.protocol = "_".join(schemas[pos:])
+            if sub_uri.protocol == "":
+                sub_uri.protocol = "local"
+
+            entry = plugin(sub_uri, *args, plugin_name=plugin_name, **kwargs)
+            break
     else:
-        entry = open_entry(obj)
+        try:
+            entry = Entry(uri, *args, plugin_name="mapping", **kwargs)
+        except RuntimeError as error:
+            raise RuntimeError(f"Can not find plugin for {uri}") from error
+
+    logger.verbose(f"Open entry {uri}!")
+
     return entry
+
+
+@singledispatch
+def as_entry(obj, *args, plugin_name=None, **kwargs) -> Entry:
+    """Try convert obj to Entry."""
+
+    if plugin_name is not None:
+        entry = Entry(obj, *args, plugin_name=plugin_name, **kwargs)
+    elif hasattr(obj.__class__, "__entry__"):
+        if len(args) + len(kwargs) > 0:
+            raise RuntimeError(f"Unused arguments {args} {kwargs}")
+        entry = obj.__entry__()
+    else:
+        entry = Entry(obj, *args, **kwargs)
+
+    return entry
+
+
+@as_entry.register(Entry)
+def _as_entry(obj, *args, **kwargs):
+    if len(args) + len(kwargs) == 0:
+        raise RuntimeError(f"Unused arguments {args} {kwargs}")
+    return obj
+
+
+@as_entry.register(str)
+def _as_entry(uri, *args, **kwargs):
+    return open_entry(uri, *args, **kwargs)
+
+
+@as_entry.register(URITuple)
+def _as_entry(uri, *args, **kwargs):
+    return open_entry(uri, *args, **kwargs)
+
+
+@as_entry.register(Path)
+def _as_entry(uri, *args, **kwargs):
+    return open_entry(uri, *args, **kwargs)
+
+
+@as_entry.register(pathlib.Path)
+def _as_entry(uri, *args, **kwargs):
+    return open_entry(uri, *args, **kwargs)

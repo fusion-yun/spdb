@@ -25,6 +25,8 @@ class Pluggable(abc.ABC):
 
     _plugin_registry = {}
 
+    plugin_name = None
+
     @classmethod
     def _complete_path(cls, plugin_name) -> str | None:
         """
@@ -37,7 +39,7 @@ class Pluggable(abc.ABC):
         - str | None: The complete name of the plugin, or None if the plugin name is invalid.
         """
         if not isinstance(plugin_name, str) or not plugin_name.isidentifier():
-            return None
+            raise RuntimeError(f"Illegal plugin name {plugin_name}!")
 
         prefix = getattr(cls, "_plugin_prefix", None)
         if prefix is None:
@@ -71,7 +73,42 @@ class Pluggable(abc.ABC):
 
         return decorator
 
-    def __new__(cls, plugin_name=None) -> typing.Type[typing.Self]:
+    @classmethod
+    def _find_plugin(cls, plugin_name: str) -> typing.Self:
+        """
+        Find a plugin by name.
+
+        Args:
+        - plugin_name: The name of the plugin.
+
+        Returns:
+        - typing.Type[typing.Self]: The plugin class.
+        """
+        # Check if the plugin path is provided
+        plugin_path = cls._complete_path(plugin_name)
+
+        if plugin_path is None or plugin_path == cls.__module__ or plugin_path == getattr(cls, "_plugin_prefix", None):
+            # No plugin path provided, return the class itself
+            n_cls = None
+        else:
+            # Check if the plugin is already registered
+            n_cls = cls._plugin_registry.get(plugin_path, None)
+
+            if n_cls is None:
+                # Plugin not found in the registry
+                # Try to find the module in PYTHON_PATH and register it to _plugin_registry
+
+                if sp_load_module(plugin_path) is None:
+                    s_path = plugin_path.split(".")
+                    s_path = s_path[0:1] + ["plugins"] + s_path[1:]
+                    sp_load_module(".".join(s_path))
+
+                # Recheck
+                n_cls = cls._plugin_registry.get(plugin_path, None)
+
+        return n_cls
+
+    def __new__(cls, *args, plugin_name=None, **kwargs):
         """
         Create a new instance of the class.
 
@@ -92,46 +129,16 @@ class Pluggable(abc.ABC):
             logger.error("%s is not pluggable!", cls.__name__)
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
 
-        if plugin_name is not None and (not isinstance(plugin_name, str) or not plugin_name.isidentifier()):
-            raise RuntimeError(f"Illegal type name {plugin_name}! {cls._PLUGIN_TAGS} plugin_name={plugin_name}")
+        if plugin_name is None:
+            n_cls = cls
+        else:
 
-        if (
-            plugin_singletons := getattr(cls, "_plugin_singletons", None)
-        ) is not None and plugin_name in plugin_singletons:
-            return plugin_singletons[plugin_name]
+            n_cls = cls._find_plugin(plugin_name)
 
-        # Check if the plugin path is provided
-        plugin_path = cls._complete_path(plugin_name)
+            if not (inspect.isclass(n_cls) and issubclass(n_cls, cls)):
+                raise ModuleNotFoundError(f"Can not find module '{plugin_name}' as subclass of '{cls.__name__}'! ")
 
-        if plugin_path is None or plugin_path == cls.__module__ or plugin_path == getattr(cls, "_plugin_prefix", None):
-            # No plugin path provided, return the class itself
-            return super(Pluggable, cls).__new__(cls)
-
-        # Check if the plugin is already registered
-        n_cls = cls._plugin_registry.get(plugin_path, None)
-
-        if n_cls is None:
-            # Plugin not found in the registry
-            # Try to find the module in PYTHON_PATH and register it to _plugin_registry
-
-            if sp_load_module(plugin_path) is None:
-                s_path = plugin_path.split(".")
-                s_path = s_path[0:1] + ["plugins"] + s_path[1:]
-                sp_load_module(".".join(s_path))
-
-            # Recheck
-            n_cls = cls._plugin_registry.get(plugin_path, None)
-
-        if not (inspect.isclass(n_cls) and issubclass(n_cls, cls)):
-            # Plugin not found in the registry
-            raise ModuleNotFoundError(
-                f"Can not find module '{plugin_path}' as subclass of '{cls.__name__}'! [{plugin_path}]"
-            )
-
-        instance = super(Pluggable, cls).__new__(n_cls)
-
-        if hasattr(cls, "_plugin_singletons"):
-            cls._plugin_singletons[plugin_name] = instance
+        instance = object.__new__(n_cls)
 
         # Return the plugin class
         return instance
@@ -139,6 +146,7 @@ class Pluggable(abc.ABC):
     def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
         if plugin_name is not None:
             cls.register(plugin_name, cls)
+            cls.plugin_name = plugin_name
         return super().__init_subclass__(*args, **kwargs)
 
     @classmethod

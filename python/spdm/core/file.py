@@ -3,10 +3,11 @@ from __future__ import annotations
 import pathlib
 import typing
 
-from spdm.utils.uri_utils import URITuple, uri_split
 from spdm.core.document import Document
-from spdm.utils.tags import _not_found_
+from spdm.core.path import as_path
 
+from spdm.utils.uri_utils import URITuple, uri_split
+from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 
 
@@ -15,17 +16,18 @@ class File(Document):
     File like object
     """
 
-    class Entry(Document.Entry, plugin_name="file"):
-        def __new__(cls, *args, plugin_name=None, **kwargs):
-            if plugin_name is None and len(args) > 0 and isinstance(args[0], (str, URITuple)):
+    class Entry(Document.Entry, plugin_name=["file", "local"]):
 
-                schemes = uri_split(args[0]).protocol.split("+")
-                if len(schemes) == 1 or schemes[0] != "file":
-                    plugin_name = f"file_{schemes[0]}"
-                else:
-                    plugin_name = "_".join(schemes)
+        def __new__(cls, uri, *args, plugin_name=None, **kwargs):
+            if cls is not File.Entry and plugin_name is not None:
+                return super().__new__(cls, plugin_name=plugin_name)
+            uri = uri_split(uri)
 
-            return super().__new__(cls, *args, plugin_name=plugin_name, **kwargs)
+            if uri.protocol in ["", "local", "file"]:
+                ext = as_path(uri.path)[-1].split(".")[-1]
+                plugin_name = f"file_{ext}"
+
+            return super().__new__(cls, plugin_name=plugin_name)
 
         def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
             if plugin_name is not None:

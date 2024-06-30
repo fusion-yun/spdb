@@ -5,6 +5,7 @@ Feature:
  * This module support extended 'Path' syntax, supports bracket '[]' in the path.
  TODO (salmon.20190919): support  quoting
 """
+
 import ast
 import collections
 import collections.abc
@@ -12,20 +13,23 @@ import pathlib
 import re
 from copy import deepcopy
 from dataclasses import dataclass
-from pathlib import Path
+
 from typing import Any, List, Union
 from urllib.parse import parse_qs, urlparse
 
 from .logger import logger
 
 _rfc3986 = re.compile(
-    r"^((?P<protocol>[^:/?#]+):)?(//(?P<authority>[^/?#]*))?(?P<path>[^?#]*)(\?(?P<query>[^#]*))?(#(?P<fragment>.*))?")
+    r"^((?P<protocol>[^:/?#]+):)?(//(?P<authority>[^/?#]*))?(?P<path>[^?#]*)(\?(?P<query>[^#]*))?(#(?P<fragment>.*))?"
+)
 
 _rfc3986_ext0 = re.compile(
-    r"^((?P<schema>[^:/?#\+\[\]]+)?(\+(?P<protocol>[^:/?#\+\[\]]+))?:)?(//(?P<authority>[^/?#]*))?(?P<path>[^?#]*)(\?(?P<query>[^#]*))?(#(?P<fragment>.*))?")
+    r"^((?P<schema>[^:/?#\+\[\]]+)?(\+(?P<protocol>[^:/?#\+\[\]]+))?:)?(//(?P<authority>[^/?#]*))?(?P<path>[^?#]*)(\?(?P<query>[^#]*))?(#(?P<fragment>.*))?"
+)
 
 _rfc3986_ext = re.compile(
-    r"^((?P<protocol>[^:/?#\+\[\]]+)?(\+(?P<format>[^:/?#\+\[\]]+))?(\[(?P<schema>[^:/?#\+\[\]]*)\])?:)?(//(?P<authority>[^/?#]*))?(?P<path>[^?#]*)(\?(?P<query>[^#]*))?(#(?P<fragment>.*))?")
+    r"^((?P<protocol>[^:/?#\+\[\]]+)?(\+(?P<format>[^:/?#\+\[\]]+))?(\[(?P<schema>[^:/?#\+\[\]]*)\])?:)?(//(?P<authority>[^/?#]*))?(?P<path>[^?#]*)(\?(?P<query>[^#]*))?(#(?P<fragment>.*))?"
+)
 
 
 @dataclass
@@ -47,54 +51,61 @@ def uri_split_as_dict(uri) -> dict:
 
     uri_ = urlparse(uri)
 
-    query = "{" + ','.join([(f'"{k}":"{v[0]}"' if not v[0].isnumeric() else f'"{k}":{v[0]}')
-                           for k, v in parse_qs(uri_.query).items()])+"}"
+    query = (
+        "{"
+        + ",".join(
+            [(f'"{k}":"{v[0]}"' if not v[0].isnumeric() else f'"{k}":{v[0]}') for k, v in parse_qs(uri_.query).items()]
+        )
+        + "}"
+    )
     ast.literal_eval(query)
 
-    if uri_.netloc in ['.', '..']:
-        path = uri_.netloc+uri_.path
-        netloc = ''
+    if uri_.netloc in [".", ".."]:
+        path = uri_.netloc + uri_.path
+        netloc = ""
     else:
         path = uri_.path
         netloc = uri_.netloc
 
     res = dict(
-        protocol=uri_.scheme,
+        protocol=uri_.scheme or "file",
         authority=netloc,
         path=path,
         query=ast.literal_eval(query),
-        fragment=uri_.fragment
+        fragment=uri_.fragment,
     )
     return res
 
 
-def uri_split(uri: str | URITuple | Path | None) -> URITuple:
+def uri_split(uri: str | URITuple | pathlib.Path | None) -> URITuple:
     if isinstance(uri, URITuple):
-        return deepcopy(uri)
+        res = deepcopy(uri)
     elif isinstance(uri, str):
-        return URITuple(**uri_split_as_dict(uri))
-    elif isinstance(uri, (collections.abc.Sequence, Path)):
-        return URITuple(path=uri, query={})
+        res = URITuple(**uri_split_as_dict(uri))
+    elif isinstance(uri, (collections.abc.Sequence, pathlib.Path)):
+        res = URITuple(protocol="file", path=uri, query={})
     elif uri is None:
-        return URITuple(query={})
+        res = URITuple()
     else:
-        raise TypeError(uri)
+        raise TypeError(f"Unsupported type {type(uri)}")
+    return res
 
 
-def uri_merge(schema, authority=None, path=None,  query=None, fragment=None):
+def uri_merge(schema, authority=None, path=None, query=None, fragment=None):
 
-    return "".join([
-        schema+"://" if schema is not None else "",
-        (authority or "").strip('/'),
-        path or "",
-        "?"+str(query) if query is not None else "",
-        "#"+str(fragment) if fragment is not None else ""
-    ])
+    return "".join(
+        [
+            schema + "://" if schema is not None else "",
+            (authority or "").strip("/"),
+            path or "",
+            "?" + str(query) if query is not None else "",
+            "#" + str(fragment) if fragment is not None else "",
+        ]
+    )
 
 
 def uri_join(base, uri):
-    o0 = uri_split(base) if not isinstance(
-        base, collections.abc.Mapping) else base
+    o0 = uri_split(base) if not isinstance(base, collections.abc.Mapping) else base
     o1 = uri_split(uri) if not isinstance(uri, collections.abc.Mapping) else uri
     if o1.schema is not None and o1.schema != o0.schema:
         return uri
@@ -106,12 +117,12 @@ def uri_join(base, uri):
         schema = o0.schema
         authority = o0.authority
 
-        if o1.path is None or o1.path == '':
+        if o1.path is None or o1.path == "":
             path = o0.path
-        elif o1.path is not None and len(o1.path) > 0 and o1.path[0] == '/':
+        elif o1.path is not None and len(o1.path) > 0 and o1.path[0] == "/":
             path = o1.path
         else:
-            path = o0.path[:o0.path.rfind('/')]+"/"+o1.path
+            path = o0.path[: o0.path.rfind("/")] + "/" + o1.path
 
     return uri_merge(schema, authority, path, o1.query, o1.fragment)
 
@@ -121,8 +132,7 @@ def uridefrag(uri):
     return uri_merge(o.schema, o.authority, o.path, None, None), o.fragment
 
 
-_r_path_item = re.compile(
-    r"([a-zA-Z_\$][^./\\\[\]]*)|\[([+-]?\d*)(?::([+-]?\d*)(?::([+-]?\d*))?)?\]")
+_r_path_item = re.compile(r"([a-zA-Z_\$][^./\\\[\]]*)|\[([+-]?\d*)(?::([+-]?\d*)(?::([+-]?\d*))?)?\]")
 
 
 class _Empty:
@@ -131,14 +141,14 @@ class _Empty:
 
 def _ion(v):
     """if v is not return int(v) else return None"""
-    return int(v) if v is not None and v != '' else None
+    return int(v) if v is not None and v != "" else None
 
 
 def parse_url_iter(path, with_position=False):
-    """ obj : object like dict or list
-        path:
-            i.e.  a.b.d[23][3:3:4].adf[3]
-        try_attr: if true then try to get attribute  when getitem failed
+    """obj : object like dict or list
+    path:
+        i.e.  a.b.d[23][3:3:4].adf[3]
+    try_attr: if true then try to get attribute  when getitem failed
 
     """
 
@@ -182,8 +192,7 @@ def getitem_by_path(obj, path, *, try_attribute=False, split=True):
                 obj = obj[idx]
         elif isinstance(obj, collections.abc.Mapping):
             obj = obj[idx]
-        elif isinstance(obj, collections.abc.Sequence) and \
-                (isinstance(idx, int) or isinstance(idx, slice)):
+        elif isinstance(obj, collections.abc.Sequence) and (isinstance(idx, int) or isinstance(idx, slice)):
             obj = obj[idx]
         elif try_attribute and isinstance(idx, str) and hasattr(obj, idx):
             obj = getattr(obj, idx)
@@ -236,7 +245,7 @@ def setvalue_r(obj, path, data):
     return setitem_by_path(obj, path, data, try_attribute=True)
 
 
-def pathslit(path: Union[List, str], delimiter='/') -> List:
+def pathslit(path: Union[List, str], delimiter="/") -> List:
     if isinstance(path, str):
         path = path.split(delimiter)
     return path
