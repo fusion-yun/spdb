@@ -2,20 +2,17 @@ from __future__ import annotations
 
 import ast
 import collections.abc
-import inspect
-import pprint
 import re
 import itertools
 import typing
 from copy import copy, deepcopy
 from enum import Flag, auto
-
+import pathlib
 import numpy as np
 
-from spdm.utils.logger import deprecated, logger
-from spdm.utils.misc import serialize
-from spdm.utils.tags import _not_found_, _undefined_
-from spdm.utils.type_hint import array_type, isinstance_generic, is_int, is_tree
+from spdm.utils.logger import logger
+from spdm.utils.tags import _not_found_
+from spdm.utils.type_hint import isinstance_generic, is_int
 
 
 class Query:
@@ -993,71 +990,6 @@ class Path(list):
 
         return target
 
-        # for idx, key in enumerate(path):
-
-        #     if key in (Path.tags.children, Path.tags.ancestors, Path.tags.descendants, Path.tags.slibings):
-        #         # for p in Path._search(current_, path[idx + 1 :]):
-        #         #     Path._update(current_, p, *args, **kwargs)
-        #         # break
-        #         # raise NotImplementedError("Traversal update")
-        #         break
-        #     elif key is Path.tags.current:
-        #         current = prev
-        #         key = None
-        #     elif key is Path.tags.parent:
-        #         current = getattr(prev, "_parent", _not_found_)
-        #         key = None
-
-        #         raise NotImplementedError(f"Update {path[1:idx+1]}")
-
-        #     if current is _not_found_:
-        #         current = Path._update(_not_found_, path[idx:], *args, **kwargs)
-        #         Path._set(prev, key, current)
-        #         break
-        #     tmp = current
-        #     if idx == len(path) - 1:
-        #         if hasattr(current.__class__, "__set_node__"):
-        #             current.__set_node__(*args, **kwargs)
-        #         else:
-        #             for value in (*args, kwargs):
-        #                 if value is _not_found_:
-        #                     pass
-        #                 elif current is _not_found_:
-        #                     current = value
-
-        #                 elif isinstance(value, collections.abc.Mapping):
-        #                     for k, v in value.items():
-        #                         current = Path._update(current, [k], v)
-        #                 else:
-        #                     current = value
-
-        #     elif isinstance(path[idx + 1], int):
-        #         if isinstance(current, collections.abc.MutableSequence):
-        #             if path[idx + 1] >= len(current):
-        #                 current.extend([_not_found_] * (path[idx + 1] + 1 - len(current)))
-        #         elif current is _not_found_:
-        #             current = [[_not_found_] * (path[idx + 1] + 1)]
-        #     elif path[idx + 1] is Path.tags.append:
-        #         if isinstance(current, collections.abc.MutableSequence):
-        #             pass
-        #         elif current is _not_found_:
-        #             current = []
-        #         else:
-        #             current = [current]
-        #     elif current is _not_found_:
-        #         current = {}
-
-        #     if current is tmp:
-        #         pass
-        #     elif key is not None:
-        #         Path._set(prev, key, current)
-        #     else:
-        #         raise RuntimeError(f"key is None! {path[1:idx+1]}")
-
-        #     prev = current
-
-        # return holder[0]
-
     @staticmethod
     def _delete(target: typing.Any, path: typing.List[PathItemLike], *args, **kwargs) -> bool:
         if len(args) + len(kwargs) > 0:
@@ -1089,92 +1021,85 @@ class Path(list):
 
     @staticmethod
     def _find(target, path: typing.List[PathItemLike], *args, **kwargs):
-        if len(path) == 0 or path is None:
-            value = target
+
+        key = path[0] if len(path) > 0 else _not_found_
+
+        sub_path = path[1:]
+
+        if key is _not_found_:
+            value = Path._project(target, *args, **kwargs)
+        elif key is None:
+            value = Path._find(target, sub_path, *args, **kwargs)
+        elif isinstance(key, tuple):
+            value = [Path._find(target, Path(k)[:] + sub_path) for k in key]
+            value = tuple(value)
+            value = Path._project(value, *args, **kwargs)
+        elif isinstance(key, list):
+            value = [Path._find(target, Path(k)[:] + sub_path) for k in key]
+            value = Path._project(value, *args, **kwargs)
+        elif isinstance(key, set):
+            value = {k: Path._find(target, Path(k)[:] + sub_path) for k in key}
+            value = Path._project(value, *args, **kwargs)
+        elif isinstance(key, dict):
+            value = {k: Path._find(target, Path(v)[:] + sub_path) for k, v in key.items()}
+            value = Path._project(value, *args, **kwargs)
+        elif key is Path.tags.parent:
+            value = Path._find(getattr(target, "_parent", _not_found_), sub_path, *args, **kwargs)
+        elif key is Path.tags.current:
+            value = Path._find(target, sub_path, *args, **kwargs)
+        elif isinstance(key, (int, str)):
+            value = Path._find(Path._get(target, key), sub_path, *args, **kwargs)
+        elif isinstance(key, Query):
+            try:
+                obj = next(Path._search(target, [key]))
+            except StopIteration:
+                obj = _not_found_
+            value = Path._find(obj, sub_path, *args, **kwargs)
+        elif len(sub_path) == 0:
+            value = Path._get(target, key)
+            value = Path._project(value, *args, **kwargs)
         else:
-            key = path[0]
-            sub_path = path[1:]
-            if key is None:
-                value = Path._find(target, sub_path)
-            elif isinstance(key, tuple):
-                value = [Path._find(target, Path(k)[:] + sub_path) for k in key]
-                value = tuple(value)
-            elif isinstance(key, list):
-                value = [Path._find(target, Path(k)[:] + sub_path) for k in key]
-            elif isinstance(key, set):
-                value = {k: Path._find(target, Path(k)[:] + sub_path) for k in key}
-            elif isinstance(key, dict):
-                value = {k: Path._find(target, Path(v)[:] + sub_path) for k, v in key.items()}
+            raise KeyError(f"Cannot index {target} by {key}!")
 
-            elif key is Path.tags.parent:
-                value = Path._find(getattr(target, "_parent", _not_found_), sub_path)
-            elif key is Path.tags.current:
-                value = Path._find(target, sub_path)
-            elif isinstance(key, (int, str)):
-                value = Path._find(Path._get(target, key), sub_path)
-            elif isinstance(key, Query):
-                try:
-                    obj = next(Path._search(target, [key]))
-                except StopIteration:
-                    obj = _not_found_
-                value = Path._find(obj, sub_path)
-            elif len(sub_path) == 0:
-                value = Path._get(target, key)
-            else:
-                raise KeyError(f"Cannot index {target} by {key}!")
-
-        return Path._project(value, *args, **kwargs)
+        return value
 
     @staticmethod
     def _project(target: typing.Any, *args, **kwargs):
+
         if len(args) == 0:
-            res = target if target is not _not_found_ else kwargs.get("default_value", _not_found_)
+            return target if target is not _not_found_ else kwargs.get("default_value", _not_found_)
+
+        projection = args[0]
+        args = args[1:]
+
+        if isinstance(projection, Query.tags):
+            projection = getattr(Query, f"_op_{projection.name}", None)
+
+        if callable(projection):
+            try:
+                res = projection(target, **kwargs)
+            except Exception as error:
+                raise RuntimeError(f'Fail to call "{projection}"!  ') from error
+
+        elif isinstance(projection, tuple):
+            res = (Path._project(target, k, *args, **kwargs) for k in projection)
+
+        elif isinstance(projection, list):
+            res = [Path._project(target, k, *args, **kwargs) for k in projection]
+
+        elif isinstance(projection, set):
+            res = {k: Path._project(target, k, *args, **kwargs) for k in projection}
+
+        elif isinstance(projection, dict):
+            res = {k: Path._project(target, v, *args, **kwargs) for k, v in projection.items()}
+
+        elif projection is _not_found_ and target is _not_found_:
+            res = kwargs.get("default_value", _not_found_)
+
         else:
-            op = args[0]
-            if isinstance(op, Query.tags):
-                op = getattr(Query, f"_q_{op.name}", _not_found_)
-            if not callable(op):
-                raise RuntimeError(f"illegal op {args}!")
-                # res = target
-            else:
-                res = op(target, *args[1:], **kwargs)
+            res = Path._update(target, [], projection)
 
         return res
-
-        # if isinstance(projection, Path.tags):
-        #     projection = getattr(Path, f"_op_{projection.name}", None)
-
-        # if callable(projection):
-        #     try:
-        #         res = projection(target, **kwargs)
-        #     except Exception as error:
-        #         raise RuntimeError(f'Fail to call "{projection}"!  ') from error
-        #     else:
-        #         return res
-
-        # elif isinstance(projection, str) and projection.isidentifier():
-        #     res = getattr(target, projection, _not_found_)
-        #     if res is _not_found_:
-        #         res = target.get(projection, _not_found_)
-        #     return res
-
-        # elif isinstance(projection, int):
-        #     return target[projection]
-
-        # elif isinstance(projection, set):
-        #     return {k: Path._project(target, k, **kwargs) for k in projection}
-
-        # elif isinstance(projection, list):
-        #     return [Path._project(target, k, **kwargs) for k in projection]
-
-        # elif isinstance(projection, dict):
-        #     return {k: Path._project(target, v, **kwargs) for k, v in projection.items()}
-
-        # elif projection is None:
-        #     return target
-
-        # else:
-        #     raise RuntimeError(f"Unkonwn projection {projection}")
 
     @staticmethod
     def _search(target, path: typing.List[PathItemLike], *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
@@ -1263,4 +1188,10 @@ def merge_tree(*args, **kwargs) -> _T:
 
 
 def as_path(*args, **kwargs):
-    return args[0] if len(args) == 1 and isinstance(args[0], Path) else Path(*args, **kwargs)
+    if len(args) == 1 and len(kwargs) == 0 and isinstance(args[0], Path):
+        return args[0]
+
+    if len(args) > 0 and isinstance(args[0], pathlib.Path):
+        args = (args[0].as_posix(), *args[1:])
+
+    return Path(*args, **kwargs)

@@ -63,7 +63,7 @@ class Pluggable(abc.ABC):
         - plugin_name: The name of the plugin.
         - plugin_cls: The class to be registered as a plugin.
         """
-        if plugin_cls is not None:
+        if plugin_cls is not None and plugin_name is not None:
             if not isinstance(plugin_name, list):
                 plugin_name = [plugin_name]
 
@@ -143,7 +143,7 @@ class Pluggable(abc.ABC):
             n_cls = cls._find_plugin(_plugin_name)
 
             if not (inspect.isclass(n_cls) and issubclass(n_cls, cls)):
-                raise ModuleNotFoundError(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
+                raise ModuleNotFoundError(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! {n_cls}")
 
         instance = object.__new__(n_cls)
 
@@ -151,7 +151,6 @@ class Pluggable(abc.ABC):
         return instance
 
     def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
-
         if plugin_name is not None:
             cls.register(plugin_name, cls)
         return super().__init_subclass__()

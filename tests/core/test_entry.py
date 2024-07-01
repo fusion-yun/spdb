@@ -92,16 +92,6 @@ class TestEntry(unittest.TestCase):
 
         self.assertListEqual([v for v in d1.child("*/id").search()], data)
 
-    def test_plugin(self):
-        from spdm.core.file import File
-
-        class Doo(File.Entry, plugin_name=["doo", "do", "DOO"]):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-
-        self.assertIsInstance(open_entry("/a/b/c.do"), Doo)
-        self.assertIsInstance(open_entry("file+doo:///a/b/c"), Doo)
-
 
 if __name__ == "__main__":
     unittest.main()

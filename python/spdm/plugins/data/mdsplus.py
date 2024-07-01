@@ -6,6 +6,7 @@ import numpy as np
 from spdm.core.collection import Collection
 from spdm.core.entry import Entry
 from spdm.core.file import File
+from spdm.core.document import Document
 from spdm.utils.logger import logger
 from spdm.utils.uri_utils import URITuple
 from spdm.utils.tags import _not_found_
@@ -13,11 +14,10 @@ from spdm.utils.tags import _not_found_
 try:
     import MDSplus as mds
 except ModuleNotFoundError as error:
-    logger.error(f"Can not load MDSplus", exc_info=error)
+    logger.error("Can not load MDSplus", exc_info=error)
 
 
-@File.register(["mdsplus", "mds", "mds+"])
-class MDSplusTree(File):
+class FileMDSplus(File, plugin_name=["mdsplus", "mds", "MDSplus"]):
     MDS_MODE = {
         File.Mode.read: "ReadOnly",
         File.Mode.write: "Normal",
@@ -35,17 +35,17 @@ class MDSplusTree(File):
         # {k: (v if not isinstance(v, slice) else f"{v.start}:{v.stop}:{v.step}")
         #   for k, v in self._envs.items()}
 
-        query = self.url.query or {}
+        query = self.uri.query or {}
 
-        self._mds_mode = MDSplusTree.MDS_MODE[self.mode]
+        self._mds_mode = FileMDSplus.MDS_MODE[self.mode]
 
-        path = self.url.path.rstrip("/")
+        path = self.uri.path.rstrip("/")
 
-        if self.url.authority != "":
-            path = f"{self.url.authority}::{path}"
+        if self.uri.authority != "":
+            path = f"{self.uri.authority}::{path}"
 
-        if self.url.protocol in ("ssh"):
-            path = f"{self.url.protocol}://" + path
+        if self.uri.protocol in ("ssh"):
+            path = f"{self.uri.protocol}://" + path
 
         if len(path) == 0:
             path = None
@@ -71,17 +71,17 @@ class MDSplusTree(File):
                     self._old_env[env_path] = None
                     os.environ[f"{p}_path"] = path
 
-        self._shot = shot if shot is not None else (fid if fid is not None else query.get("shot", self.url.fragment))
+        self._shot = shot if shot is not None else (fid if fid is not None else query.get("shot", self.uri.fragment))
 
         self._trees = {}
 
         self._entry = MDSplusEntry(self)
 
-    def __del__(self):
+    def close(self):
         # del self._trees
         for k, tree in self._trees.items():
             tree.close()
-            logger.debug(f"Close MDS Tree:{k}")
+            logger.debug("Close MDS Tree: %s", k)
 
         self._trees = {}
 
@@ -128,7 +128,7 @@ class MDSplusTree(File):
 
         return tree
 
-    def query(self, request, prefix=None, **kwargs) -> typing.Any:
+    def read(self, request, prefix=None, **kwargs) -> typing.Any:
         if request is None:
             return _not_found_
 
@@ -178,71 +178,69 @@ class MDSplusTree(File):
                 res = res.transpose(1, 0)
         return res
 
-    def update(self, *args, envs=None, **kwargs):
+    def write(self, *args, envs=None, **kwargs):
         raise NotImplementedError()
 
 
-@Collection.register(["mdsplus", "mds", "mds+", "MDSplus"])
-class MDSplusCollection(Collection):
-    def insert_one(self, fid=None, *args, query=None, mode=None, **kwargs):
-        fid = fid or self.guess_id(*args, **collections.ChainMap((query or {}), kwargs)) or self.next_id
-        return MDSplusTree(self.url, fid=fid, mode=mode or "w", **kwargs)
+# class MDSplusCollection(Collection):
+#     def insert_one(self, fid=None, *args, query=None, mode=None, **kwargs):
+#         fid = fid or self.guess_id(*args, **collections.ChainMap((query or {}), kwargs)) or self.next_id
+#         return MDSplusTree(self.uri, fid=fid, mode=mode or "w", **kwargs)
 
-    def search_one(self, predicate, projection=None, only_one=False, **kwargs) -> Entry:
-        fid = self.guess_id(predicate, **kwargs)
-        entry = self._mapping(MDSplusTree(self.url, fid=fid, **kwargs).entry)
-        if projection is None:
-            return entry
-        else:
-            return entry.find(projection)
+#     def search_one(self, predicate, projection=None, only_one=False, **kwargs) -> Entry:
+#         fid = self.guess_id(predicate, **kwargs)
+#         entry = self._mapping(MDSplusTree(self.uri, fid=fid, **kwargs).entry)
+#         if projection is None:
+#             return entry
+#         else:
+#             return entry.find(projection)
 
-    def count(self, predicate=None, *args, **kwargs) -> int:
-        return NotImplemented()
+#     def count(self, predicate=None, *args, **kwargs) -> int:
+#         return NotImplemented()
 
-    # def search_one(self, predicate: Document,  projection: Document = None, *args, **kwargs):
-    #     shot = getitem(predicate, "shot", None) or getitem(predicate, "_id", None)
-    #     if shot is not None:
-    #         return MDSplusEntry(self._tree_name, shot, mode="r") .find(projection)
-    #     else:
-    #         for shot in self._foreach_shot():
-    #             res = MDSplusEntry(self._tree_name, shot, mode="r").find_if(
-    #                 projection, predicate)
-    #             if res is not None:
-    #                 return res
-    #     return None
+# def search_one(self, predicate: Document,  projection: Document = None, *args, **kwargs):
+#     shot = getitem(predicate, "shot", None) or getitem(predicate, "_id", None)
+#     if shot is not None:
+#         return MDSplusEntry(self._tree_name, shot, mode="r") .find(projection)
+#     else:
+#         for shot in self._foreach_shot():
+#             res = MDSplusEntry(self._tree_name, shot, mode="r").find_if(
+#                 projection, predicate)
+#             if res is not None:
+#                 return res
+#     return None
 
-    # def _foreach_shot(self):
-    #     f_prefix = f"{self._tree_name.lower()}_"
-    #     f_prefix_l = len(f_prefix)
-    #     glob = f"{f_prefix}*.tree"
-    #     for fp in self._path.glob(glob):
-    #         yield fp.stem[f_prefix_l:]
+# def _foreach_shot(self):
+#     f_prefix = f"{self._tree_name.lower()}_"
+#     f_prefix_l = len(f_prefix)
+#     glob = f"{f_prefix}*.tree"
+#     for fp in self._path.glob(glob):
+#         yield fp.stem[f_prefix_l:]
 
-    # def search(self, predicate: Document = None, projection: Document = None, *args, **kwargs):
+# def search(self, predicate: Document = None, projection: Document = None, *args, **kwargs):
 
-    #     for shot in self._foreach_shot():
-    #         res = MDSplusEntry(self._tree_name, shot, mode="r").find_if(projection, predicate)
-    #         logger.debug(res)
+#     for shot in self._foreach_shot():
+#         res = MDSplusEntry(self._tree_name, shot, mode="r").find_if(projection, predicate)
+#         logger.debug(res)
 
-    #         if res is not None:
-    #             yield res
+#         if res is not None:
+#             yield res
 
-    # def insert_one(self, document: Document, *args, **kwargs):
-    #     self._count += 1
+# def insert_one(self, document: Document, *args, **kwargs):
+#     self._count += 1
 
-    #     shot = int(document.get("shot", self._count))
+#     shot = int(document.get("shot", self._count))
 
-    #     MDSplusEntry(self._tree_name, shot, mode="x").update(document)
+#     MDSplusEntry(self._tree_name, shot, mode="x").update(document)
 
-    #     return shot
+#     return shot
 
 
-@Entry.register(["mdsplus", "mds"])
-class MDSplusEntry(Entry):
-    def __init__(self, cache: MDSplusTree | str | URITuple, *args, **kwargs):
+class MDSplusEntry(File.Entry):
+    def __init__(self, cache: FileMDSplus | str | URITuple, *args, **kwargs):
         if isinstance(cache, (str, URITuple)):
-            cache: MDSplusTree = MDSplusTree(cache)
-        if not isinstance(cache, MDSplusTree):
+            cache: FileMDSplus = FileMDSplus(cache)
+        if not isinstance(cache, FileMDSplus):
             raise TypeError(f"cache must be MDSplusEntry or str, but got {type(cache)}")
         super().__init__(cache, *args, **kwargs)
 
@@ -271,5 +269,3 @@ def open_mdstree(tree_name, shot, mode="NORMAL", path=None):
     except mds.mdsExceptions.TreeNOPATH as error:
         raise FileNotFoundError(f"{tree_name}_path is not defined! tree_name={tree_name} shot={shot}  \n {error}")
     return tree
-
-

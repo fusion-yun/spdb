@@ -6,6 +6,7 @@ import unittest
 import h5py
 import numpy as np
 from spdm.core.file import File
+from spdm.core.entry import Entry
 from spdm.utils.logger import logger
 
 SP_TEST_DATA_DIRECTORY = pathlib.Path("../data")
@@ -38,12 +39,6 @@ class TestFileHDF5(unittest.TestCase):
         del self._temp_dir
         return super().tearDown()
 
-    def test_regisiter(self):
-        import spdm.plugins.data.plugin_hdf5
-
-        self.assertIn("spdm.plugins.data.plugin_h5", File._plugin_registry)
-        self.assertIn("spdm.plugins.data.plugin_hdf5", File._plugin_registry)
-
     def test_read(self):
 
         f_name = self.temp_dir / "test_hdf5_in.h5"
@@ -53,7 +48,7 @@ class TestFileHDF5(unittest.TestCase):
             h5file.create_dataset("data", data=data_in)
 
         with File(f_name, mode="r", scheme="hdf5") as f_in:
-            data_out = f_in.read().get("data")
+            data_out = f_in.get("data")
 
         self.assertTrue(np.allclose(data_in, data_out))
 

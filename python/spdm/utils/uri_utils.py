@@ -12,12 +12,13 @@ import collections.abc
 import pathlib
 import re
 from copy import deepcopy
+from functools import singledispatch
 from dataclasses import dataclass
-
-from typing import Any, List, Union
+import typing
 from urllib.parse import parse_qs, urlparse
 
-from .logger import logger
+from spdm.utils.tags import _not_found_
+from spdm.utils.logger import logger
 
 _rfc3986 = re.compile(
     r"^((?P<protocol>[^:/?#]+):)?(//(?P<authority>[^/?#]*))?(?P<path>[^?#]*)(\?(?P<query>[^#]*))?(#(?P<fragment>.*))?"
@@ -77,18 +78,34 @@ def uri_split_as_dict(uri) -> dict:
     return res
 
 
-def uri_split(uri: str | URITuple | pathlib.Path | None) -> URITuple:
-    if isinstance(uri, URITuple):
-        res = deepcopy(uri)
-    elif isinstance(uri, str):
-        res = URITuple(**uri_split_as_dict(uri))
-    elif isinstance(uri, (collections.abc.Sequence, pathlib.Path)):
-        res = URITuple(protocol="file", path=uri, query={})
-    elif uri is None:
+@singledispatch
+def uri_split(uri: typing.Any) -> URITuple:
+
+    if uri is None or uri is _not_found_:
         res = URITuple()
     else:
         raise TypeError(f"Unsupported type {type(uri)}")
     return res
+
+
+@uri_split.register(URITuple)
+def _uri_split(uri: URITuple) -> URITuple:
+    return deepcopy(uri)
+
+
+@uri_split.register(str)
+def _uri_split(uri: str) -> URITuple:
+    return URITuple(**uri_split_as_dict(uri))
+
+
+@uri_split.register(pathlib.Path)
+def _uri_split(uri: pathlib.Path) -> URITuple:
+    return URITuple(protocol="file", path=uri.as_posix(), query={})
+
+
+@uri_split.register(collections.abc.Sequence)
+def _uri_split(uri: collections.abc.Sequence) -> URITuple:
+    return URITuple(protocol="file", path=list(uri), query={})
 
 
 def uri_merge(schema, authority=None, path=None, query=None, fragment=None):
@@ -245,7 +262,7 @@ def setvalue_r(obj, path, data):
     return setitem_by_path(obj, path, data, try_attribute=True)
 
 
-def pathslit(path: Union[List, str], delimiter="/") -> List:
+def pathslit(path: typing.Union[typing.List, str], delimiter="/") -> typing.List:
     if isinstance(path, str):
         path = path.split(delimiter)
     return path

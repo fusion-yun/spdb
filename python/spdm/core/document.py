@@ -1,36 +1,25 @@
 from __future__ import annotations
+
+import abc
 import typing
+
 from enum import Flag, auto
 
 from spdm.utils.uri_utils import URITuple, uri_split
 from spdm.utils.tags import _not_found_
 
+from spdm.core.pluggable import Pluggable
 from spdm.core.entry import Entry as EntryBase
-from spdm.core.entry import open_entry
 
 
-class Document:
+class Document(Pluggable):
     """
     Connection like object
     """
 
-    class Entry(EntryBase):
-        def __init__(self, root: URITuple = None, **kwargs):
-            self._root = root
-            super().__init__(_not_found_, **kwargs)
-
-        @property
-        def uri(self) -> URITuple:
-            return f"{self._root.uri}#{self._path}"
-
-        def __copy__(self) -> typing.Self:
-            other = super().__copy__()
-            other._root = self._root
-            return other
-
-        def flush(self):
-            self._root.write(self._path, self._cache)
-            self._cache = _not_found_
+    def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
+        # EntryBase.register(plugin_name, cls.Entry)
+        return super().__init_subclass__(*args, plugin_name=plugin_name, **kwargs)
 
     class Mode(Flag):
         """
@@ -54,6 +43,7 @@ class Document:
         Mode.write | Mode.create: "w",
         Mode.read | Mode.write | Mode.create: "a",
     }
+
     INV_MOD_MAP = {
         "r": Mode.read,
         "rw": Mode.read | Mode.write,
@@ -61,6 +51,52 @@ class Document:
         "w": Mode.write | Mode.create,
         "a": Mode.read | Mode.write | Mode.create,
     }
+
+    class Entry(EntryBase):
+        def __init__(self, doc, *args, **kwargs):
+            super().__init__(_not_found_, *args, **kwargs)
+            if doc is not _not_found_ and not isinstance(doc, Document):
+                raise TypeError(f"doc must be an instance of Document, not {type(doc)}")
+            self._doc = doc
+
+        def __str__(self):
+            return f"{self._doc.uri}#{self._path}"
+
+        def __copy__(self) -> typing.Self:
+            other = super().__copy__()
+            other._doc = self._doc
+            return other
+
+        def find(self, *args, default_value=_not_found_, **kwargs) -> typing.Any:
+            res = _not_found_
+            if self._cache is not _not_found_:
+                res = super().find(*args, default_value=_not_found_, **kwargs)
+
+            if res is _not_found_:
+                res = self._doc.read(self._path, *args, default_value=default_value, **kwargs)
+                if len(args) + len(kwargs) == 0:
+                    self._cache = self._path.update(self._cache, res)
+
+            return res
+
+        def update(self, *args, **kwargs) -> None:
+            return super().update(*args, **kwargs)
+
+        def read(self, *args, **kwargs) -> typing.Any:
+            return self.find(*args, **kwargs)
+
+        def write(self, *args, **kwargs) -> None:
+            self.update(*args, **kwargs)
+            self.flush()
+
+        def flush(self):
+            """将缓存内的数据写入持久存储（文件）"""
+            self._doc.write(self._path, self._cache)
+            # self._cache = _not_found_
+
+        def load(self):
+            """将持久存储（文件）导入缓存"""
+            self._cache = self._path.update(self._cache, self._doc.read(self._path))
 
     def __init__(self, uri, mode: typing.Any = Mode.read, **kwargs):
         """
@@ -74,7 +110,6 @@ class Document:
         self._uri = uri_split(uri)
         self._mode = Document.INV_MOD_MAP[mode] if isinstance(mode, str) else mode
         self._metadata = kwargs
-        self._entry = None
 
     def __str__(self):
         return f"<{self.__class__.__name__}  {self._uri} >"
@@ -91,9 +126,9 @@ class Document:
     def mode(self) -> Mode:
         return self._mode
 
-    @property
-    def is_ready(self) -> bool:
-        return self._entry is not None
+    # @property
+    # def is_ready(self) -> bool:
+    #     return self._entry is not None
 
     @property
     def is_readable(self) -> bool:
@@ -111,34 +146,41 @@ class Document:
     def is_temporary(self) -> bool:
         return bool(self._mode & Document.Mode.temporary)
 
-    def open(self) -> Entry:
-        if self._entry is None:
-            self._entry = open_entry(self._uri, **self._metadata)
-        return self._entry
+    # -----------------------------------------------------------------------------
+    def open(self) -> Document.Entry:
+        """打开文档"""
+        # logger.verbose(f"File {self._uri} is opened!")
+        return self.__class__.Entry(self)
 
     def close(self) -> None:
-        self._entry = None
+        """关闭文档"""
+        # logger.verbose(f"File {self._uri} is closed!")
 
+    def __entry__(self) -> Entry:
+        return self.open()
+
+    # -----------------------------------------------------------------------------
+
+    @typing.final
     def __del__(self):
         self.close()
 
+    @typing.final
     def __enter__(self) -> Entry:
         return self.open()
 
+    @typing.final
     def __exit__(self, exc_type, exc_value, traceback):
         return self.close()
-
-    def __entry__(self) -> Entry:
-        return self._entry
 
     @property
     def entry(self) -> Entry:
         return self.__entry__()
 
+    @abc.abstractmethod
     def read(self, *args, **kwargs) -> typing.Any:
         "读取"
-        return self.__entry__().find(*args, **kwargs)
 
-    def write(self, *args, **kwargs):
+    @abc.abstractmethod
+    def write(self, *args, **kwargs) -> None:
         "写入"
-        return self.__entry__().update(*args, **kwargs)

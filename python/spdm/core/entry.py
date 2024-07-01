@@ -46,7 +46,7 @@ class Entry(Pluggable):  # pylint: disable=R0904
 
     """
 
-    _plugin_prefix = "spdm.plugins.entry."
+    _plugin_prefix = "spdm.plugins.data."
 
     _plugin_registry = {}
 
@@ -278,7 +278,7 @@ class EntryBundle(Entry):
     """Entry Bundle, 用于管理多个 Entry"""
 
     def __init__(self, *args, **kwargs: typing.Tuple[str, Entry]):
-        super().__init__()
+        super().__init__(*args)
         self._bundle = {
             k: as_entry(v)
             for k, v in kwargs.items()
@@ -290,76 +290,57 @@ class EntryBundle(Entry):
         other._bundle = self._bundle
         return other
 
-    def _dispatch(self, entry_name: str) -> Entry:
+    def _dispatch(self, *args, **kwargs) -> Entry:
+        entry_name = "_"
         entry = self._bundle.get(entry_name, None)
 
-        if isinstance(entry, (str, URITuple)):
-            entry = open_entry(entry)
-            self._bundle[entry_name] = entry
-
-        if isinstance(entry, Entry):
-            pass
-        elif default_value is _not_found_:
-            raise RuntimeError(f"Can not find entry for {entry_name}")
+        # if isinstance(entry, (str, URITuple)):
+        #     entry = open_entry(entry)
+        #     self._bundle[entry_name] = entry
+        # # if isinstance(entry, Entry):
+        # #     pass
+        # # elif default_value is _not_found_:
+        # #     raise RuntimeError(f"Can not find entry for {entry_name}")
+        # # else:
+        # #     entry = default_value
+        if entry is None:
+            return Entry()
         else:
-            entry = default_value
-
-        return entry
-
-    def _op_find(self, request: typing.Any, *args, **kwargs) -> typing.Any:
-        # if isinstance(request, str) and "://" in request:
-        #     request = uri_split_as_dict(request)
-
-        if request is _not_found_ or request is None:
-            default_entry = self._dispatch("*", None)
-            if default_entry is None:
-                res = _not_found_
-            else:
-                res = default_entry.child(self._path).find(*args, **kwargs)
-
-        elif isinstance(request, Entry):
-            res = EntryProxy(request, self._bundle)
-
-        elif isinstance(request, list):
-            res = [self._op_find(req, *args, **kwargs) for req in request]
-
-        elif not isinstance(request, dict):
-            res = request
-
-        elif "@spdb" not in request:
-            res = {k: self._op_find(req, *args, **kwargs) for k, req in request.items()}
-
-        else:
-            entry = self._dispatch(request.get("@spdb", None))
-
-            if not isinstance(entry, Entry):
-                raise RuntimeError(f"Can not find entry for {request}")
-
-            res = entry.find(request.get("_text"), *args, **kwargs)
-
-        return res
+            return entry.child(self._path)
+            # raise RuntimeError(f"Can not find  {entry_name}")
 
     def insert(self, *args, **kwargs) -> typing.Self:
-        return self._dispatch(*args[:-1]).child(self._path).insert(*args[-1:], **kwargs)
+        return self._dispatch(*args, **kwargs).insert(*args, **kwargs)
 
     def update(self, *args, **kwargs) -> typing.Self:
-        return self._dispatch(*args[:-1]).child(self._path).update(*args[-1:], **kwargs)
+        return self._dispatch(*args, **kwargs).update(*args, **kwargs)
 
     def delete(self, *args, **kwargs) -> int:
-        return self._dispatch(*args[:1]).child(self._path).delete(*args[1:], **kwargs)
+        return self._dispatch(*args, **kwargs).delete(*args, **kwargs)
 
     def find(self, *args, **kwargs) -> typing.Any:
-        return self._dispatch(*args[:1]).child(self._path).find(*args[1:], **kwargs)
+        return self._dispatch(*args, **kwargs).find(*args, **kwargs)
 
     def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
-        yield from self._dispatch(*args[:1]).child(self._path).search(*args[1:], **kwargs)
+        yield from self._dispatch(*args[:1]).search(*args[1:], **kwargs)
 
 
-class EntryProxy(Entry):
-    """代理 Entry，通过配置文件进行转换"""
+class EntryMapping(EntryBundle, plugin_name="mapping"):
 
-    def __init__(self, mapper, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, uri, /, local_schema=None, global_schema=None, **kwargs):
+
+        if local_schema is None:
+            uri = uri_split(uri)
+            schemas = uri.protocol.split("+")
+            local_schema = schemas[0]
+            uri.protocol = "+".join(schemas[1:])
+
+        mapper, other_entries = _load_mapper(local_schema=local_schema, global_schema=global_schema)
+
+        super().__init__(**other_entries, **kwargs)
+
+        self._bundle["*"] = as_entry(uri)
+
         self._mapper = mapper
 
     def __copy__(self) -> typing.Self:
@@ -367,43 +348,39 @@ class EntryProxy(Entry):
         other._mapper = self._mapper
         return other
 
-    def __str__(self) -> str:
-        return f"{str(self._mapper)} -> {super().__str__()}"
+    def _do_map(self, req):
+        if not isinstance(req, dict):
+            return req
 
-    def _map(self, *args) -> str:
-        return self._mapper.child(self._path).get(*args)
+        if "@spdb" not in req:
+            return {k: self._do_map(v) for k, v in req.items()}
+
+        entry = self._dispatch(req.get("@spdb", None))
+
+        if not isinstance(entry, Entry):
+            raise RuntimeError(f"Can not find entry for {req}")
+
+        return entry.find(req.get("_text"))
+
+    def _map(self, *args) -> Entry:
+        res = self._mapper.child(self._path).get(*args, _not_found_)
+        return Entry(self._do_map(res))
 
     def insert(self, *args, **kwargs) -> typing.Self:
-        return super().insert(self._map(*args[:-1]), *args[-1:], **kwargs)
+        return self._map(*args[:-1]).insert(*args[-1:], **kwargs)
 
     def update(self, *args, **kwargs) -> typing.Self:
-        return super().update(self._map(*args[:-1]), *args[-1:], **kwargs)
+        return self._map(*args[:-1]).update(*args[-1:], **kwargs)
 
     def delete(self, *args, **kwargs) -> int:
-        return super().delete(self._map(*args[:1]), *args[1:], **kwargs)
+        return self._map(*args[:1]).delete(*args[1:], **kwargs)
 
     def find(self, *args, **kwargs) -> typing.Any:
-        return super().find(self._map(*args[:1]), *args[1:], **kwargs)
+        return self._map(*args[:1]).find(*args[1:], **kwargs)
 
     def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """Return a generator of the results."""
-        yield from super().search(self._map(*args[:1]), *args[1:], **kwargs)
-
-
-class EntryMapping(EntryProxy, EntryBundle, plugin_name="mapping"):
-
-    def __init__(self, uri, /, global_schema=None, **kwargs):
-
-        if not isinstance(uri, Entry):
-            uri = uri_split(uri)
-
-            schemas = uri.protocol.split("+")
-
-            mapper, other_entries = _load_mapper(local_schema=schemas[0], global_schema=global_schema)
-
-            uri.protocol = "+".join(schemas[1:])
-
-            super().__init__(mapper, uri, **other_entries, **kwargs)
+        yield from self._map(*args[:1]).search(*args[1:], **kwargs)
 
 
 mapping_path = [pathlib.Path(p) for p in os.environ.get("SP_DATA_MAPPING_PATH", "").split(":") if p != ""]
@@ -485,7 +462,9 @@ def _load_mapper(local_schema: str, global_schema: str = None) -> typing.Tuple[E
                     mapping_files.append(p)
 
         if len(mapping_files) == 0:
-            raise FileNotFoundError(f"Can not find mapping files for {map_tag} MAPPING_PATH={mapping_path} !")
+            raise FileNotFoundError(
+                f"Can not find mapping files for {map_tag} MAPPING_PATH={mapping_path}  {mapping_files}!"
+            )
 
         mapper = open_entry(mapping_files, mode="r", plugin_name="file+xml")
 
@@ -493,63 +472,71 @@ def _load_mapper(local_schema: str, global_schema: str = None) -> typing.Tuple[E
 
     entry_list = {}
 
-    spdb = mapper.child("spdb").get()
-
+    # spdb = mapper.child("spdb").get()
     # if not isinstance(spdb, dict):
     #     entry_list["*"] = _url
     # else:
     #     attr = {k[1:]: v for k, v in spdb.items() if k.startswith("@")}
-
     #     attr["prefix"] = f"{_url.protocol}://{_url.authority}{_url.path}"
-
     #     attr.update(kwargs)
-
     #     for entry in spdb.get("entry", []):
     #         nid = entry.get("@id", None)
-
     #         enable = entry.get("@enable", "true") == "true"
-
     #         if nid is None:
     #             continue
     #         elif not enable and nid not in enabled_entry:
     #             continue
-
     #         entry_list[id] = entry.get("_text", "").format(**attr)
 
     return mapper, entry_list
 
 
-def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, plugin_name=None, **kwargs):
+def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, plugin_name: str = None, local_schema=None, **kwargs):
     """open entry from uri"""
-
-    if plugin_name is not None:
-        return Entry(uri, *args, _plugin_name=plugin_name, **kwargs)
 
     uri = uri_split(uri)
 
-    schemas = uri.protocol.split("+")
+    if plugin_name is None:
+        plugin_name = uri.protocol
+
+    if local_schema is not None:
+        return EntryMapping(uri, *args, local_schema=local_schema, **kwargs)
+
+    if plugin_name.startswith("file") or plugin_name == "":
+        from spdm.core.file import File
+
+        return File(uri, *args, _plugin_name=plugin_name, **kwargs).entry
+
+    fragment = uri.fragment
+
+    uri.fragment = ""
+
+    plugin_name = uri.protocol
+
+    schemas = plugin_name.split("+")
 
     entry = None
 
     for pos in range(len(schemas), 0, -1):
-        plugin_name = "_".join(schemas[:pos])
+        plugin_name = "+".join(schemas[:pos])
         plugin = Entry._find_plugin(plugin_name)  # pylint: disable=w0212
 
         if plugin is not None:
             sub_uri = copy(uri)
-            sub_uri.protocol = "_".join(schemas[pos:])
+            sub_uri.protocol = "+".join(schemas[pos:])
             if sub_uri.protocol == "":
-                sub_uri.protocol = "local"
+                sub_uri.protocol = "file"
 
             entry = plugin(sub_uri, *args, _plugin_name=plugin_name, **kwargs)
             break
     else:
         try:
-            entry = Entry(uri, *args, _plugin_name="mapping", **kwargs)
+            uri.protocol = "+".join(schemas[1:])
+            entry = EntryMapping(uri, *args, local_schema=schemas[0], **kwargs)
         except RuntimeError as error:
             raise RuntimeError(f"Can not find plugin for {uri}") from error
 
-    return entry
+    return entry if len(fragment) == 0 else entry.child(fragment)
 
 
 @singledispatch

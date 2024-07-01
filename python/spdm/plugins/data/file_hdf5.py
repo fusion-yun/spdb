@@ -11,7 +11,7 @@ from spdm.core.file import File
 from spdm.core.path import Path
 
 from spdm.utils.logger import logger
-from spdm.utils.tags import _undefined_
+from spdm.utils.tags import _undefined_, _not_found_
 
 SPDM_LIGHTDATA_MAX_LENGTH = 3
 
@@ -87,7 +87,7 @@ def h5_put_value(grp, path, value):
     return res
 
 
-def h5_get_value(obj, path=None, projection=None, default=_undefined_, **kwargs):
+def h5_get_value(obj, path=None, projection=None, default_value=_undefined_, **kwargs):
     if path is None:
         path = []
     elif isinstance(path, Path):
@@ -158,7 +158,8 @@ def h5_dump(grp):
     return h5_get_value(grp, [])
 
 
-class FileHDF5(File):
+class FileHDF5(File, plugin_name=["h5", "hdf5"]):
+
     MOD_MAP = {
         File.Mode.read: "r",
         File.Mode.read | File.Mode.write: "r+",
@@ -183,83 +184,30 @@ class FileHDF5(File):
     def mode_str(self) -> str:
         return FileHDF5.MOD_MAP[self.mode]
 
-    def open(self) -> File:
-        if self.is_open:
+    def open(self) -> File.Entry:
+        if self._fid is not None:
             return self
 
         try:
-            if self._fid is None:
-                self._fid = h5py.File(self.path, mode=self.mode_str)
+            self._fid = h5py.File(self.path, mode=self.mode_str)
         except OSError as error:
             raise FileExistsError(f"Can not open file {self.path}! {error}")
-        else:
-            logger.debug(f"Open HDF5 File {self.path} mode={self.mode}")
 
         super().open()
 
-        return self
+        return FileHDF5.Entry(self)
 
     def close(self):
-        if not self.is_open:
-            return
         if self._fid is not None:
             self._fid.close()
-        self._fid = None
+            self._fid = None
         return super().close()
 
-    @property
-    def entry(self) -> Entry:
-        return EntryHDF5(self.open())
-
-    def read(self, lazy=True) -> Entry:
-        return EntryHDF5(self.open())
+    def read(self, *args, **kwargs) -> typing.Any:
+        return h5_get_value(self._fid, *args, **kwargs)
 
     def write(self, *args, **kwargs):
-        EntryHDF5(self.open()).insert(*args, **kwargs)
-
-
-class EntryHDF5(File.Entry, plugin_name=["h5", "hdf5"]):
-    def __init__(self, uri: str | FileHDF5, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        if isinstance(uri, File):
-            self._file = uri
-        else:
-            self._file = FileHDF5(uri)
-
-        self._data = self._file._fid
-
-    def __copy__(self) -> Entry:
-        other = super().__copy__()
-        other._file = self._file
-        return self
-
-    @property
-    def is_writable(self) -> bool:
-        return "r" in self._data.is_writable
-
-    def copy(self, other):
-        if isinstance(other, Entry):
-            other = other.entry.__real_value__()
-        self.put(None, other)
-
-    # def put(self, path, value, *args, **kwargs):
-    #     return h5_put_value(self._cache, path, value)
-
-    # def get(self, path=[], projection=None, *args, **kwargs):
-    #     return h5_get_value(self._cache, path, projection=projection)
-
-    def insert(self, value, *args, **kwargs):
-        return h5_put_value(self._data, self._path, value, *args, **kwargs)
-
-    def find(self, *args, **kwargs) -> typing.Any:
-        return h5_get_value(self._data, self._path, *args, **kwargs)
-
-    def dump(self):
-        return h5_dump(self._data)
-
-    def iter(self, path, *args, **kwargs):
-        raise NotImplementedError()
+        return h5_put_value(self._fid, *args, **kwargs)
 
 
 # class HDF5Collection(FileCollection):
