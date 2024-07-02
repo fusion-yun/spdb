@@ -452,11 +452,9 @@ class HTree(HTreeNode):
     def __as_node__(
         self, key, value, /, _type_hint=None, _entry=None, default_value=_not_found_, **kwargs
     ) -> typing.Self:
-        if value is _not_found_ and _entry is None:
-            value = default_value
+        if value is _not_found_ and _entry is None and default_value is not _not_found_:
+            value = deepcopy(default_value)
             default_value = _not_found_
-        elif isinstance(default_value, dict):
-            value = Path().update(deepcopy(default_value), value)
 
         if _type_hint is _not_found_:
             _type_hint = None
@@ -498,10 +496,10 @@ class HTree(HTreeNode):
         else:
             if _entry is not None:
                 value = Path().update(value, _entry.get())
-            node = type_convert(_type_hint, value, **kwargs)
+            node = type_convert(_type_hint, value, default_value=default_value, **kwargs)
 
         if isinstance(node, HTreeNode):
-            if node._parent is None:
+            if getattr(node, "_parent", None) is None:
                 node._parent = self
 
             if isinstance(key, str):
@@ -524,7 +522,7 @@ class HTree(HTreeNode):
         value = Path([key]).find(self._cache, default_value=_not_found_)
 
         if value is _not_found_ and callable(_getter):
-            value = _getter(self, key, **kwargs)
+            value = _getter(self)
 
         # if value is _not_found_ or (isinstance(value, dict) and isinstance(default_value, dict)):
         #     value = Path().update(deepcopy(default_value), value)

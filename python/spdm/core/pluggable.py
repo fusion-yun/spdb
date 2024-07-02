@@ -5,7 +5,6 @@ Classes:
 - Pluggable: Factory class to create objects from a registry.
 """
 
-import inspect
 import typing
 import abc  # Abstract Base Classes
 
@@ -136,15 +135,21 @@ class Pluggable(abc.ABC):
             logger.error("%s is not pluggable!", cls.__name__)
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
 
+        if _plugin_name is None:
+            _plugin_name = getattr(cls, "default_plugin", None)
+
         n_cls = cls._get_plugin(_plugin_name) if _plugin_name is not None else cls
 
         if n_cls is None:
-            raise ModuleNotFoundError(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
+            logger.verbose(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
+            n_cls = cls
 
         # Return the plugin class
         return object.__new__(n_cls)
 
-    def __init_subclass__(cls, plugin_name=None, **kwargs) -> None:
+    def __init_subclass__(cls, plugin_name=None, default_plugin=None, **kwargs) -> None:
         if plugin_name is not None:
             cls.register(plugin_name, cls)
+        elif default_plugin is not None:
+            cls.default_plugin = default_plugin
         return super().__init_subclass__(**kwargs)
