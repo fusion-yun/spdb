@@ -12,15 +12,18 @@ class PropertyTree(HTree):
     def __as_node__(self, *args, **kwargs) -> typing.Self | List[typing.Self]:
         node = super().__as_node__(*args, **kwargs)
 
+        if node.__class__ is HTree:
+            node = node._entry.get()
+
         if node is _not_found_:
             pass
-        elif node.__class__ is HTree and node._entry.is_list:
-            node.__class__ = List[PropertyTree]
-        elif node.__class__ is HTree and node._entry.is_dict:
-            node.__class__ = PropertyTree
+        # elif node.__class__ is HTree and node._entry.is_list:
+        #     node = List[PropertyTree](node._cache, _entry=node._entry)
+        # elif node.__class__ is HTree and node._entry.is_dict:
+        #     node.__class__ = PropertyTree
         elif isinstance(node, dict):
             node = PropertyTree(node)
-        elif isinstance(node, list)  and (len(node)==0 or any(isinstance(n, dict) for n in node)):
+        elif isinstance(node, list) and (len(node) == 0 or any(isinstance(n, dict) for n in node)):
             node = List[PropertyTree](node)
 
         return node

@@ -46,13 +46,12 @@ class Mapper(Entry):
             if "@spdm" not in req:
                 res = {k: self._do_map(v) for k, v in req.items()}
             else:
-
                 entry = self._handler.get(req.get("@spdm", None), None)
-
                 if not isinstance(entry, Entry):
-                    raise RuntimeError(f"Can not find entry for {req}")
-
-                res = entry.find(req.get("_text"))
+                    # raise RuntimeError(f"Can not find entry for {req}")
+                    res = _not_found_
+                else:
+                    res = entry.find(req.get("_text"))
         elif isinstance(req, list) and any(isinstance(i, dict) for i in req):
             res = [self._do_map(i) for i in req]
         else:
