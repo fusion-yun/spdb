@@ -289,32 +289,44 @@ class EntryChain(Entry):
         return any(res)
 
 
-def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, **kwargs):
+def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, format=None, **kwargs):
     """open entry from uri"""
+
     uri = uri_split(uri)
 
     fragment = uri.fragment
 
     uri.fragment = ""
 
-    schemas = uri.protocol.split("+")
+    if format is None:
+        format = uri.protocol
 
     entry = None
     # FIXME: 注册更多的默认file类型
-    if schemas[0] in ("file", "mdsplus", "hdf5", "netcdf", "json", "yaml"):
+    if format.startswith("file+") or format in ("file", "mdsplus", "hdf5", "netcdf", "json", "yaml"):
         from spdm.core.file import File
 
-        entry = File(uri, *args, **kwargs).__entry__()
+        entry = File(uri, *args, format=format, **kwargs).__entry__()
 
-    elif schemas[0] in ("service", "http", "https", "ssh", "db", "mongodb", "postgresql", "mysql", "sqlite"):
+    elif format.startswith("service+") or format in (
+        "service",
+        "http",
+        "https",
+        "ssh",
+        "db",
+        "mongodb",
+        "postgresql",
+        "mysql",
+        "sqlite",
+    ):
         from spdm.core.service import Service
 
-        entry = Service(uri, *args, **kwargs).__entry__()
+        entry = Service(uri, *args, format=format, **kwargs).__entry__()
     else:
         from spdm.core.mapper import Mapper
 
         try:
-            entry = Mapper(uri, *args, **kwargs)
+            entry = Mapper(uri, *args, format=format, **kwargs)
         except ModuleNotFoundError as error:
             raise ModuleNotFoundError(f"{uri.protocol} is not a mapping!") from error
 

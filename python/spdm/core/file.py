@@ -13,6 +13,9 @@ class File(Document):
     _plugin_prefix = Document._plugin_prefix + "file_"
 
     def __new__(cls, uri, *args, format=None, **kwargs):
+        if isinstance(format, str) and format.startswith("file+"):
+            format = format[5:]
+
         if cls is not File or format is not None:
             return super().__new__(cls, _plugin_name=format)
 
