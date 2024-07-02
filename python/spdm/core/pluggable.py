@@ -144,7 +144,7 @@ class Pluggable(abc.ABC):
         # Return the plugin class
         return object.__new__(n_cls)
 
-    def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
+    def __init_subclass__(cls, plugin_name=None, **kwargs) -> None:
         if plugin_name is not None:
             cls.register(plugin_name, cls)
-        return super().__init_subclass__()
+        return super().__init_subclass__(**kwargs)

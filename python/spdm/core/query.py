@@ -8,6 +8,7 @@ import numpy as np
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import isinstance_generic
+from spdm.utils.tree_utils import update_tree
 
 
 class Query:
@@ -71,7 +72,7 @@ class Query:
             query = {".": query}
 
         elif isinstance(query, str):
-            query = {f"@{Query.id_tag_name}": query}
+            query = {f"@id": query}
 
         elif isinstance(query, dict):
             query = {k: Query._parser(v) for k, v in query.items()}
@@ -80,9 +81,9 @@ class Query:
             pass
         else:
             raise TypeError(f"{(query)}")
-
+        
         if isinstance(query, dict):
-            return update_tree(query, kwargs)
+            query.update(kwargs)
 
         return query
 
@@ -92,10 +93,7 @@ class Query:
     @staticmethod
     def _eval_one(target, k, v) -> typing.Any:
         res = False
-        if k == "." or k is Path.tags.current:
-            res = Query._q_equal(target, v)
-
-        elif isinstance(k, str):
+        if isinstance(k, str):
             if k.startswith("@") and hasattr(target.__class__, k[1:]):
                 res = Query._q_equal(getattr(target, k[1:], _not_found_), v)
 

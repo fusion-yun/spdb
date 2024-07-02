@@ -149,9 +149,7 @@ class TimeSequence(List[_TSlice]):
             else:
                 entry_cursor = 0
 
-            self._cache[cache_pos] = value
-
-        return super().__get_node__(cache_pos, _entry=entry)
+        return super().__as_node__(cache_pos, value, _entry=entry)
 
     def initialize(self, *args, **kwargs):
         """初始化 TimeSeries"""

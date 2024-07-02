@@ -1,5 +1,5 @@
 import unittest
-
+from spdm.core.htree import List
 from spdm.core.property_tree import PropertyTree
 
 
@@ -29,5 +29,6 @@ class TestPropertyTree(unittest.TestCase):
         cache = {}
         ptree = PropertyTree(cache)
         ptree.time_slice = []
+        self.assertIsInstance(ptree.time_slice, List[PropertyTree])
         ptree.time_slice[0].profiles_2d = {"grid": {"dim1": 129}}
         self.assertEqual(cache["time_slice"][0]["profiles_2d"]["grid"]["dim1"], 129)

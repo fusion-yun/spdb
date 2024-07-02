@@ -70,7 +70,7 @@ class TestHTree(unittest.TestCase):
 
         d1.insert({"a": 1, "b": 2})
 
-        self.assertIsInstance(d1[0], HTree)
+        self.assertIsInstance(d1[0], Dict)
 
         # self.assertEqual(len(d1), 1)
         self.assertEqual(d1[0]["a"], 1)

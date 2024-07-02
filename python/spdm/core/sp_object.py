@@ -8,10 +8,13 @@ from spdm.core.sp_tree import SpTree
 from spdm.core.property_tree import PropertyTree
 
 
-class SpObject(SpTree, Pluggable):
+class SpObject(Pluggable, SpTree):
     """对象的基类/抽象类"""
 
-    _PLUGIN_TAGS = ("$class", "@class", "class", "$type", "@type", "type", "plugin")
+    def __new__(cls, *args, _plugin_name=None, **kwargs):
+        if _plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
+            _plugin_name = args[0].get("type", None)
+        return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
 
     @property
     @cache

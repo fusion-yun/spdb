@@ -104,6 +104,7 @@ class _TGenericAlias(typing._GenericAlias, _root=True):
                 **spec_members(None, orig_cls, dict(zip(orig_cls.__parameters__, alias.__args__))),
                 "__module__": orig_cls.__module__,
                 "__package__": getattr(orig_cls, "__package__", None),
+                "__args__": alias.__args__,
             },
         )
 

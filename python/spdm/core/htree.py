@@ -449,7 +449,9 @@ class HTree(HTreeNode):
     # -----------------------------------------------------------------------------
     # API as container
 
-    def __as_node__(self, key, value, /, _type_hint=None, _entry=None, default_value=_not_found_, **kwargs):
+    def __as_node__(
+        self, key, value, /, _type_hint=None, _entry=None, default_value=_not_found_, **kwargs
+    ) -> typing.Self:
         if value is _not_found_ and _entry is None:
             value = default_value
             default_value = _not_found_
@@ -466,8 +468,8 @@ class HTree(HTreeNode):
         # if _type_hint is None:
         #     _type_hint = typing.get_type_hints(self.__class__.__get_node__).get("return", None)
 
-        if _type_hint is None and isinstance(self._DEFAULT_TYPE_HINT, type):
-            _type_hint = self._DEFAULT_TYPE_HINT
+        # if _type_hint is None and isinstance(self._DEFAULT_TYPE_HINT, type):
+        #     _type_hint = self._DEFAULT_TYPE_HINT
 
         # if _type_hint is None:
         #     if isinstance(value, dict):
@@ -510,6 +512,9 @@ class HTree(HTreeNode):
                 if self._metadata.get("name", _not_found_) in (_not_found_, None, "unnamed"):
                     self._metadata["name"] = str(key)
 
+        if node is not _not_found_ and key is not None:
+            self._cache = Path([key]).update(self._cache, node)
+
         return node
 
     def __get_node__(self, key, /, _type_hint=None, _entry=None, _getter=None, **kwargs):
@@ -528,9 +533,6 @@ class HTree(HTreeNode):
             _entry = self._entry.child(key)
 
         node = self.__as_node__(key, value, _type_hint=_type_hint, _entry=_entry, **kwargs)
-
-        if node is not _not_found_ and key is not None:
-            self._cache = Path([key]).update(self._cache, node)
 
         return node
 
@@ -759,6 +761,13 @@ class List(GenericHelper[_T], HTree):
         if default_value is _not_found_:
             default_value = self._metadata.get("default_value", _not_found_)
         return super().__get_node__(key, default_value=default_value, **kwargs)
+
+    def __as_node__(self, *args, _type_hint=None, **kwargs) -> _T:
+        if _type_hint is None:
+            _type_hint = getattr(self.__class__, "__args__", None)
+            if _type_hint is not None:
+                _type_hint = _type_hint[0]
+        return super().__as_node__(*args, _type_hint=_type_hint, **kwargs)
 
 
 collections.abc.MutableSequence.register(List)

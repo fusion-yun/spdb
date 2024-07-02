@@ -15,7 +15,7 @@ from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import is_int
 
-from spdm.core.query import Query
+from spdm.core.query import Query, as_query
 
 
 class PathError(Exception):
