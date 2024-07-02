@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-
+import abc
 import os
 import collections.abc
 import datetime
@@ -29,19 +29,21 @@ class SpView(SpObject):
     def signature(self) -> str:
         return f"Create by SpDM at {datetime.datetime.now().isoformat()}. AUTHOR: {getpass.getuser().capitalize()}. "
 
+    @abc.abstractmethod
     def draw(self, *args, **kwargs):
-        raise NotImplementedError(f"{self.__class__.__name__}.display")
+        pass
 
+    @abc.abstractmethod
     def plot(self, *args, **kwargs):
-        raise NotImplementedError(f"{self.__class__.__name__}.draw")
+        pass
 
 
 def display(*args, plugin=SP_VIEW, **kwargs):
-    return SpView(plugin=plugin).draw(*args, **kwargs)
+    return SpView(_plugin_name=plugin).draw(*args, **kwargs)
 
 
 def plot(*args, plugin=SP_VIEW, **kwargs):
-    return SpView(plugin=plugin).plot(*args, **kwargs)
+    return SpView(_plugin_name=plugin).plot(*args, **kwargs)
 
 
 from .render import Render
@@ -50,4 +52,4 @@ SP_RENDER = os.environ.get("SP_RENDER", "graphviz")
 
 
 def render(*args, plugin=SP_RENDER, **kwargs):
-    return Render(plugin=plugin).apply(*args, **kwargs)
+    return Render(_plugin_name=plugin).apply(*args, **kwargs)

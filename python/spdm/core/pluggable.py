@@ -124,7 +124,7 @@ class Pluggable(abc.ABC):
             if p not in cls._plugin_registry:
                 yield p
 
-    def __new__(cls, _plugin_name=None) -> typing.Type[typing.Self]:
+    def __new__(cls, *args, _plugin_name=None, **kwargs) -> typing.Type[typing.Self]:
         """Create a new instance of the class."""
 
         if cls is Pluggable:

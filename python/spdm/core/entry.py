@@ -318,7 +318,7 @@ def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, **kwargs):
         except ModuleNotFoundError as error:
             raise ModuleNotFoundError(f"{uri.protocol} is not a mapping!") from error
 
-    return entry.child(fragment) if not fragment else entry
+    return entry if not fragment else entry.child(fragment)
 
 
 @singledispatch
@@ -339,7 +339,7 @@ def as_entry(obj, *args, plugin_name=None, **kwargs) -> Entry:
 
 @as_entry.register(Entry)
 def _as_entry(obj, *args, **kwargs):
-    if len(args) + len(kwargs) == 0:
+    if len(args) + len(kwargs) > 0:
         raise RuntimeError(f"Unused arguments {args} {kwargs}")
     return obj
 

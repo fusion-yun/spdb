@@ -111,6 +111,7 @@ class Mapper(Entry):
             "config.xml",
             "static/config.xml",
             "dynamic/config.xml",
+            f"{schema}.xml",
             f"{uri.protocol}.xml",
             f"{uri.protocol}/config.xml",
         ]
@@ -130,18 +131,25 @@ class Mapper(Entry):
             handlers = {}
 
         # attr = {k[1:]: v for k, v in mapper_config.items() if k.startswith("@")}
+
         query = uri.query
+
         uri.query = None
+
         attr = {"prefix": str(uri), **query}
 
         for item in mapper.child("spdm/entry/*").search(enable="true"):
-
             nid = item.get("@id", None)
-
             if nid is None:
                 continue
-
-            handlers[nid] = as_entry(item.get("_text", "").format(**attr))
+            handle_uri = item.get("_text", "")
+            try:
+                handle_uri = handle_uri.format(**attr)
+            except KeyError as error:
+                pass
+                # logger.verbose(f"invaild handle {handle_uri} {error}")
+            else:
+                handlers[nid] = as_entry(handle_uri)
 
         cls._mappers[mapper_hash] = mapper, handlers
 

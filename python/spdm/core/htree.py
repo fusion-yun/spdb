@@ -10,7 +10,7 @@ from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, as_array, primary_type, PrimaryType, type_convert
 
-from spdm.core.entry import Entry, open_entry
+from spdm.core.entry import Entry, as_entry
 from spdm.core.path import Path, Query, PathLike, as_path
 from spdm.core.generic_helper import GenericHelper
 
@@ -55,7 +55,7 @@ class HTreeNode:
     def __init__(self, cache=_not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **metadata):
         """Initialize a HTreeNode object."""
         self._cache = cache
-        self._entry = open_entry(_entry) if _entry is not None else None
+        self._entry = as_entry(_entry) if _entry is not None else None
         self._parent = _parent
         self._metadata = {**metadata, **getattr(self.__class__, "_metadata", {})}
 
@@ -93,7 +93,7 @@ class HTreeNode:
 
     def __setstate__(self, state: dict) -> None:
 
-        self._entry = open_entry(state.pop("$entry", None))
+        self._entry = as_entry(state.pop("$entry", None))
         self._metadata = state.pop("$metadata", {})
 
         logger.verbose(f"Load {self.__class__.__name__} from state: {state.pop('$type',None)}")
@@ -512,7 +512,7 @@ class HTree(HTreeNode):
 
         return node
 
-    def __get_node__(self, key, _type_hint=None, _entry=None, _getter=None, **kwargs):
+    def __get_node__(self, key, /, _type_hint=None, _entry=None, _getter=None, **kwargs):
         if key is None and len(kwargs) == 0:
             return self
 
