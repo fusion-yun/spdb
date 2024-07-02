@@ -1,11 +1,11 @@
 import unittest
 from copy import deepcopy
+import typing
 
 from spdm.core.path import Path
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.core.generic_helper import get_origin, get_args, isinstance_generic
-import typing
+from spdm.utils.type_hint import get_origin, get_args, isinstance_generic
 
 
 class TestTyping(unittest.TestCase):
@@ -66,6 +66,7 @@ class TestTyping(unittest.TestCase):
         class Foo(list, typing.Generic[_T]):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
+
             pass
 
         foo = Foo[int]()
@@ -77,9 +78,10 @@ class TestTyping(unittest.TestCase):
         self.assertFalse(isinstance_generic(foo, Foo[float]))
         self.assertFalse(isinstance_generic(foo, dict))
 
-        goo=Foo()
+        goo = Foo()
         self.assertTrue(isinstance_generic(goo, Foo))
         self.assertTrue(isinstance_generic(goo, Foo[float]))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

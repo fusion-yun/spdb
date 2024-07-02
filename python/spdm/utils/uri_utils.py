@@ -36,10 +36,28 @@ _rfc3986_ext = re.compile(
 @dataclass
 class URITuple:
     protocol: str = ""
-    authority: str = ""
+    netloc: str = ""
     path: str = ""
     query: dict = None
     fragment: str = ""
+
+    def __str__(self) -> str:
+
+        path = "/".join(self.path) if isinstance(self.path, list) else self.path
+
+        query = ",".join([f"{k}={v}" for k, v in self.query.items()])
+        if query != "":
+            query = f"?{query}"
+
+        fragment = f"#{self.fragment}" if self.fragment != "" else ""
+
+        return f"{self.protocol}://{self.netloc}{path}{query}{fragment}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def __hash__(self):
+        return hash(self.__repr__())
 
 
 def uri_split_as_dict(uri) -> dict:
@@ -70,7 +88,7 @@ def uri_split_as_dict(uri) -> dict:
 
     res = dict(
         protocol=uri_.scheme or "file",
-        authority=netloc,
+        netloc=netloc,
         path=path,
         query=ast.literal_eval(query),
         fragment=uri_.fragment,

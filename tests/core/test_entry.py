@@ -3,6 +3,7 @@ from copy import deepcopy
 
 from spdm.utils.tags import _not_found_
 from spdm.core.entry import Entry, open_entry
+from spdm.core.query import Query
 
 
 class TestEntry(unittest.TestCase):
@@ -83,7 +84,7 @@ class TestEntry(unittest.TestCase):
     def test_search(self):
         data = [1, 2, 3, 4, 5]
         d0 = Entry(data)
-        self.assertListEqual([v for v in d0.search()], data)
+        self.assertListEqual([v for v in d0.search(Query.tags.get_value)], data)
 
         d0 = Entry(data)
         self.assertListEqual([v for v in d0.for_each()], data)

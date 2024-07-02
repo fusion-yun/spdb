@@ -191,7 +191,7 @@ class FileHDF5(File, plugin_name=["h5", "hdf5"]):
         try:
             self._fid = h5py.File(self.path, mode=self.mode_str)
         except OSError as error:
-            raise FileExistsError(f"Can not open file {self.path}! {error}")
+            raise FileExistsError(f"Can not open file {self.path}! {error}") from error
 
         super().open()
 

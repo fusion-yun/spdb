@@ -10,6 +10,8 @@ class TestFileXML(unittest.TestCase):
     def test_create(self):
         with File(xml_file) as entry:
             self.assertEqual(entry.__class__.__qualname__, "FileXML.Entry")
+        with File(xml_file, format="xml") as entry:
+            self.assertEqual(entry.__class__.__qualname__, "FileXML.Entry")
 
     def test_read(self):
         entry = File(xml_file).entry

@@ -8,13 +8,12 @@ from functools import singledispatch
 
 from spdm.utils.tags import _not_found_, _undefined_
 from spdm.utils.uri_utils import URITuple, uri_split
-from spdm.core.pluggable import Pluggable
 from spdm.core.path import Path, as_path, Query
 
 from spdm.utils.logger import logger
 
 
-class Entry(Pluggable):  # pylint: disable=R0904
+class Entry:  # pylint: disable=R0904
     """Entry class to manage data.
     数据入口类，用于管理多层树状（Hierarchical Tree Structured Data）数据访问。提供操作：
     - insert: 插入数据
@@ -46,19 +45,9 @@ class Entry(Pluggable):  # pylint: disable=R0904
 
     """
 
-    _plugin_prefix = "spdm.plugins.data."
-
-    _plugin_registry = {}
-
-    def __new__(cls, *args, _plugin_name=None, **kwargs):
-        if _plugin_name is None:
-            return super().__new__(cls)
-        else:
-            return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
-
     def __init__(self, *args, **kwargs):
         self._cache = _not_found_ if len(args) == 0 else args[0]
-        self._path = as_path(*args[1:], **kwargs)
+        self._path: Path = as_path(*args[1:], **kwargs)
 
     def __copy__(self) -> typing.Self:
         other = object.__new__(self.__class__)
@@ -111,50 +100,76 @@ class Entry(Pluggable):  # pylint: disable=R0904
     ###########################################################
     # API: CRUD  operation
 
-    def insert(self, value, *args, **kwargs) -> typing.Self:
-        return self.child(Path.tags.append).update(value, *args, **kwargs)
+    def insert(self, value=_not_found_, **kwargs) -> typing.Self:
+        """插入数据到 entry 所指定位置。 TODO: 返回修改处的entry"""
+        return self.child(Path.tags.append).update(value if value is not _not_found_ else kwargs)
 
-    def update(self, value, *args, **kwargs) -> typing.Self:
-        self._cache = self._path.update(self._cache, value, *args, **kwargs)
+    def update(self, value=_not_found_, **kwargs) -> typing.Self:
+        """更新 entry 所指定位置的数据。 TODO: 返回修改处的entry"""
+        self._cache = self._path.update(self._cache, value if value is not _not_found_ else kwargs)
         return self
 
-    def delete(self, *args, **kwargs) -> bool:
-        return self._path.delete(self._cache, *args, **kwargs)
+    def delete(self) -> bool:
+        """删除 entry 所指定位置的数据"""
+        return self._path.delete(self._cache)
 
-    def find(self, *args, **kwargs) -> typing.Any:
-        """find the first result."""
-        return self._path.find(self._cache, *args, **kwargs)
+    def find(self, *p_args, **p_kwargs) -> typing.Any:
+        """返回 entry 所指定位置的数据"""
+        return self._path.find(self._cache, *p_args, **p_kwargs)
 
-    def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
-        """search all the results."""
-        yield from self._path.search(self._cache, *args, **kwargs)
+    def search(self, *p_args, **p_kwargs) -> typing.Generator[typing.Self, None, None]:
+        """搜索 entry 所指定位置处符合条件的节点
+
+        Usage:
+        - 遍历所有子节点 entry
+            `entry.search() `
+
+        - 遍历满足条件 condition 的子节点 entry, kwargs视为 condition
+            `entry.search()`
+            `entry.search()`
+
+        - 遍历满足条件 cond 的子节点，并返回 projection(value,*parameters,**kwargs)的结果
+            entry.search(condition,*projection, **kwargs)
+        """
+        if len(p_args) + len(p_kwargs) == 0 or p_args[0] is Query.tags.get_item:
+            # without projection 返回结果位置处的entry
+            yield from map(lambda v: Entry(*v), self._path.search(self._cache, *p_args, **p_kwargs))
+        else:  # with projection 返回结果
+            yield from self._path.search(self._cache, *p_args, **p_kwargs)
 
     # -----------------------------------------------------------
     # alias
-
+    @typing.final
     def query(self, *args, **kwargs) -> typing.Any:
         """alias of find"""
         return self.find(*args, **kwargs)
 
+    @typing.final
     def keys(self) -> typing.Generator[str, None, None]:
-        yield from self.search(Query.tags.get_key)
+        yield from self.search(None, Query.tags.get_key)
 
+    @typing.final
     def values(self) -> typing.Generator[str, None, None]:
-        yield from self.search(Query.tags.get_value)
+        yield from self.search(None, Query.tags.get_value)
 
-    def for_each(self) -> typing.Generator[typing.Any, None, None]:
+    @typing.final
+    def for_each(self) -> typing.Generator[typing.Self, None, None]:
         """alis of search"""
         yield from self.search()
 
+    @typing.final
     def __setitem__(self, key, value) -> None:
         return self.put(key, value)
 
+    @typing.final
     def __getitem__(self, key) -> typing.Self:
         return self.child(key)
 
+    @typing.final
     def get(self, path=None, default_value=_not_found_) -> typing.Any:
         return self.child(path).find(default_value=default_value)
 
+    @typing.final
     def put(self, *args, **kwargs) -> None:
         return self.child(*args[:-1]).update(*args[-1:], **kwargs)
 
@@ -274,269 +289,36 @@ class EntryChain(Entry):
         return any(res)
 
 
-class EntryBundle(Entry):
-    """Entry Bundle, 用于管理多个 Entry"""
-
-    def __init__(self, *args, **kwargs: typing.Tuple[str, Entry]):
-        super().__init__(*args)
-        self._bundle = {
-            k: as_entry(v)
-            for k, v in kwargs.items()
-            if not k.startswith("_") and v is not None and v is not _not_found_
-        }
-
-    def __copy__(self) -> typing.Self:
-        other = super().__copy__()
-        other._bundle = self._bundle
-        return other
-
-    def _dispatch(self, *args, **kwargs) -> Entry:
-        entry_name = "_"
-        entry = self._bundle.get(entry_name, None)
-
-        # if isinstance(entry, (str, URITuple)):
-        #     entry = open_entry(entry)
-        #     self._bundle[entry_name] = entry
-        # # if isinstance(entry, Entry):
-        # #     pass
-        # # elif default_value is _not_found_:
-        # #     raise RuntimeError(f"Can not find entry for {entry_name}")
-        # # else:
-        # #     entry = default_value
-        if entry is None:
-            return Entry()
-        else:
-            return entry.child(self._path)
-            # raise RuntimeError(f"Can not find  {entry_name}")
-
-    def insert(self, *args, **kwargs) -> typing.Self:
-        return self._dispatch(*args, **kwargs).insert(*args, **kwargs)
-
-    def update(self, *args, **kwargs) -> typing.Self:
-        return self._dispatch(*args, **kwargs).update(*args, **kwargs)
-
-    def delete(self, *args, **kwargs) -> int:
-        return self._dispatch(*args, **kwargs).delete(*args, **kwargs)
-
-    def find(self, *args, **kwargs) -> typing.Any:
-        return self._dispatch(*args, **kwargs).find(*args, **kwargs)
-
-    def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
-        yield from self._dispatch(*args[:1]).search(*args[1:], **kwargs)
-
-
-class EntryMapping(EntryBundle, plugin_name="mapping"):
-
-    def __init__(self, uri, /, local_schema=None, global_schema=None, **kwargs):
-
-        if local_schema is None:
-            uri = uri_split(uri)
-            schemas = uri.protocol.split("+")
-            local_schema = schemas[0]
-            uri.protocol = "+".join(schemas[1:])
-
-        mapper, other_entries = _load_mapper(local_schema=local_schema, global_schema=global_schema)
-
-        super().__init__(**other_entries, **kwargs)
-
-        self._bundle["*"] = as_entry(uri)
-
-        self._mapper = mapper
-
-    def __copy__(self) -> typing.Self:
-        other = super().__copy__()
-        other._mapper = self._mapper
-        return other
-
-    def _do_map(self, req):
-        if not isinstance(req, dict):
-            return req
-
-        if "@spdb" not in req:
-            return {k: self._do_map(v) for k, v in req.items()}
-
-        entry = self._dispatch(req.get("@spdb", None))
-
-        if not isinstance(entry, Entry):
-            raise RuntimeError(f"Can not find entry for {req}")
-
-        return entry.find(req.get("_text"))
-
-    def _map(self, *args) -> Entry:
-        res = self._mapper.child(self._path).get(*args, _not_found_)
-        return Entry(self._do_map(res))
-
-    def insert(self, *args, **kwargs) -> typing.Self:
-        return self._map(*args[:-1]).insert(*args[-1:], **kwargs)
-
-    def update(self, *args, **kwargs) -> typing.Self:
-        return self._map(*args[:-1]).update(*args[-1:], **kwargs)
-
-    def delete(self, *args, **kwargs) -> int:
-        return self._map(*args[:1]).delete(*args[1:], **kwargs)
-
-    def find(self, *args, **kwargs) -> typing.Any:
-        return self._map(*args[:1]).find(*args[1:], **kwargs)
-
-    def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
-        """Return a generator of the results."""
-        yield from self._map(*args[:1]).search(*args[1:], **kwargs)
-
-
-mapping_path = [pathlib.Path(p) for p in os.environ.get("SP_DATA_MAPPING_PATH", "").split(":") if p != ""]
-
-_maps = {}
-
-_default_local_schema: str = "EAST"
-_default_global_schema: str = "imas/3"
-
-
-def _load_mapper(local_schema: str, global_schema: str = None) -> typing.Tuple[Entry, typing.Dict[str, Entry]]:
-    """
-    mapping files 目录结构约定为 :
-        ```{text}
-        - <local schema>/<global schema>
-                config.xml
-            - static            # 存储静态数据，例如装置描述文件
-                - config.xml
-                - <...>
-            - protocol0         # 存储 protocol0 所对应mapping，例如 mdsplus
-                - config.xml
-                - <...>
-            - protocol1         # 存储 protocol1 所对应mapping，例如 hdf5
-                - config.xml
-                - <...>
-        ```
-        Example:   east+mdsplus://.... 对应的目录结构为
-        ```{text}
-        - east/imas/3
-            - static
-                - config.xml
-                - wall.xml
-                - pf_active.xml  (包含 pf 线圈几何信息)
-                - ...
-            - mdsplus
-                - config.xml (包含<spdb > 描述子数据库entry )
-                - pf_active.xml
-        ```
-    """
-
-    mapping_files = []
-
-    mapper_list = _maps
-
-    if local_schema is None:
-        local_schema = _default_local_schema
-
-    if global_schema is None:
-        global_schema = _default_global_schema
-
-    map_tag = [local_schema.lower(), global_schema.lower()]
-
-    map_tag_str = "/".join(map_tag)
-
-    mapper = mapper_list.get(map_tag_str, _not_found_)
-
-    if mapper is _not_found_:
-        prefix = "/".join(map_tag[:2])
-
-        config_files = [
-            f"{prefix}/config.xml",
-            f"{prefix}/static/config.xml",
-            f"{prefix}/{local_schema.lower()}.xml",
-        ]
-
-        if len(map_tag) > 2:
-            config_files.append(f"{'/'.join(map_tag[:3])}/config.xml")
-
-        for m_dir in mapping_path:
-            if not m_dir:
-                continue
-
-            if isinstance(m_dir, str):
-                m_dir = pathlib.Path(m_dir)
-
-            for file_name in config_files:
-                p = m_dir / file_name
-                if p.exists():
-                    mapping_files.append(p)
-
-        if len(mapping_files) == 0:
-            raise FileNotFoundError(
-                f"Can not find mapping files for {map_tag} MAPPING_PATH={mapping_path}  {mapping_files}!"
-            )
-
-        mapper = open_entry(mapping_files, mode="r", plugin_name="file+xml")
-
-        mapper_list[map_tag_str] = mapper
-
-    entry_list = {}
-
-    # spdb = mapper.child("spdb").get()
-    # if not isinstance(spdb, dict):
-    #     entry_list["*"] = _url
-    # else:
-    #     attr = {k[1:]: v for k, v in spdb.items() if k.startswith("@")}
-    #     attr["prefix"] = f"{_url.protocol}://{_url.authority}{_url.path}"
-    #     attr.update(kwargs)
-    #     for entry in spdb.get("entry", []):
-    #         nid = entry.get("@id", None)
-    #         enable = entry.get("@enable", "true") == "true"
-    #         if nid is None:
-    #             continue
-    #         elif not enable and nid not in enabled_entry:
-    #             continue
-    #         entry_list[id] = entry.get("_text", "").format(**attr)
-
-    return mapper, entry_list
-
-
-def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, plugin_name: str = None, local_schema=None, **kwargs):
+def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, **kwargs):
     """open entry from uri"""
-
     uri = uri_split(uri)
-
-    if plugin_name is None:
-        plugin_name = uri.protocol
-
-    if local_schema is not None:
-        return EntryMapping(uri, *args, local_schema=local_schema, **kwargs)
-
-    if plugin_name.startswith("file") or plugin_name == "":
-        from spdm.core.file import File
-
-        return File(uri, *args, _plugin_name=plugin_name, **kwargs).entry
 
     fragment = uri.fragment
 
     uri.fragment = ""
 
-    plugin_name = uri.protocol
-
-    schemas = plugin_name.split("+")
+    schemas = uri.protocol.split("+")
 
     entry = None
+    # FIXME: 注册更多的默认file类型
+    if schemas[0] in ("file", "mdsplus", "hdf5", "netcdf", "json", "yaml"):
+        from spdm.core.file import File
 
-    for pos in range(len(schemas), 0, -1):
-        plugin_name = "+".join(schemas[:pos])
-        plugin = Entry._find_plugin(plugin_name)  # pylint: disable=w0212
+        entry = File(uri, *args, **kwargs).__entry__()
 
-        if plugin is not None:
-            sub_uri = copy(uri)
-            sub_uri.protocol = "+".join(schemas[pos:])
-            if sub_uri.protocol == "":
-                sub_uri.protocol = "file"
+    elif schemas[0] in ("service", "http", "https", "ssh", "db", "mongodb", "postgresql", "mysql", "sqlite"):
+        from spdm.core.service import Service
 
-            entry = plugin(sub_uri, *args, _plugin_name=plugin_name, **kwargs)
-            break
+        entry = Service(uri, *args, **kwargs).__entry__()
     else:
-        try:
-            uri.protocol = "+".join(schemas[1:])
-            entry = EntryMapping(uri, *args, local_schema=schemas[0], **kwargs)
-        except RuntimeError as error:
-            raise RuntimeError(f"Can not find plugin for {uri}") from error
+        from spdm.core.mapper import Mapper
 
-    return entry if len(fragment) == 0 else entry.child(fragment)
+        try:
+            entry = Mapper(uri, *args, **kwargs)
+        except ModuleNotFoundError as error:
+            raise ModuleNotFoundError(f"{uri.protocol} is not a mapping!") from error
+
+    return entry.child(fragment) if not fragment else entry
 
 
 @singledispatch

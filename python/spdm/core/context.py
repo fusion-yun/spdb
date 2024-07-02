@@ -1,4 +1,4 @@
-from .actor import Actor
+from spdm.core.actor import Actor
 
 
 class Context(Actor):

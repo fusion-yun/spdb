@@ -8,7 +8,7 @@ from spdm.core.file import File
 class TestFile(unittest.TestCase):
     def test_plugin(self):
 
-        class Doo(File, plugin_name=["doo", "do", "DOO"]):
+        class Doo(File, plugin_name=["doo", "do"]):
 
             def read(self, *args, **kwargs) -> typing.Any:
                 return kwargs

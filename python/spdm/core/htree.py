@@ -750,6 +750,11 @@ class List(GenericHelper[_T], HTree):
         for idx in range(len(self)):
             yield self.__get_node__(idx)
 
+    @typing.final
+    def __iter__(self) -> typing.Generator[_T, None, None]:
+        """遍历，sequence 返回子节点的值，mapping 返回子节点的键"""
+        yield from self.search()
+
     def __get_node__(self, key, /, default_value=_not_found_, **kwargs) -> _T:
         if default_value is _not_found_:
             default_value = self._metadata.get("default_value", _not_found_)

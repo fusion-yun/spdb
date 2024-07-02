@@ -19,6 +19,7 @@ from spdm.core.generic_helper import GenericHelper
 
 _TSlice = typing.TypeVar("_TSlice")
 
+
 class Actor(GenericHelper[_TSlice], Entity):
     """执行体，追踪一个随时间演化的对象，其一个时间点的状态树称为 __时间片__ (time_slice),
     由时间片的构成的序列，代表状态演化历史。
@@ -41,6 +42,8 @@ class Actor(GenericHelper[_TSlice], Entity):
 
         self._inports = Ports(inputs, _parent=self)
         self._outports = Ports(_parent=self)
+
+    TimeSlice = _TSlice
 
     time_slice: TimeSequence[_TSlice]
     """时间片序列，保存 Actor 历史状态。

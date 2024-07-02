@@ -222,16 +222,14 @@ class Mesh(Domain):
         return geo
 
 
-@Mesh.register(["null", None])
-class NullMesh(Mesh):
+class NullMesh(Mesh, plugin_name=["null"]):
     def __init__(self, *args, **kwargs) -> None:
         if len(args) > 0 or len(kwargs) > 0:
             raise RuntimeError(f"Ignore args {args} and kwargs {kwargs}")
         super().__init__()
 
 
-@Mesh.register("regular")
-class RegularMesh(Mesh):
+class RegularMesh(Mesh, plugin_name="regular"):
     pass
 
 

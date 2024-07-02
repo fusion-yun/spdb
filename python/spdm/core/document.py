@@ -17,6 +17,11 @@ class Document(Pluggable):
     Connection like object
     """
 
+    _plugin_prefix = "spdm.plugins.data."
+
+    def __new__(cls, *args, _plugin_name=None, **kwargs) -> None:
+        return super().__new__(cls, _plugin_name=_plugin_name)
+
     def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
         # EntryBase.register(plugin_name, cls.Entry)
         return super().__init_subclass__(*args, plugin_name=plugin_name, **kwargs)
@@ -53,6 +58,7 @@ class Document(Pluggable):
     }
 
     class Entry(EntryBase):
+
         def __init__(self, doc, *args, **kwargs):
             super().__init__(_not_found_, *args, **kwargs)
             if doc is not _not_found_ and not isinstance(doc, Document):
@@ -177,10 +183,9 @@ class Document(Pluggable):
     def entry(self) -> Entry:
         return self.__entry__()
 
-    @abc.abstractmethod
     def read(self, *args, **kwargs) -> typing.Any:
         "读取"
+        return NotImplemented
 
-    @abc.abstractmethod
     def write(self, *args, **kwargs) -> None:
         "写入"
