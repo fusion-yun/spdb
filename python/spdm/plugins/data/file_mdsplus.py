@@ -3,10 +3,7 @@ import os
 import typing
 
 import numpy as np
-from spdm.core.collection import Collection
-from spdm.core.entry import Entry
 from spdm.core.file import File
-from spdm.core.document import Document
 from spdm.utils.logger import logger
 from spdm.utils.uri_utils import URITuple
 from spdm.utils.tags import _not_found_
@@ -26,9 +23,7 @@ class FileMDSplus(File, plugin_name=["mdsplus", "mds", "MDSplus"]):
         File.Mode.write | File.Mode.create: "New",
     }
 
-    def __init__(
-        self, *args, fid=None, shot: typing.Optional[int] = None, tree_name: typing.Optional[str] = None, **kwargs
-    ):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._envs = {}
@@ -52,8 +47,7 @@ class FileMDSplus(File, plugin_name=["mdsplus", "mds", "MDSplus"]):
 
         self._default_tree_path = path
 
-        if tree_name is None:
-            tree_name = query.get("tree_name", None)
+        tree_name = query.get("tree_name", None)
 
         self._old_env = {}
 
@@ -71,7 +65,7 @@ class FileMDSplus(File, plugin_name=["mdsplus", "mds", "MDSplus"]):
                     self._old_env[env_path] = None
                     os.environ[f"{p}_path"] = path
 
-        self._shot = shot if shot is not None else (fid if fid is not None else query.get("shot", self.uri.fragment))
+        self._shot = int(query.get("shot", 0))
 
         self._trees = {}
 
@@ -91,44 +85,30 @@ class FileMDSplus(File, plugin_name=["mdsplus", "mds", "MDSplus"]):
             else:
                 os.environ[k] = v
 
-    @property
-    def entry(self, lazy=True) -> Entry:
-        return self._entry
-
-    def get_tree(
-        self,
-        tree_name: typing.Optional[str] = None,
-        tree_path: typing.Optional[str] = None,
-    ):
+    def get_tree(self, tree_name: str = None, tree_path: str = None):
         if tree_name is None:
             tree_name = self._default_tree_name
 
         if tree_name in self._trees:
             return self._trees[tree_name]
 
-        mode = self._mds_mode
-
-        shot = int(self._shot) if isinstance(self._shot, str) else self._shot
-
         if tree_path is None:
             tree_path = self._default_tree_path
 
         try:
-            tree = mds.Tree(tree_name, shot, mode=mode, path=tree_path)
+            tree = mds.Tree(tree_name, self._shot, mode=self._mds_mode, path=tree_path)
         except mds.mdsExceptions.TreeFOPENR as error:
-            raise FileNotFoundError(
-                f"Can not open mdsplus tree! tree_name={tree_name} shot={shot} tree_path={tree_path} mode={mode} \n {error}"
-            )
+            raise FileNotFoundError(f"Can not open mdsplus tree! uri={self.uri} mode={self._mds_mode} ") from error
         except mds.mdsExceptions.TreeNOPATH as error:
-            raise FileNotFoundError(f"{tree_name}_path is not defined! tree_name={tree_name} shot={shot}  \n {error}")
+            raise FileNotFoundError(f"{tree_name}_path is not defined!  uri={self.uri}  ") from error
         else:
-            logger.debug(f"Open MDSplus Tree [{tree_name}] shot={shot}")
+            logger.debug(f"Open MDSplus Tree [{tree_name}] uri={self.uri}")
 
         self._trees[tree_name] = tree
 
         return tree
 
-    def read(self, request, prefix=None, **kwargs) -> typing.Any:
+    def read(self, path, request, prefix=None, **kwargs) -> typing.Any:
         if request is None:
             return _not_found_
 
@@ -150,7 +130,7 @@ class FileMDSplus(File, plugin_name=["mdsplus", "mds", "MDSplus"]):
         try:
             tdi = tdi.format_map(self._envs)
         except KeyError as error:
-            raise KeyError(f"Can not format tdi! {error} tdi={tdi} envs={self._envs} prefix={prefix}")
+            raise KeyError(f"Can not format tdi! {error} tdi={tdi} envs={self._envs} prefix={prefix}") from error
 
         res = None
         tree = self.get_tree(tree_name, tree_path)
@@ -158,10 +138,14 @@ class FileMDSplus(File, plugin_name=["mdsplus", "mds", "MDSplus"]):
             res = tree.tdiExecute(tdi).data()
         except mds.mdsExceptions.TdiException as error:
             # raise RuntimeError(f"MDSplus TDI error [{tdi}]! {error}")
-            logger.warning(f'MDS TDI error! tree_name={tree_name} shot={self._shot} tdi="{tdi}" \n {error}')
+            raise RuntimeError(
+                f'MDS TDI error! tree_name={tree_name} shot={self._shot} tdi="{tdi}" \n {error}'
+            ) from error
 
         except mds.mdsExceptions.TreeNODATA as error:
-            logger.warning(f'MDS No data! tree_name={tree_name} shot={self._shot} tdi="{tdi}" \n {error}')
+            raise RuntimeError(
+                f'MDS No data! tree_name={tree_name} shot={self._shot} tdi="{tdi}" \n {error}'
+            ) from error
 
         except Exception as error:
             raise RuntimeError(f'mds.mdsExceptions! tree_name={tree_name} shot={self._shot} tdi="{tdi}"') from error
@@ -179,7 +163,7 @@ class FileMDSplus(File, plugin_name=["mdsplus", "mds", "MDSplus"]):
         return res
 
     def write(self, *args, envs=None, **kwargs):
-        raise NotImplementedError()
+        raise NotImplementedError("Can not write to MDSplus!")
 
 
 # class MDSplusCollection(Collection):

@@ -42,18 +42,22 @@ class Mapper(Entry):
         return other
 
     def _do_map(self, req):
-        if not isinstance(req, dict):
-            return req
+        if isinstance(req, dict):
+            if "@spdm" not in req:
+                res = {k: self._do_map(v) for k, v in req.items()}
+            else:
 
-        if "@spdm" not in req:
-            return {k: self._do_map(v) for k, v in req.items()}
+                entry = self._handler.get(req.get("@spdm", None), None)
 
-        entry = self._handler.get(req.get("@spdm", None), None)
+                if not isinstance(entry, Entry):
+                    raise RuntimeError(f"Can not find entry for {req}")
 
-        if not isinstance(entry, Entry):
-            raise RuntimeError(f"Can not find entry for {req}")
-
-        return entry.find(req.get("_text"))
+                res = entry.find(req.get("_text"))
+        elif isinstance(req, list) and any(isinstance(i, dict) for i in req):
+            res = [self._do_map(i) for i in req]
+        else:
+            res = req
+        return res
 
     def _map(self, *args) -> Entry:
         value = self._mapper.child(self._path).find(*args, default_value=_not_found_)
@@ -126,7 +130,9 @@ class Mapper(Entry):
             handlers = {}
 
         # attr = {k[1:]: v for k, v in mapper_config.items() if k.startswith("@")}
-        attr = {"prefix": str(uri), **uri.query}
+        query = uri.query
+        uri.query = None
+        attr = {"prefix": str(uri), **query}
 
         for item in mapper.child("spdm/entry/*").search(enable="true"):
 

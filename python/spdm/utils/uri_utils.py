@@ -45,9 +45,12 @@ class URITuple:
 
         path = "/".join(self.path) if isinstance(self.path, list) else self.path
 
-        query = ",".join([f"{k}={v}" for k, v in self.query.items()])
-        if query != "":
-            query = f"?{query}"
+        if self.query is not None:
+            query = ",".join([f"{k}={v}" for k, v in self.query.items()])
+            if query != "":
+                query = f"?{query}"
+        else:
+            query = ""
 
         fragment = f"#{self.fragment}" if self.fragment != "" else ""
 
@@ -77,7 +80,7 @@ def uri_split_as_dict(uri) -> dict:
         )
         + "}"
     )
-    ast.literal_eval(query)
+    query = ast.literal_eval(query)
 
     if uri_.netloc in [".", ".."]:
         path = uri_.netloc + uri_.path
@@ -90,7 +93,7 @@ def uri_split_as_dict(uri) -> dict:
         protocol=uri_.scheme or "file",
         netloc=netloc,
         path=path,
-        query=ast.literal_eval(query),
+        query=query,
         fragment=uri_.fragment,
     )
     return res
