@@ -2,10 +2,7 @@ import typing
 import numpy as np
 
 from spdm.utils.type_hint import ArrayType
-from spdm.utils.tags import _not_found_
-from spdm.core.path import Path
 from spdm.core.mesh import Mesh
-from spdm.geometry.point import Point
 from spdm.geometry.vector import Vector
 
 

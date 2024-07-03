@@ -1,8 +1,5 @@
-from __future__ import annotations
-import warnings
+
 import typing
-from copy import copy, deepcopy
-import functools
 import collections.abc
 
 import numpy as np
@@ -159,12 +156,8 @@ class Expression(HTreeNode):
 
         return other
 
-    def __serialize__(self, dumper=None):
-        logger.debug(f"TODO: __serialize__ {self}")
-        return None
-
     @property
-    def domain(self) -> typing.Type[Domain] | None:
+    def domain(self) -> Domain | None:
         """返回表达式的定义域"""
 
         if self._domain is not _not_found_:

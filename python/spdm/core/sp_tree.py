@@ -39,7 +39,7 @@
 
 """
 
-from __future__ import annotations
+
 import inspect
 import typing
 from copy import deepcopy
@@ -273,7 +273,7 @@ class SpProperty:
                 if self.default_value is _not_found_:
                     self.default_value = prop.default_value
 
-                if self.alias is None:
+                if self.alias is None and prop.alias is not None:
                     self.alias = as_path(prop.alias)
 
                 self.doc += prop.doc
@@ -336,6 +336,11 @@ def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
         return SpProperty(**kwargs)
     else:
         return SpProperty(getter=getter, **kwargs)
+
+
+def annotation(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
+    """alias of sp_property"""
+    return sp_property(getter, **kwargs)
 
 
 def is_sp_property(obj) -> bool:

@@ -10,15 +10,13 @@ class UniformMesh(StructuredMesh, plugin_name="uniform"):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        p_min, p_max = self.geometry.bbox
-        self._dx = (np.asarray(p_max, dtype=float) - np.asarray(p_min, dtype=float)) / np.asarray(
-            self.shape, dtype=float
-        )
-        self._orgin = np.asarray(p_min, dtype=float)
+        self.geometry.bbox
+        self._dx = bbox.dimensions / np.asarray(self.shape, dtype=float)
+        self._orgin = np.asarray(bbox.origin, dtype=float)
 
     @property
     def origin(self) -> typing.Tuple[float]:
-        return self._dx
+        return self._orgin
 
     @property
     def dx(self) -> typing.Tuple[float]:

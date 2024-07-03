@@ -1,4 +1,4 @@
-from __future__ import annotations
+
 from spdm.utils.uri_utils import uri_split
 
 from spdm.core.document import Document

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import ast
 import collections.abc
 import re
@@ -16,6 +14,13 @@ from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import is_int
 
 from spdm.core.query import Query, as_query
+
+
+PathLike = str | int | slice | dict | list | Query.tags | None
+
+PathItemLike = str | int | slice | dict | Query.tags
+
+path_like = tuple([int, str, slice, list, tuple, set, dict, Query.tags])
 
 
 class PathError(Exception):
@@ -128,7 +133,7 @@ class Path(list):
     def __hash__(self) -> int:
         return self.__str__().__hash__()
 
-    def __copy__(self) -> Path:
+    def __copy__(self) -> typing.Self:
         return self.__class__(deepcopy(self[:]))
 
     def as_url(self) -> str:
@@ -155,7 +160,7 @@ class Path(list):
         return any([isinstance(v, (slice, dict)) for v in self])
 
     @property
-    def parent(self) -> Path:
+    def parent(self) -> typing.Self:
         if len(self) == 0:
             logger.warning("Root node hasn't parents")
             return self
@@ -163,7 +168,7 @@ class Path(list):
             return Path(self[:-1])
 
     @property
-    def children(self) -> Path:
+    def children(self) ->  typing.Self:
         if self.is_leaf:
             raise RuntimeError("Leaf node hasn't child!")
         other = copy(self)
@@ -175,22 +180,22 @@ class Path(list):
         return self.parent.children
 
     @property
-    def next(self) -> Path:
+    def next(self) ->  typing.Self:
         other = copy(self)
         other.append(Path.tags.next)
         return other
 
-    def prepend(self, d) -> Path:
+    def prepend(self, d) ->  typing.Self:
         res = as_path(d)
         return res.append(self)
 
-    def append(self, d) -> Path:
+    def append(self, d) ->  typing.Self:
         return Path._resolve(Path._parser_iter(d), self)
 
-    def extend(self, d: list) -> Path:
+    def extend(self, d: list) ->  typing.Self:
         return Path._resolve(d, self)
 
-    def with_suffix(self, pth: str) -> Path:
+    def with_suffix(self, pth: str) ->  typing.Self:
         pth = Path(pth)
         if len(self) == 0:
             return pth
@@ -203,13 +208,13 @@ class Path(list):
                 res.extend(pth[:])
         return res
 
-    def __truediv__(self, p) -> Path:
+    def __truediv__(self, p) ->  typing.Self:
         return copy(self).append(p)
 
-    def __add__(self, p) -> Path:
+    def __add__(self, p) ->  typing.Self:
         return copy(self).append(p)
 
-    def __iadd__(self, p) -> Path:
+    def __iadd__(self, p) ->  typing.Self:
         return self.append(p)
 
     def __eq__(self, other) -> bool:
@@ -220,7 +225,7 @@ class Path(list):
         else:
             return False
 
-    def collapse(self, idx=None) -> Path:
+    def collapse(self, idx=None) ->  typing.Self:
         """
         - 从路径中删除非字符元素，例如 slice, dict, set, tuple，int。用于从 default_value 中提取数据
         - 从路径中删除指定位置idx: 的元素
@@ -447,7 +452,7 @@ class Path(list):
     ###########################################################
     # 非幂等
     @typing.final
-    def insert(self, target: typing.Any, *args, **kwargs) -> typing.Tuple[_T, Path]:
+    def insert(self, target: typing.Any, *args, **kwargs) -> typing.Tuple[typing.Any, typing.Self]:
         """
         根据路径（self）向 target 添加元素。
         当路径指向位置为空时，创建（create）元素
@@ -909,13 +914,6 @@ class Path(list):
 
             else:
                 raise KeyError(f"Can not search {target} by {key}")
-
-
-PathLike = str | int | slice | dict | list | Path.tags | Path | None
-
-PathItemLike = str | int | slice | dict | Path.tags
-
-path_like = tuple([int, str, slice, list, tuple, set, dict, Path.tags, Path])
 
 
 _T = typing.TypeVar("_T")

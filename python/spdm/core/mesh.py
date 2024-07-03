@@ -1,20 +1,25 @@
-from __future__ import annotations
+
 import collections.abc
 import typing
 from functools import cache
 from enum import Enum
 
 import numpy as np
+import numpy.typing as np_tp
+
+from spdm.utils.logger import logger
+from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, as_array, array_type
+from spdm.utils.tags import _not_found_
+from spdm.utils.misc import group_dict_by_prefix
 
 from spdm.core.domain import Domain
 from spdm.core.path import Path
 from spdm.core.sp_tree import sp_property
 
+from spdm.geometry.vector import Vector
 
-from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, as_array
-from spdm.utils.tags import _not_found_
-from spdm.utils.misc import group_dict_by_prefix
-from spdm.utils.logger import logger
+from spdm.numlib.numeric import float_nan, bitwise_and
+from spdm.numlib.interpolate import interpolate
 
 # from spdm.numlib.numeric import float_nan, meshgrid, bitwise_and
 
@@ -84,17 +89,23 @@ class Mesh(Domain):
     _plugin_prefix = "spdm.mesh.mesh_"
 
     def __new__(cls, *args, mesh_type=None, _plugin_name=None, **kwargs):
-        if cls is not Mesh or _plugin_name is not None:
-            return super().__new__(cls, *args, mesh_type=mesh_type, _plugin_name=_plugin_name, **kwargs)
+        if cls is Mesh and _plugin_name is None:
+            _plugin_name = mesh_type
 
-        return super().__new__(cls, *args, _plugin_name=mesh_type, mesh_type=mesh_type, **kwargs)
+        return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
 
-    # def __init__(self, *args, _entry=None, _parent=None, **kwargs) -> None:
-    #     """
-    #     Usage:
-    #         Mesh(x,y) => Mesh(type="structured",dims=(x,y),**kwargs)
-    #     """
-    #     super().__init__(*args,**kwargs)
+    def __init__(self, *args, mesh_type=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    shape: Vector[int]
+    """
+        存储网格点数组的形状
+        结构化网格 shape   如 [n,m] n,m 为网格的长度dimension
+        非结构化网格 shape 如 [<number of vertices>]
+    """
+
+    points: typing.Tuple[ArrayType, ...]
+    """ 网格对应的网格点坐标，ndim 个 形状为 shape 的数组。"""
 
     @property
     def axis_label(self) -> typing.Tuple[str]:
@@ -148,8 +159,82 @@ class Mesh(Domain):
         """refer to the individual units that make up the mesh"""
         raise NotImplementedError(f"{self.__class__.__name__}.cells")
 
-    def interpolator(self, y: NumericType, *args, **kwargs) -> typing.Callable[..., NumericType]:
-        raise NotImplementedError(f"{self.__class__.__name__}.interpolator")
+    def interpolate(self, func: typing.Callable | ArrayType) -> typing.Callable[..., ArrayType]:
+        xargs = self.points
+        if callable(func):
+            value = func(*xargs)
+        elif isinstance(func, array_type):
+            value = func
+        else:
+            raise TypeError(f"{type(func)} is not array or callable!")
+
+        return interpolate(*xargs, value)
+
+    def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
+        # or self._metadata.get("extrapolate", 0) != 1:
+        if self.shape is None or len(self.shape) == 0 or self._metadata.get("extrapolate", 0) != "raise":
+            return True
+
+        if len(args) != len(self.shape):
+            raise RuntimeError(f"len(args) != len(self.dims) {len(args)}!={len(self.shape)}")
+
+        v = []
+        for i, (xmin, xmax) in enumerate(self.geometry.bbox):
+            v.append((args[i] >= xmin) & (args[i] <= xmax))
+
+        return bitwise_and.reduce(v)
+
+    def check(self, *x) -> bool | np_tp.NDArray[np.bool_]:
+        """当坐标在定义域内时返回 True，否则返回 False"""
+
+        d = [child.__check_domain__(*x) for child in self._children if hasattr(child, "__domain__")]
+
+        if isinstance(self._func, Functor):
+            d += [self._func.__domain__(*x)]
+
+        d = [v for v in d if (v is not None and v is not True)]
+
+        if len(d) > 0:
+            return np.bitwise_and.reduce(d)
+        else:
+            return True
+
+    def eval(self, func, *xargs, **kwargs):
+        """根据 __domain__ 函数的返回值，对输入坐标进行筛选"""
+
+        mask = self.mask(*xargs)
+
+        mask_size = mask.size if isinstance(mask, array_type) else 1
+        masked_num = np.sum(mask)
+
+        if not isinstance(mask, array_type) and not isinstance(mask, (bool, np.bool_)):
+            raise RuntimeError(f"Illegal mask {mask} {type(mask)}")
+
+        if masked_num == 0:
+            raise RuntimeError(f"Out of domain! {self} {xargs} ")
+
+        if masked_num < mask_size:
+            xargs = tuple(
+                (arg[mask] if isinstance(mask, array_type) and isinstance(arg, array_type) and arg.ndim > 0 else arg)
+                for arg in xargs
+            )
+        else:
+            mask = None
+
+        value = func._eval(*xargs, **kwargs)
+
+        if masked_num < mask_size:
+            res = value
+        elif is_scalar(value):
+            res = np.full_like(mask, value, dtype=self._type_hint())
+        elif isinstance(value, array_type) and value.shape == mask.shape:
+            res = value
+        elif value is None:
+            res = None
+        else:
+            res = np.full_like(mask, self.fill_value, dtype=self._type_hint())
+            res[mask] = value
+        return res
 
     def partial_derivative(self, order, y: NumericType, *args, **kwargs) -> typing.Callable[..., NumericType]:
         raise NotImplementedError(f"{self.__class__.__name__}.partial_derivative")
@@ -160,20 +245,20 @@ class Mesh(Domain):
     def integrate(self, y: NumericType, *args, **kwargs) -> ScalarType:
         raise NotImplementedError(f"{self.__class__.__name__}.integrate")
 
-    def eval(self, func, *args, **kwargs) -> ArrayType:
-        return func(*self.points)
+    def display(self, obj, view_point="rz", label=None, **kwargs):
+        """将 obj 画在 domain 上，默认为 n维 contour。"""
 
-    def display(self, obj, *args, view_point="rz", label=None, **kwargs):
         # view_point = ("RZ",)
         geo = {}
 
         match view_point.lower():
             case "rz":
-                geo["$data"] = (*self.points, obj.__array__())
+                geo["$data"] = (*self.points, np.asarray(obj))
                 geo["$styles"] = {
                     "label": label,
                     "axis_label": self.axis_label,
                     "$matplotlib": {"levels": 40, "cmap": "jet"},
+                    **kwargs,
                 }
         return geo
 
@@ -191,8 +276,6 @@ class RegularMesh(Mesh, plugin_name="regular"):
 
 def as_mesh(*args, **kwargs) -> Mesh:
     if len(args) == 1 and isinstance(args[0], Mesh):
-        if len(kwargs) > 0:
-            logger.warning(f"Ignore kwargs {kwargs}")
         return args[0]
     else:
         return Mesh(*args, **kwargs)

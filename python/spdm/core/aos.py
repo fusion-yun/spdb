@@ -1,4 +1,4 @@
-from __future__ import annotations
+
 import collections.abc
 import typing
 from copy import deepcopy

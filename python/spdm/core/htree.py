@@ -1,7 +1,6 @@
 """ Hierarchical Tree (HTree) is a hierarchical data structure that can be used to
  store a group of data or objects, such as lists, dictionaries, etc.  """
 
-from __future__ import annotations
 import collections.abc
 import typing
 import inspect
@@ -27,37 +26,14 @@ def get_state(obj: typing.Any) -> dict:
 
 
 class HTreeNode:
-    """HTreeNode is a node in the hierarchical tree.
-    (Hierarchical Tree Structured Data)
-    """
-
-    # def __new__(cls, *args, **kwargs):
-    #     if cls is not HTreeNode and cls is not HTree:
-    #         return super().__new__(cls)
-    #     elif len(args) == 0:
-    #         return super().__new__(Dict)
-    #     elif len(args) > 1:
-    #         return super().__new__(List)
-    #     value = args[0]
-    #     if isinstance(value, collections.abc.Mapping):
-    #         return super().__new__(Dict)
-    #     elif isinstance(value, collections.abc.Sequence) and not isinstance(value, str):
-    #         return super().__new__(List)
-    #     elif isinstance(value, HTreeNode):
-    #         raise RuntimeError(f"Can not create {cls.__name__} from {value.__class__.__name__}")
-    #     elif len(kwargs) == 0 and cls is not HTree:
-    #         if not isinstance(value, primary_type) and not (value is None or value is _not_found_):
-    #             raise TypeError(f"Can not create {cls.__name__} from '{value.__class__.__name__}'")
-    #         return value
-    #     else:
-    #         return super().__new__(cls)
+    """Hierarchical Tree Structured Data: HTreeNode is a node in the hierarchical tree."""
 
     def __init__(
         self,
         cache=_not_found_,
         /,
         _entry: Entry = None,
-        _parent: HTreeNode = None,
+        _parent: typing.Self = None,
         _metadata=_not_found_,
         **kwargs,
     ):
@@ -68,6 +44,7 @@ class HTreeNode:
         self._metadata = deepcopy(getattr(self.__class__, "_metadata", _not_found_))
         self._metadata = Path().update(self._metadata, _metadata)
         self._metadata = Path().update(self._metadata, kwargs)
+        super().__init__()
 
     def __copy__(self) -> typing.Self:
         other = object.__new__(self.__class__)
@@ -144,7 +121,7 @@ class HTreeNode:
         return ".".join(self.__path__)
 
     @property
-    def __root__(self) -> HTree | None:
+    def __root__(self) -> typing.Self | None:
         p = self
         while isinstance(p, HTreeNode) and p._parent is not None:
             p = p._parent
@@ -176,23 +153,23 @@ class HTreeNode:
         return self
 
     @typing.final
-    def parent(self) -> HTreeNode:
+    def parent(self) -> typing.Self:
         """父节点"""
         return self._parent
 
     @typing.final
-    def ancestors(self) -> typing.Generator[HTreeNode, None, None]:
+    def ancestors(self) -> typing.Generator[typing.Self, None, None]:
         """遍历祖辈节点"""
         obj = self._parent
         while obj is not None:
             yield obj
             obj = getattr(obj, "_parent", None)
 
-    def children(self) -> typing.Generator[HTreeNode | PrimaryType, None, None]:
+    def children(self) -> typing.Generator[typing.Self | PrimaryType, None, None]:
         """遍历子节点 (for HTree)"""
 
     @typing.final
-    def descendants(self, traversal_strategy="deep_first") -> typing.Generator[HTreeNode, None, None]:
+    def descendants(self, traversal_strategy="deep_first") -> typing.Generator[typing.Self, None, None]:
         """遍历所有子孙辈节点"""
 
         match traversal_strategy:
@@ -246,17 +223,6 @@ class HTreeNode:
     def __equal__(self, other) -> bool:
         """比较节点的值是否相等"""
         return self.query(Query.tags.equal, other if not isinstance(other, HTreeNode) else other.__value__)
-
-    # def __copy__(self) -> typing.Self:
-    #     if isinstance(self._cache, dict):
-    #         cache = {k: copy(value) for k, value in self._cache.items()}
-    #     elif isinstance(self._cache, list):
-    #         cache = [copy(value) for k, value in self._cache.items()]
-    #     else:
-    #         cache = deepcopy(self._cache)
-    #     res = self.__class__(cache, _entry=self._entry)
-    #     res._metadata = deepcopy(self._metadata)
-    #     return res
 
     # @classmethod
     # def do_serialize(cls, source: typing.Any, dumper: Entry | typing.Callable[..., typing.Any] | bool) -> _T:
@@ -609,8 +575,6 @@ class HTree(HTreeNode):
 class Dict(GenericHelper[_T], HTree):
     """Dict 类型的 HTree 对象"""
 
-    _DEFAULT_TYPE_HINT = _T
-
     def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
 
         d = {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")}
@@ -686,10 +650,10 @@ class List(GenericHelper[_T], HTree):
         """extend value to list"""
         return self.update(Path.tags.extend, value)
 
-    def __iadd__(self, other: list) -> typing.Type[List[_T]]:
+    def __iadd__(self, other: list) -> typing.Self:
         return self.extend(other)
 
-    def __contains__(self, path_or_node: PathLike | HTreeNode) -> bool:
+    def __contains__(self, path_or_node: PathLike | Path | HTreeNode) -> bool:
         """查找，sequence 搜索值，mapping搜索键"""
         if isinstance(path_or_node, PathLike):
             return super().__contains__(path_or_node)
@@ -722,40 +686,5 @@ class List(GenericHelper[_T], HTree):
             default_value = self._metadata.get("default_value", _not_found_)
         return super().__get_node__(key, default_value=default_value, **kwargs)
 
-    # def __as_node__(self, *args, _type_hint=None, **kwargs) -> _T:
-    #     if _type_hint is None:
-    #         _type_hint = getattr(self.__class__, "__args__", None)
-    #         if _type_hint is not None:
-    #             _type_hint = _type_hint[0]
-    #     return super().__as_node__(*args, _type_hint=_type_hint, **kwargs)
-
 
 collections.abc.MutableSequence.register(List)
-
-# def as_htree(*args, **kwargs):
-#     """将数据转换为 HTree 对象"""
-#     if len(args) == 0 and len(kwargs) > 0:
-#         res = Dict(kwargs)
-#         kwargs = {}
-#     elif len(args) > 1 and len(kwargs) == 0:
-#         res = List(list(args))
-#         args = []
-#     elif len(args) == 0:
-#         res = None
-#     elif isinstance(args[0], HTree):
-#         res = args[0]
-#         args = args[1:]
-#     elif isinstance(args[0], collections.abc.MutableMapping):
-#         res = Dict(args[0])
-#         args = args[1:]
-#     elif isinstance(args[0], collections.abc.MutableSequence):
-#         res = List(args[0])
-#         args = args[1:]
-#     elif len(args) > 1:
-#         res = List(list(args))
-#         args = []
-#     else:
-#         res = HTree(*args, **kwargs)
-#     if len(args) + len(kwargs) > 0:
-#         res._update_(*args, **kwargs)
-#     return res

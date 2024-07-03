@@ -20,12 +20,10 @@ def generic_specification(tp: type | typing.TypeVar, tp_map: dict) -> type:
     elif isinstance(tp, dict):
         new_tp = {k: generic_specification(v, tp_map) for k, v in tp.items()}
     elif isinstance(tp, typing._GenericAlias):
-        args = tuple([generic_specification(a, tp_map) for a in tp.__args__ if a is not type(None)])
-        args = tuple([a for a in args if a is not None])
-        if len(args) > 0:
-            new_tp = tp.__getitem__(args)
-        else:
-            new_tp = None
+        args = tuple([generic_specification(a, tp_map) for a in tp.__parameters__])
+        # args = tuple([generic_specification(a, tp_map) for a in tp.__args__ if a is not type(None)])
+        # args = tuple([a for a in args if a is not None])
+        new_tp = tp.__getitem__(args) if len(args) > 0 else None
     elif isinstance(tp, type):
         new_tp = tp
     elif inspect.isfunction(tp) or inspect.ismethod(tp):

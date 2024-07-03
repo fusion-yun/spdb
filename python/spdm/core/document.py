@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import typing
 
 from enum import Flag, auto
@@ -152,7 +150,7 @@ class Document(Pluggable):
         return bool(self._mode & Document.Mode.temporary)
 
     # -----------------------------------------------------------------------------
-    def open(self) -> Document.Entry:
+    def open(self) -> Entry:
         """打开文档"""
         # logger.verbose(f"File {self._uri} is opened!")
         return self.__class__.Entry(self)

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pathlib
 import typing
 from copy import copy
@@ -202,7 +200,7 @@ class Entry:  # pylint: disable=R0904
         return self.query(Query.equal, other)
 
     @property
-    def children(self) -> typing.Generator[typing.Type[Entry], None, None]:
+    def children(self) -> typing.Generator[typing.Self, None, None]:
         yield self.search()
 
 

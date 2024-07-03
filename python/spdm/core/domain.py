@@ -1,21 +1,20 @@
-from __future__ import annotations
+
+import abc
 import typing
 import numpy as np
 import numpy.typing as np_tp
 
 from spdm.utils.tags import _not_found_
-from spdm.utils.type_hint import ArrayType, array_type
-from spdm.core.sp_object import SpObject
+from spdm.utils.type_hint import array_type, ArrayType
 from spdm.core.sp_tree import sp_property
-from spdm.core.functor import Functor
+from spdm.core.sp_object import SpObject
 from spdm.core.geo_object import GeoObject
+from spdm.numlib.interpolate import interpolate
+from spdm.numlib.numeric import float_nan, bitwise_and
 from spdm.geometry.vector import Vector
 
-from spdm.numlib.numeric import float_nan, bitwise_and
-from spdm.numlib.interpolate import interpolate
 
-
-class Domain(SpObject, fill_value=float_nan):
+class Domain(SpObject):
     """函数/场的定义域，用以描述函数/场所在流形
     - geometry  ：几何边界
     - shape     ：网格所对应数组形状， 例如，均匀网格 的形状为 （n,m) 其中 n,m 都是整数
@@ -31,20 +30,11 @@ class Domain(SpObject, fill_value=float_nan):
 
     geometry: GeoObject
 
-    shape: Vector[int]
-    """
-        存储网格点数组的形状
-        结构化网格 shape   如 [n,m] n,m 为网格的长度dimension
-        非结构化网格 shape 如 [<number of vertices>]
-    """
-    ndim: int = sp_property(alias="geometry.ndim")
+    ndim: int = sp_property(alias="geometry/ndim")
     """所在的空间维度"""
 
-    rank: int = sp_property(alias="geometry.rank")
+    rank: int = sp_property(alias="geometry/rank")
     """所在流形的维度，0:点， 1:线， 2:面， 3:体"""
-
-    points: typing.Tuple[ArrayType, ...]
-    """ 网格对应的网格点坐标，ndim 个 形状为 shape 的数组。"""
 
     @property
     def is_simple(self) -> bool:
@@ -62,90 +52,21 @@ class Domain(SpObject, fill_value=float_nan):
     def is_null(self) -> bool:
         return all(d == 0 for d in self.shape)
 
-    def view(self, obj, **kwargs):
-        """将 obj 画在 domain 上，默认为 n维 contour。"""
-        return {
-            "$type": "contour",
-            "$data": (*self.points, np.asarray(obj)),
-            "style": kwargs,
-        }
+    @abc.abstractmethod
+    def interpolate(self, func: typing.Callable | ArrayType) -> typing.Callable[..., ArrayType]:
+        pass
 
-    def interpolate(self, func: typing.Callable | array_type) -> typing.Callable[..., array_type]:
-        xargs = self.points
-        if callable(func):
-            value = func(*xargs)
-        elif isinstance(func, array_type):
-            value = func
-        else:
-            raise TypeError(f"{type(func)} is not array or callable!")
-
-        return interpolate(*xargs, value)
-
+    @abc.abstractmethod
     def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
-        # or self._metadata.get("extrapolate", 0) != 1:
-        if self.shape is None or len(self.shape) == 0 or self._metadata.get("extrapolate", 0) != "raise":
-            return True
+        pass
 
-        if len(args) != len(self.shape):
-            raise RuntimeError(f"len(args) != len(self.dims) {len(args)}!={len(self.shape)}")
-
-        v = []
-        for i, (xmin, xmax) in enumerate(self.geometry.bbox):
-            v.append((args[i] >= xmin) & (args[i] <= xmax))
-
-        return bitwise_and.reduce(v)
-
+    @abc.abstractmethod
     def check(self, *x) -> bool | np_tp.NDArray[np.bool_]:
-        """当坐标在定义域内时返回 True，否则返回 False"""
+        pass
 
-        d = [child.__check_domain__(*x) for child in self._children if hasattr(child, "__domain__")]
-
-        if isinstance(self._func, Functor):
-            d += [self._func.__domain__(*x)]
-
-        d = [v for v in d if (v is not None and v is not True)]
-
-        if len(d) > 0:
-            return np.bitwise_and.reduce(d)
-        else:
-            return True
-
-    def eval(self, func, *xargs, **kwargs):
-        """根据 __domain__ 函数的返回值，对输入坐标进行筛选"""
-
-        mask = self.mask(*xargs)
-
-        mask_size = mask.size if isinstance(mask, array_type) else 1
-        masked_num = np.sum(mask)
-
-        if not isinstance(mask, array_type) and not isinstance(mask, (bool, np.bool_)):
-            raise RuntimeError(f"Illegal mask {mask} {type(mask)}")
-
-        if masked_num == 0:
-            raise RuntimeError(f"Out of domain! {self} {xargs} ")
-
-        if masked_num < mask_size:
-            xargs = tuple(
-                (arg[mask] if isinstance(mask, array_type) and isinstance(arg, array_type) and arg.ndim > 0 else arg)
-                for arg in xargs
-            )
-        else:
-            mask = None
-
-        value = func._eval(*xargs, **kwargs)
-
-        if masked_num < mask_size:
-            res = value
-        elif is_scalar(value):
-            res = np.full_like(mask, value, dtype=self._type_hint())
-        elif isinstance(value, array_type) and value.shape == mask.shape:
-            res = value
-        elif value is None:
-            res = None
-        else:
-            res = np.full_like(mask, self.fill_value, dtype=self._type_hint())
-            res[mask] = value
-        return res
+    @abc.abstractmethod
+    def eval(self, func, *xargs, **kwargs) -> ArrayType:
+        pass
 
 
 class PPolyDomain(Domain):
@@ -158,7 +79,7 @@ class PPolyDomain(Domain):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(*args, **kwargs)
         if len(args) == 1 and isinstance(args[0], tuple):
             args = args[0]
         ndim = len(args)
@@ -171,14 +92,7 @@ class PPolyDomain(Domain):
         else:
             raise RuntimeError(f"Invalid points {args}")
 
-    @property
-    def shape(self) -> typing.Tuple[int, ...]:
-        if self._dims is not None:
-            return tuple([d.size for d in self._dims])
-        elif self._points is not None:
-            return self._points[0].shape
-        else:
-            raise RuntimeError(f"illegal domain!")
+    shape: Vector[int]
 
     @property
     def points(self) -> typing.Tuple[array_type, ...]:
@@ -188,9 +102,9 @@ class PPolyDomain(Domain):
             self._points = np.meshgrid(*self._dims, indexing="ij")
         return self._points
 
-    def interpolate(self, y: array_type, **kwargs):
+    def interpolate(self, func: array_type, **kwargs):
 
         periods = self._metadata.get("periods", None)
         extrapolate = self._metadata.get("extrapolate", 0)
 
-        return interpolate(*self.points, y, periods=periods, extrapolate=extrapolate, **kwargs)
+        return interpolate(*self.points, func, periods=periods, extrapolate=extrapolate, **kwargs)

@@ -153,3 +153,6 @@ class Pluggable(abc.ABC):
         if default_plugin is not None:
             cls.default_plugin = default_plugin
         return super().__init_subclass__(**kwargs)
+
+    def __init__(self, *args, _plugin_name=None, **kwargs):
+        super().__init__(*args, **kwargs)

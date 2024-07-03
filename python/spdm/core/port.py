@@ -7,7 +7,7 @@ The `Ports` class is a collection of `Port` objects. It provides methods for put
 
 """
 
-from __future__ import annotations
+
 import typing
 from spdm.core.path import Path, as_path
 from spdm.core.htree import HTreeNode

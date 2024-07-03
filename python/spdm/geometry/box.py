@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from spdm.core.geo_object import GeoObject,BBox, BBox
+from spdm.core.geo_object import GeoObject, BBox, BBox
 from spdm.utils.type_hint import array_type
 from ..utils.logger import logger
 
@@ -11,7 +11,7 @@ class Box(GeoObject):
     def __init__(self, xmin, xmax, **kwargs) -> None:
         xmin = np.asarray(xmin)
         xmax = np.asarray(xmax)
-        super().__init__(ndim=len(xmin), **kwargs)
+        super().__init__(ndim=len(xmin), rank=len(xmin), **kwargs)
         self._xmin = xmin
         self._xmax = xmax
         self._bbox = BBox(xmin, xmax - xmin)

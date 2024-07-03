@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import collections.abc
 import typing
 from enum import Flag, auto
@@ -42,7 +40,7 @@ class Query:
         less = auto()
         greater = auto()
 
-    def __init__(self, query: QueryLike = None, **kwargs) -> None:
+    def __init__(self, query=None, **kwargs) -> None:
         if query is _not_found_ or query is None:
             query = {}
         if isinstance(query, Query):
@@ -59,11 +57,11 @@ class Query:
             m_str = ",".join([f"{k}={Path._to_str(v)}" for k, v in p.items()])
             return f"?{m_str}}}"
 
-    def __equal__(self, other: Query) -> bool:
+    def __equal__(self, other: typing.Self) -> bool:
         return self._query == other._query if isinstance(other, Query) else False
 
     @classmethod
-    def _parser(cls, query: QueryLike, **kwargs) -> dict:
+    def _parser(cls, query, **kwargs) -> dict:
         if query is None:
             query = {".": Query.tags.get_value}
 
@@ -292,7 +290,7 @@ class Query:
 QueryLike = dict | str | Query.tags | None
 
 
-def as_query(query: QueryLike = None, **kwargs) -> Query | slice:
+def as_query(query = None, **kwargs) -> Query | slice:
     if isinstance(query, slice):
         return query
     elif isinstance(query, Query):

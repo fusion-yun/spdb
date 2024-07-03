@@ -1,10 +1,11 @@
-from __future__ import annotations
+
 import abc
 import collections.abc
 import typing
 from copy import copy
 import numpy as np
 
+from spdm.core.sp_tree import sp_property
 from spdm.core.sp_object import SpObject
 from spdm.utils.type_hint import ArrayLike, ArrayType, array_type
 from spdm.utils.logger import logger
@@ -62,15 +63,13 @@ class BBox:
 
     @property
     def center(self) -> ArrayType:
+        """center of geometry"""
         return self._origin + self._dimensions * 0.5
-
-    """ center of geometry """
 
     @property
     def measure(self) -> float:
+        """measure of geometry, length,area,volume,etc. 默认为 bbox 的体积"""
         return float(np.product(self._dimensions))
-
-    """ measure of geometry, length,area,volume,etc. 默认为 bbox 的体积 """
 
     def enclose(self, *args) -> bool | array_type:
         """Return True if all args are inside the geometry, False otherwise."""
@@ -148,20 +147,9 @@ class GeoObject(SpObject):
     _plugin_registry = {}
 
     def __init__(self, *args, ndim: int = 0, rank: int = -1, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._ndim = ndim
-        self._rank = rank if rank >= 0 else ndim
-        self._bbox = None
+        super().__init__(*args, ndim=ndim, rank=rank if rank is not None else ndim, **kwargs)
+
         # self._metadata.setdefault("name", f"{self.__class__.__name__}_{uuid.uuid1()}")
-
-    def __copy__(self) -> typing.Self:
-        other = super().__copy__()
-        other._ndim = self._ndim
-        other._rank = self._rank
-        other._bbox = self._bbox
-
-        return other
-        # return self.__class__(rank=self.rank, ndim=self.ndim, **self._metadata)
 
     def __view__(self, *args, **kwargs):
         return self
@@ -179,13 +167,11 @@ class GeoObject(SpObject):
             and self.bbox == other.bbox
         )
 
-    @property
-    def name(self) -> str:
-        return self._metadata.get("name", "unnamed")
+    bbox: BBox
+    """boundary box of geometry [ [...min], [...max] ]"""
 
-    @property
-    def rank(self) -> int:
-        """几何体（流形）维度  rank <=ndims
+    rank: int
+    """几何体（流形）维度  rank <=ndims
 
             0: point
             1: curve
@@ -196,11 +182,9 @@ class GeoObject(SpObject):
         in which it extends. For example, a point has rank 0, a line has rank 1,
         a plane has rank 2, and a volume has rank 3.
         """
-        return self._rank
 
-    @property
-    def number_of_dimensions(self) -> int:
-        """几何体所处的空间维度， = 0，1，2，3 ,...
+    number_of_dimensions: int = sp_property(alias="ndim")
+    """几何体所处的空间维度， = 0，1，2，3 ,...
         The dimension of a geometric object, on the other hand, refers to the minimum number of
         coordinates needed to specify any point within it. In general, the rank and dimension of
         a geometric object are the same. However, there are some cases where they can differ.
@@ -208,12 +192,9 @@ class GeoObject(SpObject):
         it extends in only one independent direction, but it has dimension 3 because three
         coordinates are needed to specify any point on the curve.
         """
-        return self._ndim
 
-    @property
-    def ndim(self) -> int:
-        """alias of number_of_dimensions"""
-        return self._ndim
+    ndim: int
+    """alias of number_of_dimensions"""
 
     @property
     def boundary(self) -> GeoObject | None:
@@ -235,11 +216,6 @@ class GeoObject(SpObject):
     @property
     def is_closed(self) -> bool:
         return self._metadata.get("closed", True)
-
-    @property
-    def bbox(self) -> BBox:
-        """boundary box of geometry [ [...min], [...max] ]"""
-        return self._bbox
 
     @property
     def measure(self) -> float:

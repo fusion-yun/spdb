@@ -2,14 +2,14 @@ import unittest
 
 import numpy as np
 from scipy import constants
-from spdm.core.expression import Expression, Piecewise, Variable
+from spdm.core.expression import Expression, Variable
 from spdm.utils.logger import logger
 from spdm.core.domain import Domain
 
-TWOPI = constants.pi*2.0
+TWOPI = constants.pi * 2.0
 
 
-class TestExpression(unittest.TestCase):
+class TestDomain(unittest.TestCase):
     def test_define(self):
 
         _x = Variable(0, "x")
@@ -22,9 +22,9 @@ class TestExpression(unittest.TestCase):
 
         x = np.linspace(0, 1, 10)
         y = np.zeros(10)
-   
+
         y[d(x)] = 1
-        y_ = np.asarray([0., 0., 0., 1., 1., 1., 1., 0., 0., 0.])
+        y_ = np.asarray([0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0])
         self.assertTrue(np.allclose(y, y_))
 
     def test_operation(self):
@@ -38,11 +38,11 @@ class TestExpression(unittest.TestCase):
 
         x = np.linspace(0, 1, 10)
         y = np.zeros(10)
-    
+
         y[d3(x)] = 1
-        y_ = np.asarray([1., 1., 1., 0., 0., 0., 0., 1., 1., 1.])
+        y_ = np.asarray([1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
         self.assertTrue(np.allclose(y, y_))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
