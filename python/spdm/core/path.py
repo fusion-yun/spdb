@@ -732,6 +732,9 @@ class Path(list):
 
     @staticmethod
     def _project(target: typing.Any, *p_args, **p_kwargs):
+        """
+        TODO: 更多操作，例如，排序，过滤，分组，聚合等
+        """
 
         if len(p_args) == 0:
             return target if target is not _not_found_ else p_kwargs.get("default_value", _not_found_)
@@ -740,13 +743,16 @@ class Path(list):
         p_args = p_args[1:]
 
         if isinstance(projection, Query.tags):
-            projection = getattr(Query, f"_op_{projection.name}", None)
+            projection = getattr(Query, f"_op_{projection.name}", projection)
 
         if callable(projection):
             try:
                 res = projection(target, **p_kwargs)
             except Exception as error:
                 raise RuntimeError(f'Fail to call "{projection}"!  ') from error
+
+        elif projection is Query.tags.get_value:
+            res = Path._project(target, *p_args, **p_kwargs)
 
         elif isinstance(projection, tuple):
             res = (Path._project(target, k, *p_args, **p_kwargs) for k in projection)
@@ -825,18 +831,41 @@ class Path(list):
             - level 参数，用于实现多层遍历，尚未实现
         """
         if target is _not_found_ or target is None:
-            yield Path._project(target, *p_args, **p_kwargs)
+            yield path, Path._project(target, *p_args, **p_kwargs)
 
         elif path is None or len(path) == 0:
 
-            if isinstance(target, collections.abc.Mapping):
-                yield from map(lambda v: Path._project(v, *p_args, **p_kwargs), target.values())
+            if len(p_args) > 0 and p_args[0] is Query.tags.get_key:
+                if isinstance(target, collections.abc.Mapping):
+                    yield from map(lambda k: Path._project(k, *p_args[1:], **p_kwargs), target.keys())
 
-            elif isinstance(target, collections.abc.Iterable) and not isinstance(target, str):
-                yield from map(lambda v: Path._project(v, *p_args, **p_kwargs), target)
+                elif isinstance(target, collections.abc.Iterable) and not isinstance(target, str):
+                    yield from map(lambda v: Path._project(v, *p_args[1:], **p_kwargs), range(len(target)))
+
+                else:
+                    yield Path._project(0, *p_args[1:], **p_kwargs)
+            elif len(p_args) > 0 and p_args[0] is Query.tags.get_item:
+                if isinstance(target, collections.abc.Mapping):
+                    yield from map(lambda kv: Path._project(kv, *p_args[1:], **p_kwargs), target.items())
+
+                elif isinstance(target, collections.abc.Iterable) and not isinstance(target, str):
+                    yield from map(lambda kv: Path._project(kv, *p_args[1:], **p_kwargs), enumerate(target))
+
+                else:
+                    yield 0, Path._project(target, *p_args[1:], **p_kwargs)
 
             else:
-                yield Path._project(target, *p_args, **p_kwargs)
+                if len(p_args) > 0 and p_args[0] is Query.tags.get_value:
+                    p_args = p_args[1:]
+
+                if isinstance(target, collections.abc.Mapping):
+                    yield from map(lambda v: Path._project(v, *p_args, **p_kwargs), target.values())
+
+                elif isinstance(target, collections.abc.Iterable) and not isinstance(target, str):
+                    yield from map(lambda v: Path._project(v, *p_args, **p_kwargs), target)
+
+                else:
+                    yield Path._project(target, *p_args, **p_kwargs)
 
         else:
 

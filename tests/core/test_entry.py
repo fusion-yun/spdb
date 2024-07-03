@@ -2,6 +2,7 @@ import unittest
 from copy import deepcopy
 
 from spdm.utils.tags import _not_found_
+from spdm.utils.logger import logger
 from spdm.core.entry import Entry, open_entry
 from spdm.core.query import Query
 
@@ -84,14 +85,18 @@ class TestEntry(unittest.TestCase):
     def test_search(self):
         data = [1, 2, 3, 4, 5]
         d0 = Entry(data)
-        self.assertListEqual([v for v in d0.search(Query.tags.get_value)], data)
-
-        d0 = Entry(data)
-        self.assertListEqual([v for v in d0.for_each()], data)
+        self.assertListEqual([*d0.search()], data)
 
         d1 = Entry([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}])
 
-        self.assertListEqual([v for v in d1.child("*/id").search()], data)
+        self.assertListEqual([*d1.child("*/id").search()], data)
+
+        data2 = {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}
+        d1 = Entry(data2)
+
+        self.assertSetEqual(set([*d1.search(Query.tags.get_key)]), set([*data2.keys()]))
+        self.assertSetEqual(set([*d1.search(Query.tags.get_value)]), set([*data2.values()]))
+        self.assertDictEqual({kv[0]: kv[1] for kv in d1.search(Query.tags.get_item)}, data2)
 
 
 if __name__ == "__main__":

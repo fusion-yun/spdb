@@ -131,11 +131,7 @@ class Entry:  # pylint: disable=R0904
         - 遍历满足条件 cond 的子节点，并返回 projection(value,*parameters,**kwargs)的结果
             entry.search(condition,*projection, **kwargs)
         """
-        if len(p_args) + len(p_kwargs) == 0 or p_args[0] is Query.tags.get_item:
-            # without projection 返回结果位置处的entry
-            yield from map(lambda v: Entry(*v), self._path.search(self._cache, *p_args, **p_kwargs))
-        else:  # with projection 返回结果
-            yield from self._path.search(self._cache, *p_args, **p_kwargs)
+        yield from self._path.search(self._cache, *p_args, **p_kwargs)
 
     # -----------------------------------------------------------
     # alias
