@@ -136,6 +136,26 @@ class TestSpTree(unittest.TestCase):
             eq_data["time_slice"][0]["profiles_2d"]["grid"]["dim1"],
         )
 
+    def test_list_default_child_value(self):
+        cache = [{"a": 6}, {"b": 7}, {"c": 8}, _not_found_]
+
+        class Boo(SpTree, default_value={"a": 1, "b": 2, "c": 3}):
+            a: int
+            b: int
+            c: float
+
+        d = List[Boo](cache)
+
+        self.assertEqual(d[0].a, 6)
+        self.assertEqual(d[0].b, 2)
+        self.assertEqual(d[0].c, 3)
+        self.assertEqual(d[1].a, 1)
+        self.assertEqual(d[1].b, 7)
+        self.assertEqual(d[1].c, 3)
+        self.assertEqual(d[-1].a, 1)
+        self.assertEqual(d[-1].b, 2)
+        self.assertEqual(d[-1].c, 3)
+
 
 if __name__ == "__main__":
     unittest.main()

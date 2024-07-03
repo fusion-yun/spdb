@@ -46,7 +46,7 @@ from copy import deepcopy
 from _thread import RLock
 
 from spdm.core.htree import HTree, HTreeNode
-from spdm.core.path import update_tree
+from spdm.core.path import Path
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_, _undefined_
 
@@ -104,7 +104,7 @@ class SpTree(HTree):
         if not hasattr(cls, "_metadata") or cls._metadata is None:
             cls._metadata = kwargs
         elif isinstance(cls._metadata, dict):
-            cls._metadata.update(kwargs)
+            cls._metadata = Path().update(cls._metadata, kwargs)
         else:
             raise TypeError(f"Invalid metadata {cls._metadata}!")
 
@@ -270,7 +270,7 @@ class SpProperty:
 
                 self.doc += prop.doc
 
-                self.metadata = update_tree(deepcopy(prop.metadata), self.metadata)
+                self.metadata = Path().update(deepcopy(prop.metadata), self.metadata)
 
         self.metadata["name"] = name
 

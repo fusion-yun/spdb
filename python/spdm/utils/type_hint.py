@@ -366,15 +366,15 @@ def isinstance_generic(obj: typing.Any, type_hint: typing.Type) -> bool:
         return False
 
 
-def type_convert(tp: typing.Type, value: typing.Any, *args, **kwargs) -> typing.Any:
+def type_convert(tp: typing.Type, value: typing.Any, default_value=_not_found_) -> typing.Any:
     if value is _not_found_:
-        value = kwargs.pop("default_value", _not_found_)
+        value = default_value
 
     if tp is None or tp is _not_found_ or tp is typing.Any:
         return value
 
     elif isinstance(tp, typing.types.UnionType):
-        return type_convert(typing.get_args(tp)[0], value, *args, **kwargs)
+        return type_convert(typing.get_args(tp)[0], value, default_value=default_value)
 
     elif isinstance_generic(value, tp):
         return value
@@ -414,7 +414,7 @@ def type_convert(tp: typing.Type, value: typing.Any, *args, **kwargs) -> typing.
 
     elif tp is not None and tp is not type(None):
         try:
-            value = tp(value, *args, **kwargs)
+            value = tp(value)
         except Exception as error:
             raise TypeError(f"Can not convert {value}({type(value)}) to {tp}") from error
 

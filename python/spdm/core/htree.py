@@ -463,19 +463,9 @@ class HTree(HTreeNode):
             orig_cls = typing.get_origin(self.__class__) or self.__class__
             _type_hint = typing.get_type_hints(orig_cls).get(key, None)
 
-        # if _type_hint is None:
-        #     _type_hint = typing.get_type_hints(self.__class__.__get_node__).get("return", None)
+        if _type_hint is None:
+            _type_hint = getattr(self.__class__, "__args__", None)
 
-        # if _type_hint is None and isinstance(self._DEFAULT_TYPE_HINT, type):
-        #     _type_hint = self._DEFAULT_TYPE_HINT
-
-        # if _type_hint is None:
-        #     if isinstance(value, dict):
-        #         _type_hint = Dict[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else Dict
-        #     elif isinstance(value, list):
-        #         _type_hint = List[self._DEFAULT_TYPE_HINT] if isinstance(self._DEFAULT_TYPE_HINT, type) else List
-        #     elif value is _not_found_ and _entry is not None:
-        #         _type_hint = HTree
         if isinstance(_type_hint, tuple):
             _type_hint = _type_hint[-1]
 
@@ -496,10 +486,10 @@ class HTree(HTreeNode):
         else:
             if _entry is not None:
                 value = Path().update(value, _entry.get())
-            node = type_convert(_type_hint, value, default_value=default_value, **kwargs)
+            node = type_convert(_type_hint, value, default_value=default_value)
 
         if isinstance(node, HTreeNode):
-            if getattr(node, "_parent", None) is None:
+            if node._parent is None:
                 node._parent = self
 
             if isinstance(key, str):
@@ -515,8 +505,8 @@ class HTree(HTreeNode):
 
         return node
 
-    def __get_node__(self, key, /, _type_hint=None, _entry=None, _getter=None, **kwargs):
-        if key is None and len(kwargs) == 0:
+    def __get_node__(self, key, /, _type_hint=None, _entry=None, _getter=None, default_value=_not_found_, **kwargs):
+        if key is None:
             return self
 
         value = Path([key]).find(self._cache, default_value=_not_found_)
@@ -530,7 +520,14 @@ class HTree(HTreeNode):
         if _entry is None and self._entry is not None:
             _entry = self._entry.child(key)
 
-        node = self.__as_node__(key, value, _type_hint=_type_hint, _entry=_entry, **kwargs)
+        if default_value is not _not_found_:
+            pass  # and _entry is not None:
+        elif isinstance(key, int):
+            default_value = self._metadata.get("default_value", _not_found_)
+        else:
+            default_value = Path([key]).get(self._metadata.get("default_value", _not_found_), _not_found_)
+
+        node = self.__as_node__(key, value, _type_hint=_type_hint, _entry=_entry, default_value=default_value, **kwargs)
 
         return node
 
@@ -541,48 +538,6 @@ class HTree(HTreeNode):
             self._cache = Path([key] if key is not None else []).update(self._cache, *args, **kwargs)
 
         return self
-        # key = args[0]
-        # if (key is None or key == []) and value is self:
-        #     pass
-
-        # elif isinstance(key, str) and key.startswith("@"):
-        #     value = Path._delete(self._metadata, key[1:], value, *args, **kwargs)
-
-        # else:
-        #     self._cache = Path._delete(self._cache, key, value, *args, **kwargs)
-
-        # path = Path(*args)
-        # if path.is_query:
-        #     query = path.pop()
-        # else:
-        #     query = Path.tags.get
-        # key = args[0]
-        # if isinstance(key, str) and key.startswith("@"):
-        #     value = Path.do_find(self._metadata, key[1:], *args, default_value=_not_found_)
-        # else:
-        #     if isinstance(key, int):
-        #         if key < len(self._cache):
-        #             value = self._cache[key]
-        #         else:
-        #             value = _not_found_
-        #     else:
-        #         value = Path.do_find(self._cache, key, default_value=_not_found_)
-        #     _entry = self._entry.child(key) if self._entry is not None else None
-        #     value = self._type_convert(value, key, _entry=_entry, default_value=default_value, **kwargs)
-        #     if key is None and isinstance(self._cache, collections.abc.MutableSequence):
-        #         self._cache.append(value)
-        #     elif isinstance(key, str) and isinstance(self._cache, collections.abc.MutableSequence):
-        #         self._cache = Path.do_update(self._cache, key, value)
-        #     elif isinstance(key, int) and key <= len(self._cache):
-        #         if self._cache is _not_found_:
-        #             self._cache = []
-        #         self._cache.extend([_not_found_] * (key - len(self._cache) + 1))
-        #         self._cache[key] = value
-        #     else:
-        #         if not isinstance(self._cache, collections.abc.Mapping):
-        #             self._cache = {}
-        #         self._cache[key] = value
-        # return value
 
     def __del_node__(self, key: str | int, _deleter=None) -> bool:
         if callable(_deleter):
@@ -694,19 +649,7 @@ collections.abc.MutableMapping.register(Dict)
 class List(GenericHelper[_T], HTree):
     """List 类型的 HTree 对象"""
 
-    _DEFAULT_TYPE_HINT = _T
-
     def __init__(self, *args, **kwargs):
-        # if len(args) == 1:
-        #     if args[0] is _not_found_:
-        #         cache = []
-        #     elif isinstance(args[0], list):
-        #         cache = args[0]
-        #     elif isinstance(args[0], collections.abc.Iterable):
-        #         cache = [*args[0]]
-        # else:
-        #     cache = list(args)
-
         super().__init__(*args, **kwargs)
         if self._cache is _not_found_:
             self._cache = []
@@ -760,12 +703,12 @@ class List(GenericHelper[_T], HTree):
             default_value = self._metadata.get("default_value", _not_found_)
         return super().__get_node__(key, default_value=default_value, **kwargs)
 
-    def __as_node__(self, *args, _type_hint=None, **kwargs) -> _T:
-        if _type_hint is None:
-            _type_hint = getattr(self.__class__, "__args__", None)
-            if _type_hint is not None:
-                _type_hint = _type_hint[0]
-        return super().__as_node__(*args, _type_hint=_type_hint, **kwargs)
+    # def __as_node__(self, *args, _type_hint=None, **kwargs) -> _T:
+    #     if _type_hint is None:
+    #         _type_hint = getattr(self.__class__, "__args__", None)
+    #         if _type_hint is not None:
+    #             _type_hint = _type_hint[0]
+    #     return super().__as_node__(*args, _type_hint=_type_hint, **kwargs)
 
 
 collections.abc.MutableSequence.register(List)

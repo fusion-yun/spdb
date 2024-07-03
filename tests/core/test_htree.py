@@ -229,17 +229,6 @@ class TestHTree(unittest.TestCase):
         self.assertEqual(d["c"][1]["b"], 3.141567)
         self.assertEqual(d.get("c/1/b"), 3.141567)
 
-    def test_list_default_child_value(self):
-        cache = [{"a": 6}, {"a": 7}, {"a": 8}, {}]
-        d = List(cache, default_value={"a": 1, "b": 2, "c": 3})
-
-        self.assertEqual(d[0]["a"], 6)
-        self.assertEqual(d[0]["b"], 2)
-        self.assertEqual(d[0]["c"], 3)
-        self.assertEqual(d[-1]["a"], 1)
-        self.assertEqual(d[-1]["b"], 2)
-        self.assertEqual(d[-1]["c"], 3)
-
 
 # class TestQuery(unittest.TestCase):
 #     # fmt:off
