@@ -53,3 +53,7 @@ namespaces = true
 
 [tool.setuptools_scm]
 version_file = "python/spdm/__version__.py"
+
+[tool.black]
+line-length = 120
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311']

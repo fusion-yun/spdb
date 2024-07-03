@@ -46,7 +46,7 @@ from copy import deepcopy
 from _thread import RLock
 
 from spdm.core.htree import HTree, HTreeNode
-from spdm.core.path import Path
+from spdm.core.path import Path, as_path
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_, _undefined_
 
@@ -274,7 +274,7 @@ class SpProperty:
                     self.default_value = prop.default_value
 
                 if self.alias is None:
-                    self.alias = prop.alias
+                    self.alias = as_path(prop.alias)
 
                 self.doc += prop.doc
 
@@ -304,28 +304,13 @@ class SpProperty:
             raise TypeError(f"Class '{instance.__class__.__name__}' must be a subclass of 'SpTree'.")
 
         with self.lock:
+
             if self.alias is not None:
-                # try:
-                #     value = instance._find_(
-                #         self.property_name,  # property_name 必然是 identifier
-                #         _type_hint=self.type_hint,
-                #         _getter=self.getter,
-                #         default_value=_undefined_,
-                #         **self.metadata,
-                #     )
-                # except KeyError as error:
-                #     value = _not_found_
-                # if value is _not_found_ or value is _undefined_:
-                # alias 不改变 _parent
-                # FIXME: 对 alias 创建/访问需要double check
-                value = instance.get(
-                    self.alias,  # alias 可以是路径
-                    _type_hint=self.type_hint,
-                    _parent=_not_found_,
-                    default_value=deepcopy(self.default_value),
-                    **self.metadata,
-                )
+                value = self.alias.get(instance, _not_found_)
             else:
+                value = _not_found_
+
+            if value is _not_found_:
                 value = instance.__get_node__(
                     self.property_name,
                     _type_hint=self.type_hint,

@@ -11,8 +11,7 @@ class TestMesh(unittest.TestCase):
     def test_null_mesh(self):
         mesh = Mesh()
         self.assertIsInstance(mesh, Mesh)
-
-        self.assertTrue(mesh.geometry.is_null)
+        self.assertTrue(mesh.is_null)
 
     def test_structured_mesh(self):
         from spdm.mesh.mesh_structured import StructuredMesh

@@ -17,7 +17,6 @@ class StructuredMesh(Mesh, plugin_name="structured"):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-
     periods: Vector[bool]
     """Periodic boundary condition  周期性网格,  标识每个维度周期长度"""
 

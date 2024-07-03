@@ -1,12 +1,12 @@
 from __future__ import annotations
-import abc
 import typing
 import numpy as np
 import numpy.typing as np_tp
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, array_type
-from spdm.core.sp_object import SpObject, sp_property
+from spdm.core.sp_object import SpObject
+from spdm.core.sp_tree import sp_property
 from spdm.core.functor import Functor
 from spdm.core.geo_object import GeoObject
 from spdm.geometry.vector import Vector
@@ -57,6 +57,10 @@ class Domain(SpObject, fill_value=float_nan):
     @property
     def is_full(self) -> bool:
         return all(d is None for d in self.shape)
+
+    @property
+    def is_null(self) -> bool:
+        return all(d == 0 for d in self.shape)
 
     def view(self, obj, **kwargs):
         """将 obj 画在 domain 上，默认为 n维 contour。"""

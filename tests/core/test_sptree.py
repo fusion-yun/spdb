@@ -2,7 +2,7 @@ import unittest
 import typing
 import numpy as np
 from spdm.core.htree import List, Dict
-from spdm.core.sp_tree import SpTree
+from spdm.core.sp_tree import SpTree, sp_property
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
@@ -21,7 +21,7 @@ class Goo(SpTree):
 
 class Doo(SpTree):
 
-    doo: int
+    doo: int = sp_property(strict=True)
 
     foo: Foo
 

@@ -6,6 +6,8 @@ from spdm.mesh.mesh_structured import StructuredMesh
 
 
 class UniformMesh(StructuredMesh, plugin_name="uniform"):
+    """Uniform mesh class 均匀网格类"""
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         p_min, p_max = self.geometry.bbox
