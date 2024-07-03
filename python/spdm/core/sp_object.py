@@ -23,6 +23,9 @@ class SpObject(Pluggable, SpTree):
 
         return super().__new__(cls, *args, _plugin_name=_plugin_name, _entry=_entry, **kwargs)
 
+    def __copy__(self) -> typing.Self:
+        return SpTree.__copy__(self)
+
     @property
     @cache
     def metadata(self):

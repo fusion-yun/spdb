@@ -1,10 +1,12 @@
 import typing
-import collections.abc
 import numpy as np
 
-from spdm.utils.type_hint import as_array, ArrayType
-from spdm.core.mesh import Mesh
+from spdm.utils.type_hint import ArrayType
 from spdm.utils.tags import _not_found_
+from spdm.core.path import Path
+from spdm.core.mesh import Mesh
+from spdm.geometry.point import Point
+from spdm.geometry.vector import Vector
 
 
 class StructuredMesh(Mesh, plugin_name="structured"):
@@ -15,52 +17,9 @@ class StructuredMesh(Mesh, plugin_name="structured"):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._periods = self._metadata.get("periods", None)
-        self._dims = self._metadata.get("dims", None)
 
-        if isinstance(self._periods, collections.abc.Sequence):
-            for idx, d in enumerate(self._dims):
-                if (
-                    isinstance(self._periods, collections.abc.Sequence)
-                    and self._periods[idx] is not None
-                    and not np.isclose(d[-1] - d[0], self._periods[idx])
-                ):
-                    raise RuntimeError(
-                        f"idx={idx} periods {self._periods[idx]} is not compatible with dims [{d[0]},{d[-1]}] "
-                    )
-                if not np.all(d[1:] > d[:-1]):
-                    raise RuntimeError(f"dims[{idx}] is not increasing")
-
-    @property
-    def dims(self) -> typing.Tuple[ArrayType, ...]:
-        return self._dims
-
-    @property
-    def dimensions(self) -> typing.Tuple[ArrayType, ...]:
-        return self._dims
-
-    @property
-    def ndim(self) -> int:
-        return len(self._dims)
-
-    @property
-    def origin(self) -> ArrayType:
-        """源点"""
-        return self._origin
-
-    @property
-    def scale(self) -> ArrayType:
-        """比例尺"""
-        return self._scale
-
-    @property
-    def cycles(self) -> typing.Tuple[float,...]:
-        """Periodic boundary condition  周期性网格,  标识每个维度周期长度"""
-        return self._periods
-
-    @property
-    def rank(self) -> int:
-        return len(self._dims)
+    periods: Vector[bool]
+    """Periodic boundary condition  周期性网格,  标识每个维度周期长度"""
 
     def coordinates(self, *uvw) -> ArrayType:
         if len(uvw) == 1:

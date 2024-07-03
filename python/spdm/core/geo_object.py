@@ -11,7 +11,7 @@ from spdm.utils.logger import logger
 
 
 class BBox:
-    def __init__(self, origin: ArrayLike, dimensions: ArrayLike, transform=None, shift=None) -> None:
+    def __init__(self, origin: ArrayLike = None, dimensions: ArrayLike = None, transform=None, shift=None) -> None:
         self._origin = np.asarray(origin)
         self._dimensions = np.asarray(dimensions)
         self._transform = transform
@@ -144,11 +144,6 @@ class GeoObject(SpObject):
 
     """
 
-    def __new__(cls, *args, **kwargs):
-        if cls is not GeoObject:
-            return super().__new__(cls)
-        return super().__new__(cls, *args, **kwargs)
-
     _plugin_prefix = "spdm.geometry."
     _plugin_registry = {}
 
@@ -156,13 +151,15 @@ class GeoObject(SpObject):
         super().__init__(*args, **kwargs)
         self._ndim = ndim
         self._rank = rank if rank >= 0 else ndim
+        self._bbox = None
         # self._metadata.setdefault("name", f"{self.__class__.__name__}_{uuid.uuid1()}")
 
-    def __copy__(self) -> GeoObject:
-        other: GeoObject = super().__new__(self.__class__)
-        other._metadata = copy(self._metadata)
+    def __copy__(self) -> typing.Self:
+        other = super().__copy__()
         other._ndim = self._ndim
         other._rank = self._rank
+        other._bbox = self._bbox
+
         return other
         # return self.__class__(rank=self.rank, ndim=self.ndim, **self._metadata)
 
@@ -227,6 +224,10 @@ class GeoObject(SpObject):
             raise NotImplementedError(f"{self.__class__.__name__}.boundary")
 
     @property
+    def is_null(self) -> bool:
+        return self._bbox is None
+
+    @property
     def is_convex(self) -> bool:
         """is convex"""
         return self._metadata.get("convex", True)
@@ -236,10 +237,9 @@ class GeoObject(SpObject):
         return self._metadata.get("closed", True)
 
     @property
-    @abc.abstractmethod
     def bbox(self) -> BBox:
         """boundary box of geometry [ [...min], [...max] ]"""
-        raise NotImplementedError(f"{self.__class__.__name__}.bbox")
+        return self._bbox
 
     @property
     def measure(self) -> float:

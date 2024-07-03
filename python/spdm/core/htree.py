@@ -5,7 +5,7 @@ from __future__ import annotations
 import collections.abc
 import typing
 import inspect
-from copy import deepcopy
+from copy import deepcopy, copy
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, as_array, primary_type, PrimaryType, type_convert
@@ -52,12 +52,29 @@ class HTreeNode:
     #     else:
     #         return super().__new__(cls)
 
-    def __init__(self, cache=_not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **metadata):
+    def __init__(
+        self,
+        cache=_not_found_,
+        /,
+        _entry: Entry = None,
+        _parent: HTreeNode = None,
+        _metadata=_not_found_,
+        **kwargs,
+    ):
         """Initialize a HTreeNode object."""
         self._cache = cache
         self._entry = as_entry(_entry) if _entry is not None else None
         self._parent = _parent
-        self._metadata = {**metadata, **getattr(self.__class__, "_metadata", {})}
+        self._metadata = deepcopy(getattr(self.__class__, "_metadata", _not_found_))
+        self._metadata = Path().update(self._metadata, _metadata)
+        self._metadata = Path().update(self._metadata, kwargs)
+
+    def __copy__(self) -> typing.Self:
+        other = object.__new__(self.__class__)
+        other._cache = deepcopy(self._cache)
+        other._entry = copy(self._entry)
+        other._metadata = deepcopy(self._metadata)
+        return other
 
     @property
     def is_leaf(self) -> bool:
@@ -475,6 +492,8 @@ class HTree(HTreeNode):
         if isinstance(_type_hint, typing._GenericAlias):
             if issubclass(_type_hint.__origin__, HTreeNode):
                 node = _type_hint(value, _entry=_entry, _parent=self, **kwargs)
+            elif typing.get_origin(_type_hint) is tuple:
+                node = tuple(value)
             else:
                 node = _type_hint(value)
         elif not inspect.isclass(_type_hint):

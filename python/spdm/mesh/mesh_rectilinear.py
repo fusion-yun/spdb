@@ -5,7 +5,12 @@ from functools import cached_property
 
 import numpy as np
 
+from spdm.utils.logger import logger
+from spdm.utils.tags import _not_found_
+from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
+from spdm.core.path import Path
 from spdm.core.function import Function
+from spdm.core.sp_tree import sp_property
 from spdm.core.geo_object import BBox, GeoObject
 
 from spdm.geometry.box import Box
@@ -13,8 +18,6 @@ from spdm.geometry.curve import Curve
 from spdm.geometry.line import Line
 from spdm.geometry.point import Point
 from spdm.numlib.interpolate import interpolate
-from spdm.utils.logger import logger
-from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
 
 from spdm.core.mesh import Mesh
 
@@ -38,34 +41,31 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        if self.dims is _not_found_:
+            dims = list(self.get(f"dim{i}", _not_found_) for i in range(10))
+            dims = [d for d in dims if d is not _not_found_]
+            if len(dims) > 0:
+                self._cache["dims"] = tuple(dims)
+            else:
+                raise RuntimeError(f"dims not found in {self._cache}")
 
-        assert all([d.ndim == 1 for d in self._dims]), f"Illegal dims shape! {self._dims}"
-        assert all(
-            [np.all(d[1:] > d[:-1]) for d in self._dims]
-        ), f"'dims' must be monotonically increasing.! {self._dims}"
+        assert all(d.ndim == 1 for d in self.dims), f"Illegal dims shape! {self.dims}"
+        assert all(np.all(d[1:] > d[:-1]) for d in self.dims), f"'dims' must be monotonically increasing.! {self.dims}"
 
-        # self._shape = np.asarray([d.size for d in self._dims])
+        if self.geometry is _not_found_:
+            self._cache["geometry"] = Box([min(d) for d in self.dims], [max(d) for d in self.dims])
 
-        if self._geometry is None:
-            self._geometry = Box([min(d) for d in self._dims], [max(d) for d in self._dims])
+        self._aixs = [Function(d, np.linspace(0, 1.0, len(d))) for i, d in enumerate(self.dims)]
 
-        self._aixs = [Function(d, np.linspace(0, 1.0, len(d))) for i, d in enumerate(self._dims)]
+    dims: typing.Tuple[ArrayType, ...]
 
-    @property
-    def dim1(self) -> ArrayType:
-        return np.asarray(self._dims[0])
+    dim1: ArrayType = sp_property(alias="dims/0")
 
-    @property
-    def dim2(self) -> ArrayType:
-        return np.asarray(self._dims[1])
+    dim2: ArrayType = sp_property(alias="dims/1")
 
     @cached_property
     def dx(self) -> ArrayType:
-        return np.asarray([(d[-1] - d[0]) / len(d) for d in self._dims])
-
-    @property
-    def shape(self) -> array_type:
-        return np.asarray([d.size for d in self._dims])
+        return np.asarray([(d[-1] - d[0]) / len(d) for d in self.dims])
 
     def coordinates(self, *uvw) -> ArrayType:
         """网格点的 _空间坐标_
@@ -73,13 +73,13 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
         """
         if len(uvw) == 1 and self.rank != 1:
             uvw = uvw[0]
-        return np.stack([self._dims[i](uvw[i]) for i in range(self.rank)], axis=-1)
+        return np.stack([self.dims[i](uvw[i]) for i in range(self.rank)], axis=-1)
 
     @cached_property
     def vertices(self) -> ArrayType:
         """网格点的 _空间坐标_"""
         if self.geometry.rank == 1:
-            return (self._dims[0],)
+            return (self.dims[0],)
         else:
             return np.stack(self.points, axis=-1)
 
@@ -87,9 +87,9 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
     def points(self) -> typing.List[ArrayType]:
         """网格点的 _空间坐标_"""
         if self.geometry.rank == 1:
-            return (self._dims[0],)
+            return (self.dims[0],)
         else:
-            return np.meshgrid(*self._dims, indexing="ij")
+            return np.meshgrid(*self.dims, indexing="ij")
 
     def interpolate(self, func: ArrayType | typing.Callable[..., array_type], **kwargs):
         """生成插值器

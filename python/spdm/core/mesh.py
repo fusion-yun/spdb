@@ -10,6 +10,7 @@ from spdm.core.domain import Domain
 from spdm.core.path import Path
 from spdm.core.sp_tree import sp_property
 
+
 from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, as_array
 from spdm.utils.tags import _not_found_
 from spdm.utils.misc import group_dict_by_prefix
@@ -98,15 +99,6 @@ class Mesh(Domain):
     @property
     def axis_label(self) -> typing.Tuple[str]:
         return self._metadata.get("axis_label", ["[-]"] * self.ndim)
-
-    @property
-    def shape(self) -> typing.Tuple[int, ...]:
-        """
-        存储网格点数组的形状
-        TODO: support multiblock Mesh
-        结构化网格 shape   如 [n,m] n,m 为网格的长度dimension
-        非结构化网格 shape 如 [<number of vertices>]
-        """
 
     def parametric_coordinates(self, *xyz) -> ArrayType:
         """parametric coordinates

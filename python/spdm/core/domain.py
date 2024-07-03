@@ -3,21 +3,19 @@ import abc
 import typing
 import numpy as np
 import numpy.typing as np_tp
-import collections.abc
-import collections
-from spdm.core.sp_object import SpObject
+
+from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, array_type
+from spdm.core.sp_object import SpObject, sp_property
 from spdm.core.functor import Functor
 from spdm.core.geo_object import GeoObject
+from spdm.geometry.vector import Vector
 
 from spdm.numlib.numeric import float_nan, bitwise_and
 from spdm.numlib.interpolate import interpolate
 
 
-from spdm.utils.tags import _not_found_
-
-
-class Domain(SpObject):
+class Domain(SpObject, fill_value=float_nan):
     """函数/场的定义域，用以描述函数/场所在流形
     - geometry  ：几何边界
     - shape     ：网格所对应数组形状， 例如，均匀网格 的形状为 （n,m) 其中 n,m 都是整数
@@ -26,31 +24,27 @@ class Domain(SpObject):
 
     """
 
-    _metadata = {"fill_value": float_nan}
-
     def __new__(cls, *args, _plugin_name=None, **kwargs):
-        if cls is Domain and _plugin_name is None and all([isinstance(d, np.ndarray) for d in args]):
+        if cls is Domain and _plugin_name is None and all(isinstance(d, np.ndarray) for d in args):
             return super().__new__(PPolyDomain)
-
         return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        # self._geometry = as_geo_object(geometry)
 
     geometry: GeoObject
 
-    @property
-    def label(self) -> str:
-        return self._metadata.get("label", "unnamed")
+    shape: Vector[int]
+    """
+        存储网格点数组的形状
+        结构化网格 shape   如 [n,m] n,m 为网格的长度dimension
+        非结构化网格 shape 如 [<number of vertices>]
+    """
+    ndim: int = sp_property(alias="geometry.ndim")
+    """所在的空间维度"""
 
-    @property
-    def name(self) -> str:
-        return self._metadata.get("name", "unamed")
+    rank: int = sp_property(alias="geometry.rank")
+    """所在流形的维度，0:点， 1:线， 2:面， 3:体"""
 
-    @property
-    def units(self) -> typing.Tuple[str, ...]:
-        return tuple(self._metadata.get("units", ["-"]))
+    points: typing.Tuple[ArrayType, ...]
+    """ 网格对应的网格点坐标，ndim 个 形状为 shape 的数组。"""
 
     @property
     def is_simple(self) -> bool:
@@ -58,25 +52,11 @@ class Domain(SpObject):
 
     @property
     def is_empty(self) -> bool:
-        return self.shape is None or len(self.shape) == 0 or any([d == 0 for d in self.shape])
+        return self.shape is None or len(self.shape) == 0 or any(d == 0 for d in self.shape)
 
     @property
     def is_full(self) -> bool:
         return all(d is None for d in self.shape)
-
-    @property
-    @abc.abstractmethod
-    def shape(self) -> typing.Tuple[int, ...]:
-        """domain 内网格对应的数组形状。"""
-
-    @property
-    @abc.abstractmethod
-    def points(self) -> typing.Tuple[ArrayType, ...]:
-        """domain 内网格对应的网格点坐标，形如(x,y,z)， 其中 x,y,z 为形状为 Domain.shape 的数组。"""
-
-    @property
-    def ndim(self) -> int:
-        return len(self.shape)
 
     def view(self, obj, **kwargs):
         """将 obj 画在 domain 上，默认为 n维 contour。"""

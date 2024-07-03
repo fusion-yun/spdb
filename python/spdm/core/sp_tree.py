@@ -125,6 +125,14 @@ class SpTree(HTree):
 
         return data
 
+    def __init__(self, cache: dict = _not_found_, **kwargs):
+        if isinstance(cache, dict) or cache is _not_found_:
+            cache = Path().update(cache, {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")})
+        elif cache is not _not_found_:
+            raise TypeError(f"Invalid cache {cache}!")
+
+        super().__init__(cache, **kwargs)
+
     # def fetch(self, *args, exclude=None, **kwargs) -> typing.Self:
     #     if len(args) + len(kwargs) == 0:  # FIXME: 在 flush 的时候会有问题，需要 debug
     #         return super().fetch()
@@ -187,7 +195,7 @@ class SpProperty:
         alias: str = None,
         default_value: typing.Any = _not_found_,
         doc: str = None,
-        strict: bool = True,
+        strict: bool = False,
         **kwargs,
     ):
         """
