@@ -18,11 +18,10 @@ from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, array_type,
 
 from spdm.core.mesh import Mesh
 
-from .mesh_structured import StructuredMesh
+from spdm.mesh.mesh_structured import StructuredMesh
 
 
-@Mesh.register(["rectilinear", "rectangular", "rect"])
-class RectilinearMesh(StructuredMesh):
+class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular", "rect"]):
     """A `rectilinear Mesh` is a tessellation by rectangles or rectangular cuboids (also known as rectangular parallelepipeds)
     that are not, in general, all congruent to each other. The cells may still be indexed by integers as above, but the
     mapping from indexes to vertex coordinates is less uniform than in a regular Mesh. An example of a rectilinear Mesh
@@ -45,7 +44,7 @@ class RectilinearMesh(StructuredMesh):
             [np.all(d[1:] > d[:-1]) for d in self._dims]
         ), f"'dims' must be monotonically increasing.! {self._dims}"
 
-        self._shape = np.asarray([d.size for d in self._dims])
+        # self._shape = np.asarray([d.size for d in self._dims])
 
         if self._geometry is None:
             self._geometry = Box([min(d) for d in self._dims], [max(d) for d in self._dims])

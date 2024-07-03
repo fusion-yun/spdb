@@ -3,6 +3,7 @@ import inspect
 from copy import copy
 from functools import cache
 
+
 from spdm.core.pluggable import Pluggable
 from spdm.core.sp_tree import SpTree
 from spdm.core.property_tree import PropertyTree
@@ -11,10 +12,16 @@ from spdm.core.property_tree import PropertyTree
 class SpObject(Pluggable, SpTree):
     """对象的基类/抽象类"""
 
-    def __new__(cls, *args, _plugin_name=None, **kwargs):
+    TYPE_TAG = ("type", "@type", "@class")
+
+    def __new__(cls, *args, _plugin_name=None, _entry=None, **kwargs):
         if _plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
-            _plugin_name = args[0].get("type", None)
-        return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
+            _plugin_name = args[0].get("type", None) or args[0].get("@type", None) or args[0].get("@class", None)
+
+        if _plugin_name is None and _entry is not None:
+            _plugin_name = _entry.get("type", None) or _entry.get("@type", None) or _entry.get("@class", None)
+
+        return super().__new__(cls, *args, _plugin_name=_plugin_name, _entry=_entry, **kwargs)
 
     @property
     @cache

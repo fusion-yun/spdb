@@ -28,11 +28,11 @@ class Domain(SpObject):
 
     _metadata = {"fill_value": float_nan}
 
-    def __new__(cls, *args, **kwargs):
-        if cls is Domain and all([isinstance(d, np.ndarray) for d in args]):
+    def __new__(cls, *args, _plugin_name=None, **kwargs):
+        if cls is Domain and _plugin_name is None and all([isinstance(d, np.ndarray) for d in args]):
             return super().__new__(PPolyDomain)
 
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

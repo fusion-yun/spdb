@@ -22,6 +22,8 @@ class Query:
         get_key = auto()  # 返回键
         get_value = auto()  # 返回值
         get_item = auto()  # 返回键和值
+        first_valid = auto()  # 返回第一个有效值，若无则返回 _not_found_
+        last_valid = auto()  # 返回最后一个有效值，若无则返回 _not_found_
         search = auto()  # search by query return idx
         dump = auto()  # rescurive get all data
 
@@ -81,7 +83,7 @@ class Query:
             pass
         else:
             raise TypeError(f"{(query)}")
-        
+
         if isinstance(query, dict):
             query.update(kwargs)
 

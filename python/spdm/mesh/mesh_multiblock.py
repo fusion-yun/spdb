@@ -2,9 +2,9 @@ import typing
 
 from numpy.typing import ArrayLike, NDArray
 
-from ..core.container import Container
-from ..core.function import Function
-from ..core.mesh import Mesh
+from spdm.core.container import Container
+from spdm.core.function import Function
+from spdm.core.mesh import Mesh
 
 
 class MultiBlockMesh(Container[Mesh]):

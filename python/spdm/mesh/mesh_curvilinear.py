@@ -1,33 +1,29 @@
+from __future__ import annotations
+
 import collections.abc
 import typing
+from functools import cached_property
 import numpy as np
 from scipy import interpolate
-from functools import cached_property
 
-from ..geometry.curve import Curve
-from ..core.geo_object import GeoObject, GeoObjectSet, as_geo_object
-from ..geometry.point import Point
-from ..geometry.surface import Surface
-from ..utils.logger import logger
+from spdm.utils.logger import logger
 from spdm.utils.type_hint import ArrayType, ScalarType, array_type
-from ..core.mesh import Mesh
-from .mesh_structured import StructuredMesh
-from .mesh_rectilinear import RectilinearMesh
+from spdm.core.geo_object import GeoObject, GeoObjectSet, as_geo_object
+from spdm.geometry.curve import Curve
+from spdm.geometry.point import Point
+from spdm.geometry.surface import Surface
 
 
-@Mesh.register("curvilinear")
-class CurvilinearMesh(RectilinearMesh):
+from spdm.mesh.mesh_rectilinear import RectilinearMesh
+
+
+class CurvilinearMesh(RectilinearMesh, plugin_name="curvilinear"):
     """A `curvilinear Mesh` or `structured Mesh` is a Mesh with the same combinatorial structure as a regular Mesh,
     in which the cells are quadrilaterals or [general] cuboids, rather than rectangles or rectangular cuboids.
     -- [https://en.wikipedia.org/wiki/Regular_Mesh]
     """
 
     TOLERANCE = 1.0e-5
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        # # assert all([d.ndim == len(self._dims) for d in self._dims]), f"{self._dims}"
-        # self._shape = self._dims[0].shape
 
     def axis(self, idx, axis=0):
         if axis == 0:

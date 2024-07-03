@@ -82,54 +82,18 @@ class Mesh(Domain):
     _plugin_registry = {}
     _plugin_prefix = "spdm.mesh.mesh_"
 
-    @classmethod
-    def _guess_mesh(cls, *args, **kwargs) -> dict:
-        if len(args) > 0 and isinstance(args[0], collections.abc.Mapping):
-            desc = collections.ChainMap(args[0], kwargs)
-            if len(args) > 1:
-                logger.warning("ignore args %s", args[1:])
-        else:
-            desc = kwargs
+    def __new__(cls, *args, mesh_type=None, _plugin_name=None, **kwargs):
+        if cls is not Mesh or _plugin_name is not None:
+            return super().__new__(cls, *args, mesh_type=mesh_type, _plugin_name=_plugin_name, **kwargs)
 
-        mesh_type = desc.get("@type", None) or desc.get("type", None)
+        return super().__new__(cls, *args, _plugin_name=mesh_type, mesh_type=mesh_type, **kwargs)
 
-        # 当没有明确指定 mesh_type 时，根据 dims 猜测 mesh_type
-        dims = desc.get("dims", None)
-        if dims is not None:
-            pass
-        elif all([isinstance(d, np.ndarray) for d in args]):
-            dims = args
-            desc["dims"] = dims
-        else:
-            dims, desc = group_dict_by_prefix(desc, prefixes="dim", sep=None)
-            if isinstance(dims, dict):
-                dims = {int(k): v for k, v in dims.items() if k.isdigit()}
-                dims = dict(sorted(dims.items(), key=lambda x: x[0]))
-                dims = tuple([as_array(d) for d in dims.values()])
-                desc["dims"] = dims
-
-        if mesh_type is None and dims is not None and all([isinstance(a, np.ndarray) for a in dims]):
-            ndim = len(dims)
-            if all([d.ndim == 1 for d in dims]):
-                desc["@type"] = "rectilinear"
-            elif all([d.ndim == ndim for d in dims]):
-                desc["@type"] = "curvilinear"
-
-        return desc
-
-    def __new__(cls, *args, **kwargs):
-        if cls is not Mesh:
-            return super().__new__(cls)
-        return super().__new__(cls, *args, **kwargs)
-
-    def __init__(self, *args, _entry=None, _parent=None, **kwargs) -> None:
-        """
-        Usage:
-            Mesh(x,y) => Mesh(type="structured",dims=(x,y),**kwargs)
-        """
-        desc = self.__class__._guess_mesh(*args, **kwargs)
-
-        super().__init__(desc, _entry=_entry, _parent=_parent)
+    # def __init__(self, *args, _entry=None, _parent=None, **kwargs) -> None:
+    #     """
+    #     Usage:
+    #         Mesh(x,y) => Mesh(type="structured",dims=(x,y),**kwargs)
+    #     """
+    #     super().__init__(*args,**kwargs)
 
     @property
     def axis_label(self) -> typing.Tuple[str]:

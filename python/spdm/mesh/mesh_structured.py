@@ -2,12 +2,12 @@ import typing
 import collections.abc
 import numpy as np
 
-from spdm.utils.type_hint import ArrayLike, ArrayType, as_array
-from ..core.mesh import Mesh
-from ..utils.tags import _not_found_
+from spdm.utils.type_hint import as_array, ArrayType
+from spdm.core.mesh import Mesh
+from spdm.utils.tags import _not_found_
 
 
-class StructuredMesh(Mesh):
+class StructuredMesh(Mesh, plugin_name="structured"):
     """StructureMesh
     结构化网格上的点可以表示为长度为n=rank的归一化ntuple，记作 uv，uv_r \\in [0,1]
     """
@@ -32,11 +32,11 @@ class StructuredMesh(Mesh):
                     raise RuntimeError(f"dims[{idx}] is not increasing")
 
     @property
-    def dims(self) -> typing.Tuple[ArrayType]:
+    def dims(self) -> typing.Tuple[ArrayType, ...]:
         return self._dims
 
     @property
-    def dimensions(self) -> typing.Tuple[ArrayType]:
+    def dimensions(self) -> typing.Tuple[ArrayType, ...]:
         return self._dims
 
     @property
@@ -54,7 +54,7 @@ class StructuredMesh(Mesh):
         return self._scale
 
     @property
-    def cycles(self) -> typing.Tuple[float]:
+    def cycles(self) -> typing.Tuple[float,...]:
         """Periodic boundary condition  周期性网格,  标识每个维度周期长度"""
         return self._periods
 
