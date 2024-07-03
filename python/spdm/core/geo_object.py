@@ -1,4 +1,3 @@
-
 import abc
 import collections.abc
 import typing
@@ -18,7 +17,7 @@ class BBox:
         self._transform = transform
         self._shift = shift
 
-    def __copy__(self) -> BBox:
+    def __copy__(self) -> typing.Self:
         return BBox(self._origin, self._dimensions, self._transform, self._shift)
 
     def __repr__(self) -> str:
@@ -109,12 +108,12 @@ class BBox:
         else:
             raise TypeError(f"args has wrong type {type(args[0])} {args}")
 
-    def union(self, other: BBox) -> BBox:
+    def union(self, other: typing.Self) -> typing.Self:
         """Return the union of self with other."""
 
         raise NotImplementedError(f"intersection")
 
-    def intersection(self, other: BBox):
+    def intersection(self, other: typing.Self):
         """Return the intersection of self with other."""
         raise NotImplementedError(f"intersection")
 
@@ -159,7 +158,7 @@ class GeoObject(SpObject):
     #     from ..view.View import display
     #     return display(self, schema="html")
 
-    def __equal__(self, other: GeoObject) -> bool:
+    def __equal__(self, other: typing.Self) -> bool:
         return (
             isinstance(other, GeoObject)
             and self.rank == other.rank
@@ -197,7 +196,7 @@ class GeoObject(SpObject):
     """alias of number_of_dimensions"""
 
     @property
-    def boundary(self) -> GeoObject | None:
+    def boundary(self) -> typing.Self | None:
         """boundary of geometry which is a geometry of rank-1"""
         if self.is_closed:
             return None
@@ -226,18 +225,18 @@ class GeoObject(SpObject):
         """Return True if all args are inside the geometry, False otherwise."""
         return False if not self.is_closed else self.bbox.enclose(*args)
 
-    def intersection(self, other: GeoObject) -> typing.List[GeoObject]:
+    def intersection(self, other: typing.Self) -> typing.List[typing.Self]:
         """Return the intersection of self with other."""
         return [self.bbox.intersection(other.bbox)]
 
-    def reflect(self, point0, point1) -> GeoObject:
+    def reflect(self, point0, point1) -> typing.Self:
         """reflect  by line"""
         other = copy(self)
         other._metadata["name"] = f"{self.name}_reflect"
         other.bbox.reflect(point0, point1)
         return other
 
-    def rotate(self, angle, axis=None) -> GeoObject:
+    def rotate(self, angle, axis=None) -> typing.Self:
         """rotate  by angle and axis"""
         other = copy(self)
         other._metadata["name"] = f"{self.name}_rotate"

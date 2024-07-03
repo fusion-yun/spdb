@@ -293,6 +293,9 @@ def get_args(tp: typing.Any) -> typing.Tuple[typing.Type, ...]:
     if tp is None or tp is _not_found_:
         res = tuple()
 
+    elif not isinstance(tp, type):
+        return get_args(getattr(tp, "__orig_class__", tp.__class__))
+
     elif isinstance(tp, tuple):
         res = sum([get_args(t) for t in tp], tuple())
 
@@ -303,8 +306,8 @@ def get_args(tp: typing.Any) -> typing.Tuple[typing.Type, ...]:
         return sum([get_args(t) for t in get_orig_bases(tp)], tuple())
 
     else:
-        return get_args(getattr(tp, "__orig_class__", tp.__class__))
-
+        res = tuple()
+        
     return tuple([t for t in res if t is not None and not isinstance(t, typing.TypeVar)])
 
 

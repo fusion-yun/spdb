@@ -125,7 +125,7 @@ class Expression(HTreeNode):
         else:
             return super().__new__(cls)
 
-    def __init__(self, op_value, *children: Expression, domain: Domain = _not_found_, **metadata) -> None:
+    def __init__(self, op_value, *children: typing.Self, domain: Domain = _not_found_, **metadata) -> None:
         """初始化表达式
 
         Args:
@@ -146,7 +146,7 @@ class Expression(HTreeNode):
         self._domain = domain  # 定义域
         self._ppoly = _not_found_  # 表达式的近似多项式，缓存
 
-    def __copy__(self) -> Expression:
+    def __copy__(self) -> typing.Self:
         """复制一个新的 Expression 对象"""
         other: Expression = super().__copy__()
         other._op = self._op
@@ -271,7 +271,7 @@ class Expression(HTreeNode):
     def dtype(self):
         return float
 
-    def __array_ufunc__(self, ufunc, method, *args, **kwargs) -> Expression:
+    def __array_ufunc__(self, ufunc, method, *args, **kwargs) -> typing.Self:
         """
         重载 numpy 的 ufunc 运算符, 用于在表达式中使用 numpy 的 ufunc 函数构建新的表达式。
         例如：
@@ -349,7 +349,7 @@ class Expression(HTreeNode):
         self._ppoly = _not_found_
         return self.__compile__()
 
-    def __call__(self, *args) -> Expression | array_type:
+    def __call__(self, *args) -> typing.Self | array_type:
         """重载函数调用运算符，用于计算表达式的值"""
         if len(args) == 0:  # 空调用，返回自身
             return self
@@ -387,38 +387,38 @@ class Expression(HTreeNode):
         # else:
         #     raise RuntimeError(f"Illegal expression! {self._render_latex_()} _op={self._op} children={self._children}")
 
-    def derivative(self, order: int, **kwargs) -> Derivative:
+    def derivative(self, order: int, **kwargs) :
         return Derivative(self, order=order, **kwargs)
 
-    def antiderivative(self, order: int, **kwargs) -> Antiderivative:
+    def antiderivative(self, order: int, **kwargs)  :
         return Antiderivative(self, order=order, **kwargs)
 
-    def partial_derivative(self, *order: int, **kwargs) -> PartialDerivative:
+    def partial_derivative(self, *order: int, **kwargs)  :
         return PartialDerivative(self, order=order, **kwargs)
 
-    def pd(self, *order, **kwargs) -> PartialDerivative:
+    def pd(self, *order, **kwargs)  :
         return self.partial_derivative(*order, **kwargs)
 
     def integral(self, *args, **kwargs) -> float:
         raise NotImplementedError(f"")
 
     @property
-    def d(self) -> Expression:
+    def d(self) -> typing.Self:
         """1st derivative 一阶导数"""
         return self.derivative(1)
 
     @property
-    def d2(self) -> Expression:
+    def d2(self) -> typing.Self:
         """2nd derivative 二阶导数"""
         return self.derivative(2)
 
     @property
-    def I(self) -> Expression:
+    def I(self) -> typing.Self:
         """antiderivative 原函数"""
         return self.antiderivative(1)
 
     @property
-    def dln(self) -> Expression:
+    def dln(self) -> typing.Self:
         """logarithmic derivative 对数求导"""
         return self.derivative(1) / self
 
@@ -443,46 +443,46 @@ class Expression(HTreeNode):
         return res
 
     # fmt: off
-    def __neg__      (self                             ) : return Expression(np.negative     ,  self     )
-    def __add__      (self, o: NumericType | Expression) : return Expression(np.add          ,  self, o  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self
-    def __sub__      (self, o: NumericType | Expression) : return Expression(np.subtract     ,  self, o  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self
-    def __mul__      (self, o: NumericType | Expression) : return Expression(np.multiply     ,  self, o  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantZero() if o==0 else self)
-    def __matmul__   (self, o: NumericType | Expression) : return Expression(np.matmul       ,  self, o  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantZero() if o==0 else self)
-    def __truediv__  (self, o: NumericType | Expression) : return Expression(np.true_divide  ,  self, o  ) if not (is_scalar(o) and (o ==0 or o==1)) else (Scalar(np.nan) if o==0 else self)
-    def __pow__      (self, o: NumericType | Expression) : return Expression(np.power        ,  self, o  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantOne() if o==0 else self)
-    def __eq__       (self, o: NumericType | Expression) : return Expression(np.equal        ,  self, o  )
-    def __ne__       (self, o: NumericType | Expression) : return Expression(np.not_equal    ,  self, o  )
-    def __lt__       (self, o: NumericType | Expression) : return Expression(np.less         ,  self, o  )
-    def __le__       (self, o: NumericType | Expression) : return Expression(np.less_equal   ,  self, o  )
-    def __gt__       (self, o: NumericType | Expression) : return Expression(np.greater      ,  self, o  )
-    def __ge__       (self, o: NumericType | Expression) : return Expression(np.greater_equal,  self, o  )
-    def __radd__     (self, o: NumericType | Expression) : return Expression(np.add          ,  o, self  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self
-    def __rsub__     (self, o: NumericType | Expression) : return Expression(np.subtract     ,  o, self  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self.__neg__()
-    def __rmul__     (self, o: NumericType | Expression) : return Expression(np.multiply     ,  o, self  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantZero() if o==0 else self)
-    def __rmatmul__  (self, o: NumericType | Expression) : return Expression(np.matmul       ,  o, self  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantZero() if o==0 else self)
-    def __rtruediv__ (self, o: NumericType | Expression) : return Expression(np.divide       ,  o, self  )
-    def __rpow__     (self, o: NumericType | Expression) : return Expression(np.power        ,  o, self  ) if not (is_scalar(o) and o ==1)  else ConstantOne()
-    def __abs__      (self                             ) : return Expression(np.abs          ,  self     )
-    def __pos__      (self                             ) : return Expression(np.positive     ,  self     )
-    def __invert__   (self                             ) : return Expression(np.invert       ,  self     )
-    def __and__      (self, o: NumericType | Expression) : return Expression(np.bitwise_and  ,  self, o  ) if not isinstance(o,bool) else ( self if o ==True else False)
-    def __or__       (self, o: NumericType | Expression) : return Expression(np.bitwise_or   ,  self, o  ) if not isinstance(o,bool) else ( True if o ==True else self)
-    def __xor__      (self, o: NumericType | Expression) : return Expression(np.bitwise_xor  ,  self, o  )
-    def __rand__     (self, o: NumericType | Expression) : return Expression(np.bitwise_and  ,  o, self  ) if not isinstance(o,bool) else ( self if o ==True else False)
-    def __ror__      (self, o: NumericType | Expression) : return Expression(np.bitwise_or   ,  o, self  ) if not isinstance(o,bool) else ( True if o ==True else self)
-    def __rxor__     (self, o: NumericType | Expression) : return Expression(np.bitwise_xor  ,  o, self  )
-    def __rshift__   (self, o: NumericType | Expression) : return Expression(np.right_shift  ,  self, o  )
-    def __lshift__   (self, o: NumericType | Expression) : return Expression(np.left_shift   ,  self, o  )
-    def __rrshift__  (self, o: NumericType | Expression) : return Expression(np.right_shift  ,  o, self  )
-    def __rlshift__  (self, o: NumericType | Expression) : return Expression(np.left_shift   ,  o, self  )
-    def __mod__      (self, o: NumericType | Expression) : return Expression(np.mod          ,  self, o  )
-    def __rmod__     (self, o: NumericType | Expression) : return Expression(np.mod          ,  o, self  )
-    def __floordiv__ (self, o: NumericType | Expression) : return Expression(np.floor_divide ,  self, o  )
-    def __rfloordiv__(self, o: NumericType | Expression) : return Expression(np.floor_divide ,  o, self  )
-    def __trunc__    (self                             ) : return Expression(np.trunc        ,  self     )
-    def __round__    (self, n=None                     ) : return Expression(np.round        ,  self, n  )
-    def __floor__    (self                             ) : return Expression(np.floor        ,  self     )
-    def __ceil__     (self                             ) : return Expression(np.ceil         ,  self     )
+    def __neg__      (self                              ) : return Expression(np.negative     ,  self     )
+    def __add__      (self, o: NumericType | typing.Self) : return Expression(np.add          ,  self, o  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self
+    def __sub__      (self, o: NumericType | typing.Self) : return Expression(np.subtract     ,  self, o  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self
+    def __mul__      (self, o: NumericType | typing.Self) : return Expression(np.multiply     ,  self, o  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantZero() if o==0 else self)
+    def __matmul__   (self, o: NumericType | typing.Self) : return Expression(np.matmul       ,  self, o  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantZero() if o==0 else self)
+    def __truediv__  (self, o: NumericType | typing.Self) : return Expression(np.true_divide  ,  self, o  ) if not (is_scalar(o) and (o ==0 or o==1)) else (Scalar(np.nan) if o==0 else self)
+    def __pow__      (self, o: NumericType | typing.Self) : return Expression(np.power        ,  self, o  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantOne() if o==0 else self)
+    def __eq__       (self, o: NumericType | typing.Self) : return Expression(np.equal        ,  self, o  )
+    def __ne__       (self, o: NumericType | typing.Self) : return Expression(np.not_equal    ,  self, o  )
+    def __lt__       (self, o: NumericType | typing.Self) : return Expression(np.less         ,  self, o  )
+    def __le__       (self, o: NumericType | typing.Self) : return Expression(np.less_equal   ,  self, o  )
+    def __gt__       (self, o: NumericType | typing.Self) : return Expression(np.greater      ,  self, o  )
+    def __ge__       (self, o: NumericType | typing.Self) : return Expression(np.greater_equal,  self, o  )
+    def __radd__     (self, o: NumericType | typing.Self) : return Expression(np.add          ,  o, self  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self
+    def __rsub__     (self, o: NumericType | typing.Self) : return Expression(np.subtract     ,  o, self  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self.__neg__()
+    def __rmul__     (self, o: NumericType | typing.Self) : return Expression(np.multiply     ,  o, self  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantZero() if o==0 else self)
+    def __rmatmul__  (self, o: NumericType | typing.Self) : return Expression(np.matmul       ,  o, self  ) if not (is_scalar(o) and (o ==0 or o==1)) else (ConstantZero() if o==0 else self)
+    def __rtruediv__ (self, o: NumericType | typing.Self) : return Expression(np.divide       ,  o, self  )
+    def __rpow__     (self, o: NumericType | typing.Self) : return Expression(np.power        ,  o, self  ) if not (is_scalar(o) and o ==1)  else ConstantOne()
+    def __abs__      (self                              ) : return Expression(np.abs          ,  self     )
+    def __pos__      (self                              ) : return Expression(np.positive     ,  self     )
+    def __invert__   (self                              ) : return Expression(np.invert       ,  self     )
+    def __and__      (self, o: NumericType | typing.Self) : return Expression(np.bitwise_and  ,  self, o  ) if not isinstance(o,bool) else ( self if o ==True else False)
+    def __or__       (self, o: NumericType | typing.Self) : return Expression(np.bitwise_or   ,  self, o  ) if not isinstance(o,bool) else ( True if o ==True else self)
+    def __xor__      (self, o: NumericType | typing.Self) : return Expression(np.bitwise_xor  ,  self, o  )
+    def __rand__     (self, o: NumericType | typing.Self) : return Expression(np.bitwise_and  ,  o, self  ) if not isinstance(o,bool) else ( self if o ==True else False)
+    def __ror__      (self, o: NumericType | typing.Self) : return Expression(np.bitwise_or   ,  o, self  ) if not isinstance(o,bool) else ( True if o ==True else self)
+    def __rxor__     (self, o: NumericType | typing.Self) : return Expression(np.bitwise_xor  ,  o, self  )
+    def __rshift__   (self, o: NumericType | typing.Self) : return Expression(np.right_shift  ,  self, o  )
+    def __lshift__   (self, o: NumericType | typing.Self) : return Expression(np.left_shift   ,  self, o  )
+    def __rrshift__  (self, o: NumericType | typing.Self) : return Expression(np.right_shift  ,  o, self  )
+    def __rlshift__  (self, o: NumericType | typing.Self) : return Expression(np.left_shift   ,  o, self  )
+    def __mod__      (self, o: NumericType | typing.Self) : return Expression(np.mod          ,  self, o  )
+    def __rmod__     (self, o: NumericType | typing.Self) : return Expression(np.mod          ,  o, self  )
+    def __floordiv__ (self, o: NumericType | typing.Self) : return Expression(np.floor_divide ,  self, o  )
+    def __rfloordiv__(self, o: NumericType | typing.Self) : return Expression(np.floor_divide ,  o, self  )
+    def __trunc__    (self                              ) : return Expression(np.trunc        ,  self     )
+    def __round__    (self, n=None                      ) : return Expression(np.round        ,  self, n  )
+    def __floor__    (self                              ) : return Expression(np.floor        ,  self     )
+    def __ceil__     (self                              ) : return Expression(np.ceil         ,  self     )
     # fmt: on
 
 
@@ -549,7 +549,7 @@ class Variable(Expression):
         super().__init__(None, name=name, domain=domain, **kwargs)
         self._idx = idx
 
-    def __copy__(self) -> Scalar:
+    def __copy__(self) -> typing.Self:
         res = super().__copy__()
         res._idx = self._idx
         return res

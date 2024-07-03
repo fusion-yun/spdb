@@ -98,7 +98,7 @@ class Field(Expression):
         else:
             return super().__call__(*args, **kwargs)
 
-    def grad(self, n=1) -> Field:
+    def grad(self, n=1) -> typing.Self:
         ppoly = self.__functor__()
 
         if isinstance(ppoly, tuple):
@@ -134,7 +134,7 @@ class Field(Expression):
         else:
             raise NotImplemented(f"TODO: ndim={self.mesh.ndim} n={n}")
 
-    def derivative(self, order: int | typing.Tuple[int], **kwargs) -> Field:
+    def derivative(self, order: int | typing.Tuple[int], **kwargs) -> typing.Self:
         if isinstance(order, int) and order < 0:
             func = self.__compile__().antiderivative(*order)
             return Field(func, mesh=self.mesh, label=f"I_{{{order}}}{{{self._render_latex_()}}}")
@@ -145,8 +145,8 @@ class Field(Expression):
             func = self.__compile__().derivative(order)
             return Field(func, mesh=self.mesh, label=f"d_{{{order}}}{{{self._render_latex_()}}}")
 
-    def antiderivative(self, order: int, *args, **kwargs) -> Field:
+    def antiderivative(self, order: int, *args, **kwargs) -> typing.Self:
         raise NotImplementedError(f"")
 
-    def partial_derivative(self, *args, **kwargs) -> Field:
+    def partial_derivative(self, *args, **kwargs) -> typing.Self:
         return self.derivative(args, **kwargs)

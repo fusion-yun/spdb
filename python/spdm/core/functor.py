@@ -1,5 +1,3 @@
-
-
 import typing
 from copy import copy
 
@@ -34,13 +32,13 @@ class Functor:
         self._label = label
         self._opts = kwargs
 
-    def __copy__(self) -> Functor:
+    def __copy__(self) -> typing.Self:
         """复制一个新的 Function 对象"""
         other: Functor = object.__new__(self.__class__)  # type:ignore
         other.__copy_from_(self)
         return other
 
-    def __copy_from_(self, other: Functor) -> Functor:
+    def __copy_from_(self, other: typing.Self) -> typing.Self:
         """复制一个新的 Function 对象"""
         self._func = other._func
         self._method = other._method
@@ -145,7 +143,7 @@ class DerivativeOp(Functor):
         super().__init__(*args, **kwargs)
         self._order = order
 
-    def __copy__(self) -> DerivativeOp:
+    def __copy__(self) -> typing.Self:
         res: DerivativeOp = super().__copy__()
         res._order = self._order
         return res
