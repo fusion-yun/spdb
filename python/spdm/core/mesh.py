@@ -1,6 +1,6 @@
-
 import collections.abc
 import typing
+import abc
 from functools import cache
 from enum import Enum
 
@@ -88,14 +88,11 @@ class Mesh(Domain):
     _plugin_registry = {}
     _plugin_prefix = "spdm.mesh.mesh_"
 
-    def __new__(cls, *args, mesh_type=None, _plugin_name=None, **kwargs):
-        if cls is Mesh and _plugin_name is None:
-            _plugin_name = mesh_type
-
-        return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
-
-    def __init__(self, *args, mesh_type=None, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls, *args, **kwargs)
+        if instance.__class__ is Mesh:
+            raise RuntimeError(f"Can not make mesh from {args} {kwargs}")
+        return instance
 
     shape: Vector[int]
     """
@@ -104,8 +101,8 @@ class Mesh(Domain):
         非结构化网格 shape 如 [<number of vertices>]
     """
 
-    points: typing.Tuple[ArrayType, ...]
-    """ 网格对应的网格点坐标，ndim 个 形状为 shape 的数组。"""
+    # points: typing.Tuple[ArrayType, ...]
+    # """ 网格对应的网格点坐标，ndim 个 形状为 shape 的数组。"""
 
     @property
     def axis_label(self) -> typing.Tuple[str]:
@@ -138,21 +135,14 @@ class Mesh(Domain):
         return self.parametric_coordinates(*self.xyz)
 
     @property
-    @cache
     def vertices(self) -> ArrayType:
-        """coordinates of vertice of mesh  [<shape...>, geometry.ndim]"""
-        return self.geometry.coordinates(self.parametric_coordinates())
+        """网格点的 _空间坐标_"""
+        return np.stack(self.points, axis=-1)
 
     @property
-    @cache
-    def points(self) -> typing.List[ArrayType]:
-        """alias of vertices, change the shape to tuple"""
-        return [self.vertices[..., idx] for idx in range(self.ndim)]
-
-    @property
-    @cache
-    def xyz(self) -> typing.List[ArrayType]:
-        return self.points
+    def points(self) -> typing.Tuple[ArrayType]:
+        """网格点的 _空间坐标_  tuple"""
+        raise NotImplementedError()
 
     @property
     def cells(self) -> typing.Any:
@@ -245,7 +235,7 @@ class Mesh(Domain):
     def integrate(self, y: NumericType, *args, **kwargs) -> ScalarType:
         raise NotImplementedError(f"{self.__class__.__name__}.integrate")
 
-    def display(self, obj, view_point="rz", label=None, **kwargs):
+    def view(self, obj, view_point="rz", label=None, **kwargs):
         """将 obj 画在 domain 上，默认为 n维 contour。"""
 
         # view_point = ("RZ",)

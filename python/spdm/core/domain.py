@@ -1,4 +1,3 @@
-
 import abc
 import typing
 import numpy as np
@@ -23,10 +22,11 @@ class Domain(SpObject):
 
     """
 
-    def __new__(cls, *args, _plugin_name=None, **kwargs):
-        if cls is Domain and _plugin_name is None and all(isinstance(d, np.ndarray) for d in args):
+    def __new__(cls, *args, **kwargs):
+        d_type = kwargs.get("type", None)
+        if cls is Domain and d_type is None and all(isinstance(d, np.ndarray) for d in args):
             return super().__new__(PPolyDomain)
-        return super().__new__(cls, *args, _plugin_name=_plugin_name, **kwargs)
+        return super().__new__(cls, *args, **kwargs)
 
     geometry: GeoObject
 
@@ -79,7 +79,6 @@ class PPolyDomain(Domain):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         if len(args) == 1 and isinstance(args[0], tuple):
             args = args[0]
         ndim = len(args)
@@ -91,6 +90,7 @@ class PPolyDomain(Domain):
             self._points = None
         else:
             raise RuntimeError(f"Invalid points {args}")
+        super().__init__(**kwargs)
 
     shape: Vector[int]
 
@@ -108,3 +108,12 @@ class PPolyDomain(Domain):
         extrapolate = self._metadata.get("extrapolate", 0)
 
         return interpolate(*self.points, func, periods=periods, extrapolate=extrapolate, **kwargs)
+
+    def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
+        return False
+
+    def check(self, *x) -> bool | np_tp.NDArray[np.bool_]:
+        return True
+
+    def eval(self, func, *xargs, **kwargs) -> ArrayType:
+        return NotImplemented()

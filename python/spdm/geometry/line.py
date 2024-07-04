@@ -4,6 +4,7 @@ from functools import cached_property
 
 import numpy as np
 
+from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 from spdm.utils.type_hint import ArrayType
 from spdm.core.sp_tree import annotation
@@ -18,11 +19,17 @@ class Line(GeoObject, plugin_name="line"):
     """
 
     def __init__(self, *args, **kwargs) -> None:
-        if len(args) == 2:
-            p0, p1 = args
-            super().__init__(p0=p0, p1=p1, rank=1, **kwargs)
+        if len(args) == 1 and isinstance(args[0], (list, tuple)):
+            args = args[0]
+
+        if len(args) == 1 and (isinstance(args[0], dict) or args[0] is _not_found_):
+            cache = args[0]
+        elif len(args) == 2:
+            cache = {"p0": args[0], "p1": args[1]}
         else:
-            super().__init__(*args, **kwargs)
+            cache = _not_found_
+
+        super().__init__(cache, rank=1, **kwargs)
 
     p0: Point
     p1: Point

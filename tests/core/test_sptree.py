@@ -69,6 +69,23 @@ class Eq(SpTree):
 
 
 class TestSpTree(unittest.TestCase):
+
+    def test_create(self):
+        # class Foo1(SpTree):
+        #     x: float
+        #     y: float
+        #     z: float = 0.1
+
+        # foo0 = Foo1(1, 2)
+        # self.assertEqual(foo0.x, 1)
+        # self.assertEqual(foo0.y, 2)
+        # self.assertEqual(foo0.z, 0.1)
+
+        # foo2 = Foo1(2, 3, 4)
+        # self.assertEqual(foo2.x, 2)
+        # self.assertEqual(foo2.y, 3)
+        # self.assertEqual(foo2.z, 4)
+
     def test_get(self):
         cache = {"foo": {"a": 1234}}
         d = Doo(cache)

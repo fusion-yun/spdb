@@ -149,8 +149,8 @@ class GeoObject(SpObject):
     _plugin_prefix = "spdm.geometry."
     _plugin_registry = {}
 
-    def __init__(self, *args, ndim: int = 0, rank: int = -1, **kwargs) -> None:
-        super().__init__(*args, ndim=ndim, rank=rank if rank is not None else ndim, **kwargs)
+    def __init__(self, *args, rank: int = 0, **kwargs) -> None:
+        super().__init__(*args, rank=rank, **kwargs)
 
     def __view__(self, *args, **kwargs):
         return self
@@ -171,6 +171,9 @@ class GeoObject(SpObject):
     bbox: BBox
     """boundary box of geometry [ [...min], [...max] ]"""
 
+    points: array_type
+    """几何体端点的坐标 [*shape,ndim] (x0,y0),(x1,y1)"""
+
     rank: int
     """几何体（流形）维度  rank <=ndims
 
@@ -184,7 +187,7 @@ class GeoObject(SpObject):
         a plane has rank 2, and a volume has rank 3.
         """
 
-    number_of_dimensions: int = sp_property(alias="ndim")
+    ndim: int = sp_property(alias="points/shape/-1")
     """几何体所处的空间维度， = 0，1，2，3 ,...
         The dimension of a geometric object, on the other hand, refers to the minimum number of
         coordinates needed to specify any point within it. In general, the rank and dimension of
@@ -193,9 +196,6 @@ class GeoObject(SpObject):
         it extends in only one independent direction, but it has dimension 3 because three
         coordinates are needed to specify any point on the curve.
         """
-
-    ndim: int
-    """alias of number_of_dimensions"""
 
     @property
     def boundary(self) -> typing.Self | None:

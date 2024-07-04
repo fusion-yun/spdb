@@ -30,6 +30,8 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
     def __init__(self, *args, **kwargs):
         if len(args) == 1 and isinstance(args[0], dict):
             cache = args[0]
+        elif len(args) == 1 and args[0] is _not_found_:
+            cache = {}
         else:
             cache = {"dims": args}
 
@@ -66,20 +68,9 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
         return np.stack([self.dims[i](uvw[i]) for i in range(self.rank)], axis=-1)
 
     @functools.cached_property
-    def vertices(self) -> ArrayType:
+    def points(self) -> typing.Tuple[ArrayType]:
         """网格点的 _空间坐标_"""
-        if self.geometry.rank == 1:
-            return (self.dims[0],)
-        else:
-            return np.stack(self.points, axis=-1)
-
-    @functools.cached_property
-    def points(self) -> typing.List[ArrayType]:
-        """网格点的 _空间坐标_"""
-        if self.geometry.rank == 1:
-            return (self.dims[0],)
-        else:
-            return np.meshgrid(*self.dims, indexing="ij")
+        return np.meshgrid(*self.dims, indexing="ij")
 
     def interpolate(self, func: ArrayType | typing.Callable[..., array_type], **kwargs):
         """生成插值器

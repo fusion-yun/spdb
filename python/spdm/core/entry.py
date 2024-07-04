@@ -300,7 +300,10 @@ def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, format=None, **
     if format.startswith("file+") or format in ("file", "mdsplus", "hdf5", "netcdf", "json", "yaml"):
         from spdm.core.file import File
 
-        entry = File(uri, *args, format=format, **kwargs).__entry__()
+        if not uri.path:
+            entry = Entry()
+        else:
+            entry = File(uri, *args, format=format, **kwargs).__entry__()
 
     elif format.startswith("service+") or format in (
         "service",

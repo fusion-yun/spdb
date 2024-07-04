@@ -39,11 +39,11 @@ class SpView(SpObject):
 
 
 def display(*args, plugin=SP_VIEW, **kwargs):
-    return SpView(_plugin_name=plugin).draw(*args, **kwargs)
+    return SpView(type=plugin).draw(*args, **kwargs)
 
 
 def plot(*args, plugin=SP_VIEW, **kwargs):
-    return SpView(_plugin_name=plugin).plot(*args, **kwargs)
+    return SpView(type=plugin).plot(*args, **kwargs)
 
 
 from .render import Render
@@ -52,4 +52,4 @@ SP_RENDER = os.environ.get("SP_RENDER", "graphviz")
 
 
 def render(*args, plugin=SP_RENDER, **kwargs):
-    return Render(_plugin_name=plugin).apply(*args, **kwargs)
+    return Render(type=plugin).apply(*args, **kwargs)

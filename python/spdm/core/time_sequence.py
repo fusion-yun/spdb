@@ -176,7 +176,7 @@ class TimeSequence(List[_TSlice]):
 
         self._cache[self._cache_cursor] = current
 
-    def refresh(self, *args, **kwargs) -> typing.Type[TimeSequence]:
+    def refresh(self, *args, **kwargs) -> typing.Self:
         if not self.is_initializied:
             raise RuntimeError("TimeSlice is not initializied!")
 

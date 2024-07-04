@@ -15,15 +15,15 @@ class SpObject(Pluggable, SpTree):
     """对象的基类/抽象类"""
 
     def __new__(cls, *args, _entry=None, **kwargs):
-        _plugin_name = kwargs.pop("type", None)
+        plugin_name = kwargs.pop("type", None)
 
-        if _plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
-            _plugin_name = args[0].get("type", None) or args[0].get("@type", None) or args[0].get("@class", None)
+        if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
+            plugin_name = args[0].get("type", None)
 
-        if _plugin_name is None and _entry is not None:
-            _plugin_name = _entry.get("type", None) or _entry.get("@type", None) or _entry.get("@class", None)
+        if plugin_name is None and _entry is not None:
+            plugin_name = _entry.get("type", None) or _entry.get("@type", None)
 
-        return super().__new__(cls, *args, _plugin_name=_plugin_name, _entry=_entry, **kwargs)
+        return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

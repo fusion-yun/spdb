@@ -168,7 +168,7 @@ class Path(list):
             return Path(self[:-1])
 
     @property
-    def children(self) ->  typing.Self:
+    def children(self) -> typing.Self:
         if self.is_leaf:
             raise RuntimeError("Leaf node hasn't child!")
         other = copy(self)
@@ -180,22 +180,22 @@ class Path(list):
         return self.parent.children
 
     @property
-    def next(self) ->  typing.Self:
+    def next(self) -> typing.Self:
         other = copy(self)
         other.append(Path.tags.next)
         return other
 
-    def prepend(self, d) ->  typing.Self:
+    def prepend(self, d) -> typing.Self:
         res = as_path(d)
         return res.append(self)
 
-    def append(self, d) ->  typing.Self:
+    def append(self, d) -> typing.Self:
         return Path._resolve(Path._parser_iter(d), self)
 
-    def extend(self, d: list) ->  typing.Self:
+    def extend(self, d: list) -> typing.Self:
         return Path._resolve(d, self)
 
-    def with_suffix(self, pth: str) ->  typing.Self:
+    def with_suffix(self, pth: str) -> typing.Self:
         pth = Path(pth)
         if len(self) == 0:
             return pth
@@ -208,13 +208,13 @@ class Path(list):
                 res.extend(pth[:])
         return res
 
-    def __truediv__(self, p) ->  typing.Self:
+    def __truediv__(self, p) -> typing.Self:
         return copy(self).append(p)
 
-    def __add__(self, p) ->  typing.Self:
+    def __add__(self, p) -> typing.Self:
         return copy(self).append(p)
 
-    def __iadd__(self, p) ->  typing.Self:
+    def __iadd__(self, p) -> typing.Self:
         return self.append(p)
 
     def __eq__(self, other) -> bool:
@@ -225,7 +225,7 @@ class Path(list):
         else:
             return False
 
-    def collapse(self, idx=None) ->  typing.Self:
+    def collapse(self, idx=None) -> typing.Self:
         """
         - 从路径中删除非字符元素，例如 slice, dict, set, tuple，int。用于从 default_value 中提取数据
         - 从路径中删除指定位置idx: 的元素
@@ -623,10 +623,12 @@ class Path(list):
         # elif isinstance(key, dict):  # mapping
         #     res = {k: Path._get(source, v, *args, **kwargs) for k, v in key.items()}
 
-        elif hasattr(target.__class__, "__get_node__"):
+        elif hasattr(target.__class__, "__get_node__") and not (isinstance(key, str) and key.startswith("_")):
             res = target.__get_node__(key, *args, **kwargs)
+            args = tuple()
+            kwargs = {}
         elif isinstance(target, collections.abc.Mapping) and isinstance(key, str):
-            res = target.get(key, kwargs.get("default_value", _not_found_))
+            res = target.get(key, _not_found_)
         elif isinstance(target, collections.abc.Sequence) and isinstance(key, int):
             if key >= len(target):
                 res = _not_found_
@@ -643,11 +645,14 @@ class Path(list):
         elif isinstance(target, collections.abc.Sequence) and isinstance(key, Query):
             query = as_query(key)
             res = [*filter(query.check, target)]
-        elif isinstance(target, object) and isinstance(key, str) and key.startswith("@"):
-            res = getattr(target, key[1:], kwargs.get("default_value", _not_found_))
+        elif isinstance(target, object) and isinstance(key, str) and key.isidentifier():
+            res = getattr(target, key, _not_found_)
+        elif isinstance(target, np.ndarray) and isinstance(key, (int, slice)):
+            res = target[key]
         else:
-            raise KeyError(f"Can not get {key} from {(target)}")
+            raise KeyError(f"Can not get '{key}' from '{type(target)}' ")
 
+        res = Path._project(res, *args, **kwargs)
         return res
 
     @staticmethod
@@ -807,6 +812,16 @@ class Path(list):
             value = Path._find(getattr(target, "_parent", _not_found_), sub_path, *p_args, **p_kwargs)
         elif key is Path.tags.current:
             value = Path._find(target, sub_path, *p_args, **p_kwargs)
+        elif key is Path.tags.ancestors:
+            obj = target
+            value = _not_found_
+
+            while obj is not _not_found_ and obj is not None:
+                value = Path._find(obj, sub_path, default_value=_not_found_)
+                if value is not _not_found_:
+                    break
+                obj = getattr(obj, "_parent", _not_found_)
+            value = Path._project(value, *p_args, **p_kwargs)
         elif isinstance(key, (int, str)):
             value = Path._find(Path._get(target, key), sub_path, *p_args, **p_kwargs)
         elif isinstance(key, Query):

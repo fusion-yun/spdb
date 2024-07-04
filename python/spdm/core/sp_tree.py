@@ -109,7 +109,8 @@ class SpTree(HTree):
 
         super().__init_subclass__()
 
-    def __init__(self, cache: dict = _not_found_, **kwargs):
+    def __init__(self, cache=_not_found_, **kwargs):
+
         if isinstance(cache, dict) or cache is _not_found_:
             cache = Path().update(cache, {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")})
         elif cache is not _not_found_:
@@ -306,11 +307,9 @@ class SpProperty:
             raise TypeError(f"Class '{instance.__class__.__name__}' must be a subclass of 'SpTree'.")
 
         with self.lock:
-
+            value = _not_found_
             if self.alias is not None:
                 value = self.alias.get(instance, _not_found_)
-            else:
-                value = _not_found_
 
             if value is _not_found_:
                 value = instance.__get_node__(

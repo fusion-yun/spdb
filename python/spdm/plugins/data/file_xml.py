@@ -165,11 +165,11 @@ class FileXML(File, plugin_name="xml"):
                 # elif isinstance(p, (tuple, set)):
                 #     raise NotImplementedError(f"XML DO NOT SUPPORT TUPLE OR SET!{path}")
                 elif isinstance(p, str) and len(p) > 0:
-                    if p[0] == "@":
-                        res += f"[{p}]"
-                    else:
-                        res += f"/{p}"
-                        prev = p
+                    # if p[0] == "@":
+                    #     res += f"[{p}]"
+                    # else:
+                    res += f"/{p}"
+                    prev = p
                 else:
                     envs[prev] = p
                     # # TODO: handle slice
@@ -261,8 +261,10 @@ class FileXML(File, plugin_name="xml"):
             envs=None,
             **kwargs,
         ):
-            if not isinstance(element, list):
+            if isinstance(element, _XMLElement):
                 pass
+            elif not isinstance(element, list):
+                return element
             elif len(element) == 0:
                 return _not_found_
             else:
@@ -273,6 +275,7 @@ class FileXML(File, plugin_name="xml"):
                     return res[0]
                 else:
                     return res
+
             # elif len(path) > 0 and isinstance(path[-1], slice):
             #     raise NotImplementedError(f"{path}")
 

@@ -1,14 +1,42 @@
-
-
 import collections.abc
 import typing
 import numpy as np
 
+from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, array_type
-
+from spdm.core.path import Path
 from spdm.core.mesh import Mesh
 from spdm.core.expression import Expression
+
+
+def make_mesh(mesh, *dims):
+    if isinstance(mesh, Mesh):
+        if len(dims) > 0:
+            logger.warning(f"Ignore dims {dims}")
+        return mesh
+
+    if mesh is _not_found_:
+        mesh = {}
+    elif isinstance(mesh, str):
+        mesh = {"type": mesh}
+    elif not isinstance(mesh, dict):
+        raise TypeError(f"Illegal mesh type! {mesh}")
+
+    if len(dims) == 0:
+        pass
+    elif not all(isinstance(d, np.ndarray) for d in dims):
+        raise TypeError(f"Illegal dims! {dims}")
+    elif all(d.ndim == 1 for d in dims):
+        mesh.setdefault("type", "rectilinear")
+        mesh["dims"] = dims
+    elif all(d.shape == dims[0].shape for d in dims[1:]) and len(dims[0].shape) == len(dims):
+        mesh.setdefault("type", "curvilinear")
+        mesh["dims"] = dims
+    else:
+        raise RuntimeError(f"Can not make mesh from {mesh}")
+
+    return Mesh(mesh)
 
 
 class Field(Expression):
@@ -37,39 +65,27 @@ class Field(Expression):
 
                 Field(x,y,z,**kwargs) =>  Field(z,mesh={"dims":(x,y)}, **kwargs)
 
-                Field(x,y,z,mesh={"@type":"curvilinear"},**kwargs) =>  Field(z,mesh={"@type":"curvilinear","dims":(x,y)}, **kwargs)
+                Field(x,y,z,mesh={"type":"curvilinear"},**kwargs) =>  Field(z,mesh={"type":"curvilinear","dims":(x,y)}, **kwargs)
 
         """
-        match len(args):
-            case 0:
-                value = None
-                dims = None
-            case 1:
-                value = args[0]
-                dims = None
-            case _:
-                value = args[-1]
-                dims = args[:-1]
+        value = _not_found_ if len(args) == 0 else args[-1]
 
-        if dims is None:
-            pass
-        elif mesh is None:
-            mesh = {"dims": dims}
-        elif isinstance(mesh, collections.abc.Mapping):
-            mesh = collections.ChainMap({"dims": dims}, mesh)
-        else:
-            raise TypeError(f"illegal mesh type! {type(mesh)}")
+        if mesh is _not_found_:
+            obj = kwargs.get("_parent", _not_found_)
+            while obj is not _not_found_:
+                if (metadata := getattr(obj, "_metadata", _not_found_)) is not _not_found_:
+                    mesh = metadata.get("domain", _not_found_)
+                    if mesh is not _not_found_:
+                        mesh = getattr(obj, mesh, _not_found_)
+                if mesh is not _not_found_:
+                    break
+                obj = getattr(obj, "_parent", _not_found_)
 
-        super().__init__(value, domain=mesh, **kwargs)
+        super().__init__(value, domain=make_mesh(mesh, *args[:-1]), **kwargs)
 
     @property
     def mesh(self) -> Mesh:
         return self.domain
-
-    def _repr_svg_(self) -> str:
-        from ..view import sp_view
-
-        return sp_view.display(self.__view__(), title=self.__label__, output="svg")
 
     def __view__(self, **kwargs):
         if self.domain is None:

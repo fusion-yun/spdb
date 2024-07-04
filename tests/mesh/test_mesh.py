@@ -1,10 +1,15 @@
 import unittest
 
 import numpy as np
+from numpy.testing import assert_array_equal
+import scipy
+
 
 from spdm.utils.logger import logger
 from spdm.core.mesh import Mesh
 from spdm.geometry.box import Box
+
+TWOPI = scipy.constants.pi * 2.0
 
 
 class TestMesh(unittest.TestCase):
@@ -17,7 +22,7 @@ class TestMesh(unittest.TestCase):
     def test_structured_mesh(self):
         from spdm.mesh.mesh_structured import StructuredMesh
 
-        mesh = Mesh(np.linspace(0, 1, 10), np.linspace(1, 2, 20), mesh_type="rectilinear")
+        mesh = Mesh(np.linspace(0, 1, 10), np.linspace(1, 2, 20), type="rectilinear")
         self.assertIsInstance(mesh, StructuredMesh)
         self.assertEqual(mesh.shape, (10, 20))
         self.assertIsInstance(mesh.geometry, Box)
@@ -31,6 +36,19 @@ class TestMesh(unittest.TestCase):
 
         mesh = Mesh({"@type": "uniform"})
         self.assertIsInstance(mesh, UniformMesh)
+
+    def test_rectilinear_mesh(self):
+        from spdm.mesh.mesh_rectilinear import RectilinearMesh
+
+        x = np.linspace(0, 1 * TWOPI, 128)
+        y = np.linspace(0, 2 * TWOPI, 128)
+
+        mesh = RectilinearMesh(x, y)
+
+        g_x, g_y = np.meshgrid(x, y, indexing="ij")
+
+        assert_array_equal(mesh.points[0], g_x)
+        assert_array_equal(mesh.points[1], g_y)
 
 
 if __name__ == "__main__":

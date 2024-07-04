@@ -2,6 +2,8 @@ import typing
 import unittest
 
 import numpy as np
+from numpy.testing import assert_array_equal
+
 from scipy import constants
 from spdm.utils.logger import logger
 from spdm.core.geo_object import GeoObject
@@ -9,37 +11,30 @@ from spdm.core.geo_object import GeoObject
 
 class TestGeometryObject(unittest.TestCase):
 
+    def test_point(self):
+        from spdm.geometry.point import Point
+
+        p0: Point = GeoObject((0, 1, 2), type="point")
+        p1 = Point(1, 2, 3)
+        self.assertIsInstance(p0, Point)
+        assert_array_equal(p0.coordinate, np.asarray([0, 1, 2]))
+        assert_array_equal(p1.coordinate, np.asarray([1, 2, 3]))
+
+        self.assertEqual(p1.x, 1)
+        self.assertEqual(p1.y, 2)
+        self.assertEqual(p1.z, 3)
+
     def test_line(self):
+
+        from spdm.geometry.line import Line
+
         p0 = (0, 0)
         p1 = (1, 1)
-        gobj = GeoObject(p0, p1, geo_type="line")
-
-        from spdm.geometry.line import Line
-
-        self.assertIsInstance(gobj, Line)
-
-    def test_line2(self):
-        from spdm.geometry.line import Line
-
-        p0 = (4, 5, 6)
-        p1 = (1, 2, 3)
-        gobj = Line(p0, p1)
-
-        self.assertEqual(type(gobj).__name__, "Line")
-        self.assertTrue(np.all(np.isclose(gobj.p0[:], p0)))
-        self.assertTrue(np.all(np.isclose(gobj.p1[:], p1)))
-
-    def test_coordinates(self):
-        from spdm.geometry.line import Line
-
-        p0 = (4, 5, 6)
-        p1 = (1, 2, 3)
-
-        line = Line(p0, p1, coordinates="x,y,z")
-
-        self.assertTrue(np.all(np.isclose(line.x, np.asarray([4, 1], dtype=float))))
-        self.assertTrue(np.all(np.isclose(line.y, np.asarray([5, 2], dtype=float))))
-        self.assertTrue(np.all(np.isclose(line.z, np.asarray([6, 3], dtype=float))))
+        l0 = GeoObject(p0, p1, type="line")
+        l1 = Line((p0, p1))
+        self.assertIsInstance(l0, Line)
+        assert_array_equal(l1.p0, np.asarray(p0))
+        assert_array_equal(l1.p1, np.asarray(p1))
 
     # def test_set(self):
     #     from spdm.geometry.Point import Point

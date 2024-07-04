@@ -89,8 +89,13 @@ def uri_split_as_dict(uri) -> dict:
         path = uri_.path
         netloc = uri_.netloc
 
+    protocol = uri_.scheme
+
+    if protocol == "":
+        protocol = "file"
+
     res = dict(
-        protocol=uri_.scheme or "file",
+        protocol=protocol,
         netloc=netloc,
         path=path,
         query=query,

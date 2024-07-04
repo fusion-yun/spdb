@@ -1,4 +1,3 @@
-
 import pathlib
 import typing
 from importlib import resources
@@ -32,6 +31,10 @@ class Mapper(Entry):
             schemas = uri.protocol.split("+")
             schema = schemas[0]
             uri.protocol = "+".join(schemas[1:])
+            if uri.protocol == "":
+                uri.protocol = "file"
+            elif uri.netloc == "" and not uri.protocol.startswith("file"):
+                uri.protocol = "file+" + uri.protocol
 
         self._mapper, self._handler = Mapper._get_mapper(schema, uri, namespace)
 
@@ -60,7 +63,13 @@ class Mapper(Entry):
 
     def _map(self, *args) -> Entry:
         value = self._mapper.child(self._path).find(*args, default_value=_not_found_)
-        return Entry(self._do_map(value))
+
+        value = self._do_map(value)
+
+        if value is _not_found_:
+            value = self._handler["*"].child(self._path).get(*args, default_value=_not_found_)
+
+        return Entry(value)
 
     def insert(self, *args, **kwargs) -> typing.Self:
         return self._map(*args[:-1]).insert(*args[-1:], **kwargs)
@@ -109,7 +118,7 @@ class Mapper(Entry):
         config_files = [
             "config.xml",
             "static/config.xml",
-            "dynamic/config.xml",
+            # "dynamic/config.xml",
             f"{schema}.xml",
             f"{uri.protocol}.xml",
             f"{uri.protocol}/config.xml",
@@ -134,6 +143,8 @@ class Mapper(Entry):
         query = uri.query
 
         uri.query = None
+
+        handlers["*"] = as_entry(uri)
 
         attr = {"prefix": str(uri), **query}
 

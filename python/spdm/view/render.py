@@ -74,7 +74,6 @@ SpGraphDarkTheme = SpGraphLightTheme.update(
 DefaultTheme = SpGraphDarkTheme
 
 
-@sp_object
 class Render(SpObject):
 
     _plugin_prefix = "spdm.view.render_"

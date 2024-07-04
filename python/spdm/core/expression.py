@@ -1,4 +1,3 @@
-
 import typing
 import collections.abc
 
@@ -160,10 +159,7 @@ class Expression(HTreeNode):
     def domain(self) -> Domain | None:
         """返回表达式的定义域"""
 
-        if self._domain is not _not_found_:
-            pass
-
-        elif len(self._children) > 0:
+        if self._domain is _not_found_ and len(self._children) > 0:
             # 从构成表达式的子节点查找 domain
             # TODO: 根据子节点 domain 的交集确定表达式的 domain
             for child in self._children:
@@ -172,21 +168,17 @@ class Expression(HTreeNode):
                     break
             else:
                 self._domain = None
-        else:
-            # 从祖辈节点查找 domain
-            holder = self
-            while holder is not _not_found_ and holder is not None:
-                domain_desc = getattr(holder, "_metadata", {}).get("domain", _not_found_)
 
-                if isinstance(domain_desc, collections.abc.Sequence):
-                    self._domain = Path(domain_desc).get(holder, _not_found_)
-                else:
-                    self._domain = domain_desc
-
-                if self._domain is not _not_found_:
-                    break
-
-                holder = getattr(holder, "_parent", _not_found_)
+            # holder = self
+            # while holder is not _not_found_ and holder is not None:
+            #     domain_desc = getattr(holder, "_metadata", {}).get("domain", _not_found_)
+            #     if isinstance(domain_desc, collections.abc.Sequence):
+            #         self._domain = Path(domain_desc).get(holder, _not_found_)
+            #     else:
+            #         self._domain = domain_desc
+            #     if self._domain is not _not_found_:
+            #         break
+            #     holder = getattr(holder, "_parent", _not_found_)
 
         if self._domain is _not_found_:
             self._domain = None
@@ -387,16 +379,16 @@ class Expression(HTreeNode):
         # else:
         #     raise RuntimeError(f"Illegal expression! {self._render_latex_()} _op={self._op} children={self._children}")
 
-    def derivative(self, order: int, **kwargs) :
+    def derivative(self, order: int, **kwargs):
         return Derivative(self, order=order, **kwargs)
 
-    def antiderivative(self, order: int, **kwargs)  :
+    def antiderivative(self, order: int, **kwargs):
         return Antiderivative(self, order=order, **kwargs)
 
-    def partial_derivative(self, *order: int, **kwargs)  :
+    def partial_derivative(self, *order: int, **kwargs):
         return PartialDerivative(self, order=order, **kwargs)
 
-    def pd(self, *order, **kwargs)  :
+    def pd(self, *order, **kwargs):
         return self.partial_derivative(*order, **kwargs)
 
     def integral(self, *args, **kwargs) -> float:

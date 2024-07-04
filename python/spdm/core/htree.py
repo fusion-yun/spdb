@@ -455,14 +455,20 @@ class HTree(HTreeNode):
         if isinstance(_type_hint, tuple):
             _type_hint = _type_hint[-1]
 
-        if _type_hint is None and _entry is not None:
-            _type_hint = HTree
+        if _type_hint is None and value is _not_found_ and _entry is not None:
+            node = _entry.get()
+            _entry = None
 
-        if isinstance(_type_hint, typing._GenericAlias):
+        elif isinstance(_type_hint, typing._GenericAlias):
             if issubclass(_type_hint.__origin__, HTreeNode):
                 node = _type_hint(value, _entry=_entry, _parent=self, **kwargs)
             elif typing.get_origin(_type_hint) is tuple:
-                node = tuple(value)
+                if value is _not_found_ and _entry is not None:
+                    value = _entry.get()
+                if value is not _not_found_:
+                    node = tuple(value)
+                else:
+                    node = _not_found_
             else:
                 node = _type_hint(value)
         elif not inspect.isclass(_type_hint):
