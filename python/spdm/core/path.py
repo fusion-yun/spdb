@@ -795,6 +795,8 @@ class Path(list):
             value = Path._project(target, *p_args, **p_kwargs)
         elif key is None:
             value = Path._find(target, sub_path, *p_args, **p_kwargs)
+        elif isinstance(key, (int, str)):
+            value = Path._find(Path._get(target, key), sub_path, *p_args, **p_kwargs)
         elif isinstance(key, tuple):
             value = [Path._find(target, Path(k)[:] + sub_path) for k in key]
             value = tuple(value)
@@ -822,8 +824,6 @@ class Path(list):
                     break
                 obj = getattr(obj, "_parent", _not_found_)
             value = Path._project(value, *p_args, **p_kwargs)
-        elif isinstance(key, (int, str)):
-            value = Path._find(Path._get(target, key), sub_path, *p_args, **p_kwargs)
         elif isinstance(key, Query):
             try:
                 obj = next(Path._search(target, [key]))
@@ -855,7 +855,10 @@ class Path(list):
 
         elif path is None or len(path) == 0:
 
-            if len(p_args) > 0 and p_args[0] is Query.tags.get_key:
+            if hasattr(target.__class__, "__search__"):
+                yield from target.__search__(*p_args, **p_kwargs)
+
+            elif len(p_args) > 0 and p_args[0] is Query.tags.get_key:
                 if isinstance(target, collections.abc.Mapping):
                     yield from map(lambda k: Path._project(k, *p_args[1:], **p_kwargs), target.keys())
 

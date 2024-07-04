@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import abc
 import collections.abc
 import functools
@@ -11,7 +9,7 @@ import numpy as np
 from ..utils.logger import logger
 from spdm.utils.type_hint import ArrayLike, ArrayType, NumericType, array_type, nTupleType
 
-from ..core.geo_object import GeoObject,BBox
+from ..core.geo_object import GeoObject, BBox
 from .point import Point
 
 
@@ -63,8 +61,8 @@ class PointSet(GeoObject):
         for idx, coord_name in enumerate(args):
             setattr(self, coord_name, self._points[..., idx])
 
-    def __copy__(self) -> PointSet:
-        other: PointSet = super().__copy__()  # type:ignore
+    def __copy__(self) -> typing.Self:
+        other = super().__copy__()  # type:ignore
         other._points = self._points
         other.set_coordinates()
         return other
@@ -83,7 +81,7 @@ class PointSet(GeoObject):
         return BBox(xmin, dims)
 
     @property
-    def boundary(self) -> PointSet | None:
+    def boundary(self) -> typing.Self | None:
         if self.is_closed:
             return None
         elif self._points.ndim == 2:

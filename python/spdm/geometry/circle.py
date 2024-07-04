@@ -10,8 +10,7 @@ from spdm.geometry.solid import Solid
 from spdm.geometry.surface import Surface
 
 
-@GeoObject.register("circle")
-class Circle(GeoObject):
+class Circle(GeoObject, plugin_name="circle"):
     """Circle
     圆，具有一个固定圆心和一个固定半径
     """
@@ -54,8 +53,7 @@ class Circle(GeoObject):
         return NotImplemented
 
 
-@GeoObject.register("ellipse")
-class Ellipse(GeoObject):
+class Ellipse(GeoObject, plugin_name="ellipse"):
     """Ellipse
     椭圆，具有一个固定圆心和两个固定半径
     """
@@ -63,8 +61,7 @@ class Ellipse(GeoObject):
     pass
 
 
-@Plane.register("disc")
-class Disc(Plane):
+class Disc(Plane, plugin_name="disc"):
     """Disc
     圆盘
     """

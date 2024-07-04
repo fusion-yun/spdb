@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import functools
 import typing
 from copy import copy
@@ -41,7 +39,7 @@ class Surface(PointSet):
     def derivative(self, *args, **kwargs):
         raise NotImplementedError(f"{self.__class__.__name__}.derivative")
 
-    def remesh(self, u) -> Surface:
+    def remesh(self, u) -> typing.Self:
         other: Surface = copy(self)
         if isinstance(u, array_type):
             other._uv = u

@@ -92,4 +92,4 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
         if np.any(tuple(value.shape) != tuple(self.shape)):
             raise ValueError(f"{value} {self.shape}")
 
-        return interpolate(*self._dims, value, periods=self._periods, **kwargs)
+        return interpolate(*self.dims, value, periods=self.periods, **kwargs)

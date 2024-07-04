@@ -28,8 +28,7 @@ from spdm.utils.type_hint import array_type, as_array, is_array, is_scalar
 from .sp_view import SpView
 
 
-@SpView.register(["matplotlib"])
-class MatplotlibView(SpView):
+class MatplotlibView(SpView, plugin_name="matplotlib"):
 
     def _figure_post(
         self,

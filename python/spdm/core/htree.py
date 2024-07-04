@@ -550,9 +550,10 @@ class HTree(HTreeNode):
             res = self._entry.find(predicate, args, **kwargs)
         return res
 
-    def __search__(self, predicate, *args, **kwargs) -> typing.Generator[HTreeNode, None, None]:
+    def __search__(self, *args, **kwargs) -> typing.Generator[HTreeNode, None, None]:
+
         cached_key = []
-        for key, value in Path().search(self._cache, predicate, Query.tags.get_item):
+        for key, value in Path().search(self._cache, Query.tags.get_item):
             if isinstance(key, (str, int)):
                 cached_key.append(key)
                 entry = None if self._entry is None else self._entry.child(key)
@@ -562,7 +563,7 @@ class HTree(HTreeNode):
                 yield Path().project(value, *args, **kwargs)
 
         if self._entry is not None:
-            for key, entry in self._entry.search(predicate, Query.tags.get_item):
+            for key, entry in self._entry.search(Query.tags.get_item):
                 if not isinstance(key, (str, int)) or key in cached_key:
                     continue
                 node = self.__as_node__(key, _not_found_, _entry=entry)

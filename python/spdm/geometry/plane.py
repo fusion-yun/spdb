@@ -3,16 +3,16 @@ import typing
 
 import numpy as np
 
-from ..core.geo_object import GeoObject,BBox
-from .line import Line
+from spdm.core.geo_object import GeoObject, BBox
+from spdm.geometry.line import Line
 
 
 class Plane(GeoObject):
-    """ Plane
-        平面，二维几何体
+    """Plane
+    平面，二维几何体
     """
 
-    def __init__(self, *args,   **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, rank=2, **kwargs)
 
     @abc.abstractproperty

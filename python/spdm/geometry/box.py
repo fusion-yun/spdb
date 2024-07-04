@@ -1,4 +1,4 @@
-from __future__ import annotations
+
 import numpy as np
 from spdm.core.geo_object import GeoObject, BBox, BBox
 from spdm.utils.type_hint import array_type

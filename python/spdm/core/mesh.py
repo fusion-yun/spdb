@@ -239,7 +239,7 @@ class Mesh(Domain):
         """将 obj 画在 domain 上，默认为 n维 contour。"""
 
         # view_point = ("RZ",)
-        geo = {}
+        geo = {"$type": "contour"}
 
         match view_point.lower():
             case "rz":

@@ -4,19 +4,17 @@ import typing
 import numpy as np
 
 from spdm.utils.type_hint import ArrayType
+from spdm.core.geo_object import GeoObject, BBox
+from spdm.geometry.line import Segment
+from spdm.geometry.point import Point
+from spdm.geometry.point_set import PointSet
+from spdm.geometry.polyline import Polyline
 
-from ..core.geo_object import GeoObject,BBox
-from .line import Segment
-from .point import Point
-from .point_set import PointSet
-from .polyline import Polyline
 
+class Polygon(PointSet, plugin_name="polygon"):
+    """Polygon 多边形"""
 
-@GeoObject.register(["polygon", "Polygon"])
-class Polygon(PointSet):
-    """ Polygon 多边形 """
-
-    def __init__(self, *args,  **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, rank=2, **kwargs)
 
     @property
@@ -52,7 +50,7 @@ class Polygon(PointSet):
 
 @Polygon.register("rectangle")
 class Rectangle(GeoObject):
-    def __init__(self, x, y, width, height, ** kwargs) -> None:
+    def __init__(self, x, y, width, height, **kwargs) -> None:
         super().__init__(**kwargs)
         self._x = x
         self._y = y
@@ -60,22 +58,23 @@ class Rectangle(GeoObject):
         self._height = height
 
     @property
-    def bbox(self) -> BBox: return BBox([self._x, self._y], [self._width, self._height])
+    def bbox(self) -> BBox:
+        return BBox([self._x, self._y], [self._width, self._height])
 
 
 @Polygon.register("regular_polygon")
 class RegularPolygon(Polygon):
-    """ Regular Polygon
-        正多边形
+    """Regular Polygon
+    正多边形
 
-        cneter: Point or tuple or list  
-            中心点
-        radius: float
-            半径
-        num_of_edges: int
-            边数
-        rot: float
-            旋转角度
+    cneter: Point or tuple or list
+        中心点
+    radius: float
+        半径
+    num_of_edges: int
+        边数
+    rot: float
+        旋转角度
     """
 
     def __init__(self, center: Point, radius: float, num_of_edges: int, *args, **kwargs) -> None:
