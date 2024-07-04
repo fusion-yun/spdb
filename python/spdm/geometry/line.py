@@ -1,41 +1,33 @@
-import abc
 import collections.abc
 import typing
 from functools import cached_property
-from typing import Any
 
 import numpy as np
 
-from ..utils.logger import logger
-from ..utils.type_hint import ArrayType
+from spdm.utils.logger import logger
+from spdm.utils.type_hint import ArrayType
+from spdm.core.sp_tree import annotation
+from spdm.core.geo_object import GeoObject, BBox
+from spdm.geometry.point import Point
+from spdm.geometry.vector import Vector
 
-from ..core.geo_object import GeoObject, BBox
-from .point import Point
-from .vector import Vector
 
-
-@GeoObject.register("line")
-class Line(GeoObject):
+class Line(GeoObject, plugin_name="line"):
     """Line
     线，一维几何体
     """
 
-    def __init__(self, p0: Point | ArrayType, p1: Point | ArrayType, *args, **kwargs) -> None:
-        super().__init__(*args, rank=1, **kwargs)
-        self._p0 = Point(*p0)
-        self._p1 = Point(*p1)
+    def __init__(self, *args, **kwargs) -> None:
+        if len(args) == 2:
+            p0, p1 = args
+            super().__init__(p0=p0, p1=p1, rank=1, **kwargs)
+        else:
+            super().__init__(*args, **kwargs)
 
-    @property
-    def p0(self) -> Point:
-        return self._p0
+    p0: Point
+    p1: Point
 
-    @property
-    def p1(self) -> Point:
-        return self._p1
-
-    @property
-    def length(self) -> float:
-        return self.measure
+    length: float = annotation(alias="measure")
 
     @property
     def measure(self) -> float:
@@ -51,9 +43,8 @@ class Line(GeoObject):
 
     @property
     def bbox(self) -> BBox:
+        """boundary box of geometry [ [...min], [...max] ]"""
         return BBox([self.p0.x, self.p0.y], [self.p1.x - self.p0.x, self.p1.y - self.p0.y])
-
-    """ boundary box of geometry [ [...min], [...max] ] """
 
     def contains(self, o) -> bool:
         return self._impl.contains(o._impl if isinstance(o, GeoObject) else o)
@@ -113,21 +104,12 @@ class Line(GeoObject):
     def trim(self):
         return NotImplemented
 
-    def remesh(self, mesh_type=None):
-        return NotImplemented
+
+class Ray(Line, plugin_name="ray"):
+    pass
 
 
-@Line.register("ray")
-class Ray(Line):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-
-@Line.register("segment")
-class Segment(Line):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
+class Segment(Line, plugin_name="segment"):
     @property
     def midpoint(self) -> Point:
         return Point((self.p0 + self.p1) * 0.5)

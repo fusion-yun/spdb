@@ -11,9 +11,6 @@ class StructuredMesh(Mesh, plugin_name="structured"):
     结构化网格上的点可以表示为长度为n=rank的归一化ntuple，记作 uv，uv_r \\in [0,1]
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
     periods: Vector[bool]
     """Periodic boundary condition  周期性网格,  标识每个维度周期长度"""
 

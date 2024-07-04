@@ -1,20 +1,22 @@
 import typing
 import inspect
 from copy import copy
-from functools import cache
+
+# from functools import cache
 
 
 from spdm.core.pluggable import Pluggable
 from spdm.core.sp_tree import SpTree
-from spdm.core.property_tree import PropertyTree
+
+# from spdm.core.property_tree import PropertyTree
 
 
 class SpObject(Pluggable, SpTree):
     """对象的基类/抽象类"""
 
-    TYPE_TAG = ("type", "@type", "@class")
+    def __new__(cls, *args, _entry=None, **kwargs):
+        _plugin_name = kwargs.pop("type", None)
 
-    def __new__(cls, *args, _plugin_name=None, _entry=None, **kwargs):
         if _plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
             _plugin_name = args[0].get("type", None) or args[0].get("@type", None) or args[0].get("@class", None)
 
@@ -29,16 +31,16 @@ class SpObject(Pluggable, SpTree):
     def __copy__(self) -> typing.Self:
         return SpTree.__copy__(self)
 
-    @property
-    @cache
-    def metadata(self):
-        """
-        Return the metadata.
+    # @property
+    # @cache
+    # def metadata(self):
+    #     """
+    #     Return the metadata.
 
-        Returns:
-            PropertyTree: The metadata.
-        """
-        return PropertyTree(self._metadata)
+    #     Returns:
+    #         PropertyTree: The metadata.
+    #     """
+    #     return PropertyTree(self._metadata)
 
 
 _T = typing.TypeVar("_T")

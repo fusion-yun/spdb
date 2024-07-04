@@ -2,49 +2,27 @@ from __future__ import annotations
 
 import typing
 import numpy as np
+import numpy.typing as np_tp
 from spdm.utils.logger import logger
-from spdm.utils.type_hint import ArrayType, NumericType
+from spdm.utils.type_hint import array_type
 from spdm.core.geo_object import GeoObject, BBox
+from spdm.core.sp_tree import sp_property
+
+_T = typing.TypeVar("_T", int, float, complex)
 
 
-class Point(GeoObject):
+class Point(GeoObject, plugin_name="point"):
     """Point
     点，零维几何体
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        if len(args) == 1:
-            if isinstance(args[0], (list, tuple)):
-                args = args[0]
-            elif isinstance(args[0], dict):
-                args = [*args[0].values()]
-        super().__init__(*args, rank=0, ndims=len(args), **kwargs)
-        self._coord = np.array(args)
+    coordinate: array_type
 
-    def __iter__(self) -> typing.Generator[float, None, None]:
-        yield from self._coord
+    x: float = sp_property(alias="coordinate/0")
+    y: float = sp_property(alias="coordinate/1")
+    z: float = sp_property(alias="coordinate/2")
 
-    @property
-    def r(self) -> float:
-        """just a walkaround for spherical coordinate system"""
-        return self._coord[0]
-
-    @property
-    def z(self) -> float:
-        """just a walkaround for spherical coordinate system"""
-        return self._coord[1]
-
-    @property
-    def x(self) -> float:
-        return self._coord[0]
-
-    @property
-    def y(self) -> float:
-        return self._coord[1]
-
-    @property
-    def measure(self) -> float:
-        return 0
+    measure: float = 0
 
     @property
     def points(self):

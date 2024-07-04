@@ -69,14 +69,16 @@ class HTreeNode:
         return False
 
     def __getstate__(self) -> dict:
-
-        state = {
-            "$type": f"{self.__class__.__module__}.{self.__class__.__name__}",
-            "$path": ".".join(self.__path__),
-            "$name": self.__name__,
-            "$entry": self._entry.__getstate__(),
-            "$metadata": self._metadata,
-        }
+        state: dict = super().__getstate__()
+        state.update(
+            {
+                "$type": f"{self.__class__.__module__}.{self.__class__.__name__}",
+                "$path": ".".join(self.__path__),
+                "$name": self.__name__,
+                "$entry": self._entry.__getstate__(),
+                "$metadata": self._metadata,
+            }
+        )
 
         if isinstance(self._cache, collections.abc.Mapping):
             state.update(get_state(self._cache))
@@ -85,7 +87,7 @@ class HTreeNode:
 
         return state
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict) -> dict | None:
 
         self._entry = as_entry(state.pop("$entry", None))
         self._metadata = state.pop("$metadata", {})
@@ -96,8 +98,11 @@ class HTreeNode:
 
         if self._cache is _not_found_:
             self._cache = state
-        elif len(state) > 0:
-            logger.warning(f"Ignore property {list(state.keys())}")
+            state = {}
+        # elif len(state) > 0:
+        #     logger.warning(f"Ignore property {list(state.keys())}")
+
+        return super().__setstate__(state)
 
     @property
     def __name__(self) -> str:
@@ -309,8 +314,6 @@ class HTree(HTreeNode):
     ## Path：
       - path 指向
     """
-
-    _DEFAULT_TYPE_HINT = _T
 
     @property
     def is_leaf(self) -> bool:
@@ -575,14 +578,10 @@ class HTree(HTreeNode):
 class Dict(GenericHelper[_T], HTree):
     """Dict 类型的 HTree 对象"""
 
-    def __init__(self, cache: typing.Any = _not_found_, /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
-
+    def __init__(self, cache: typing.Any = _not_found_, /, **kwargs):
         d = {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")}
         cache = Path().update(cache, d)
-
-        super().__init__(cache, _entry=_entry, _parent=_parent, **kwargs)
-        if self._cache is _not_found_:
-            self._cache = {}
+        super().__init__(cache, **kwargs)
 
     @property
     def is_mapping(self) -> bool:
@@ -633,9 +632,16 @@ class List(GenericHelper[_T], HTree):
     """List 类型的 HTree 对象"""
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self._cache is _not_found_:
-            self._cache = []
+        if len(args) == 1:
+            if isinstance(args[0], collections.abc.Sequence):
+                cache = args[0]
+            elif args[0] is _not_found_:
+                cache = []
+            else:
+                raise TypeError(f"Invalid args {args}")
+        else:
+            cache = list(args)
+        super().__init__(cache, **kwargs)
 
     @property
     def is_sequence(self) -> bool:
@@ -685,6 +691,17 @@ class List(GenericHelper[_T], HTree):
         if default_value is _not_found_:
             default_value = self._metadata.get("default_value", _not_found_)
         return super().__get_node__(key, default_value=default_value, **kwargs)
+
+    # def __missing__(self, idx: int) -> typing.Any:
+    #     """fallback 当 __getitem__ 没有找到元素时被调用"""
+    #     if not isinstance(idx, int):
+    #         return super().__missing__(idx)
+    #     if self._cache is _not_found_:
+    #         self._cache = [_not_found_] * (idx + 1)
+    #     else:
+    #         self._cache.extend([_not_found_] * (idx + 1 - len(self._cache)))
+
+    #     return self._cache[idx]
 
 
 collections.abc.MutableSequence.register(List)

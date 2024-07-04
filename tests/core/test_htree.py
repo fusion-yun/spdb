@@ -214,19 +214,22 @@ class TestHTree(unittest.TestCase):
         self.assertTrue(d.get("a", _not_found_) is _not_found_)
 
     def test_node_insert(self):
-        d = Dict[List]({"this_is_a_cache": True})
+
+        cache = {"this_is_a_cache": True}
+
+        d = Dict[List](cache)
 
         d.insert("a", "hello world {name}!")
 
-        self.assertEqual(d["a"][0], "hello world {name}!")
+        self.assertEqual(cache["a"][0], "hello world {name}!")
 
         d.insert("c", 1.23455)
 
-        self.assertEqual(d["c"][0], 1.23455)
+        self.assertEqual(cache["c"][0], 1.23455)
         self.assertEqual(d.get("c/0"), 1.23455)
 
         d.insert("c", {"a": "hello world", "b": 3.141567})
-        self.assertEqual(d["c"][1]["b"], 3.141567)
+        self.assertEqual(cache["c"][1]["b"], 3.141567)
         self.assertEqual(d.get("c/1/b"), 3.141567)
 
 

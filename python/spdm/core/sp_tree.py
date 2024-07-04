@@ -39,7 +39,6 @@
 
 """
 
-
 import inspect
 import typing
 from copy import deepcopy
@@ -110,8 +109,16 @@ class SpTree(HTree):
 
         super().__init_subclass__()
 
+    def __init__(self, cache: dict = _not_found_, **kwargs):
+        if isinstance(cache, dict) or cache is _not_found_:
+            cache = Path().update(cache, {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")})
+        elif cache is not _not_found_:
+            raise TypeError(f"Invalid cache {cache}!")
+
+        super().__init__(cache, **kwargs)
+
     def __getstate__(self) -> dict:
-        data = super().__getstate__()
+        state = super().__getstate__()
         for k, prop in inspect.getmembers(self.__class__, is_sp_property):
             if prop.getter is not None:
                 continue
@@ -121,17 +128,9 @@ class SpTree(HTree):
             if value is _not_found_:
                 continue
 
-            data[k] = value
+            state[k] = value
 
-        return data
-
-    def __init__(self, cache: dict = _not_found_, **kwargs):
-        if isinstance(cache, dict) or cache is _not_found_:
-            cache = Path().update(cache, {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")})
-        elif cache is not _not_found_:
-            raise TypeError(f"Invalid cache {cache}!")
-
-        super().__init__(cache, **kwargs)
+        return state
 
     # def fetch(self, *args, exclude=None, **kwargs) -> typing.Self:
     #     if len(args) + len(kwargs) == 0:  # FIXME: 在 flush 的时候会有问题，需要 debug
@@ -228,7 +227,7 @@ class SpProperty:
         self.setter = setter
         self.deleter = deleter
 
-        self.alias = alias
+        self.alias = as_path(alias) if alias is not None and len(alias) > 0 else None
         self.property_name: str = None
 
         self.type_hint = type_hint
@@ -270,11 +269,14 @@ class SpProperty:
         for base_cls in owner_cls.__bases__:
             prop = getattr(base_cls, name, _not_found_)
             if isinstance(prop, SpProperty):
+                # TODO: 区分 annotation 和 sp_property，
+                #       在class类定义中为 annotation
+                #       在instance 实例中为 sp_property
                 if self.default_value is _not_found_:
                     self.default_value = prop.default_value
 
                 if self.alias is None and prop.alias is not None:
-                    self.alias = as_path(prop.alias)
+                    self.alias = prop.alias
 
                 self.doc += prop.doc
 

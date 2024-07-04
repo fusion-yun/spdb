@@ -4,13 +4,17 @@ import typing
 from copy import copy
 import numpy as np
 
+from spdm.utils.type_hint import ArrayLike, ArrayType, array_type
+from spdm.utils.tags import _not_found_
+from spdm.utils.logger import logger
+
 from spdm.core.sp_tree import sp_property
 from spdm.core.sp_object import SpObject
-from spdm.utils.type_hint import ArrayLike, ArrayType, array_type
-from spdm.utils.logger import logger
 
 
 class BBox:
+    """Boundary Box"""
+
     def __init__(self, origin: ArrayLike = None, dimensions: ArrayLike = None, transform=None, shift=None) -> None:
         self._origin = np.asarray(origin)
         self._dimensions = np.asarray(dimensions)
@@ -147,8 +151,6 @@ class GeoObject(SpObject):
 
     def __init__(self, *args, ndim: int = 0, rank: int = -1, **kwargs) -> None:
         super().__init__(*args, ndim=ndim, rank=rank if rank is not None else ndim, **kwargs)
-
-        # self._metadata.setdefault("name", f"{self.__class__.__name__}_{uuid.uuid1()}")
 
     def __view__(self, *args, **kwargs):
         return self
@@ -329,7 +331,7 @@ class GeoObjectSet(GeoObject, typing.List[GeoObject]):
 
 
 def as_geo_object(*args, **kwargs) -> GeoObject | GeoObjectSet:
-    if len(args) == 1 and args[0] is None:
+    if len(args) == 1 and (args[0] is None or args[0] is _not_found_):
         return None
     elif len(kwargs) > 0 or len(args) != 1:
         return GeoObject(*args, **kwargs)
@@ -338,4 +340,4 @@ def as_geo_object(*args, **kwargs) -> GeoObject | GeoObjectSet:
     elif isinstance(args[0], collections.abc.Sequence):
         return GeoObjectSet(*args, **kwargs)
     else:
-        return GeoObject(*args)
+        return GeoObject(*args, **kwargs)

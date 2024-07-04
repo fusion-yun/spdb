@@ -12,13 +12,15 @@ class TestGeometryObject(unittest.TestCase):
     def test_line(self):
         p0 = (0, 0)
         p1 = (1, 1)
-        gobj = GeoObject(p0, p1, type="line")
-        self.assertEqual(type(gobj).__name__, "Line")
+        gobj = GeoObject(p0, p1, geo_type="line")
+
         from spdm.geometry.line import Line
+
         self.assertIsInstance(gobj, Line)
 
     def test_line2(self):
         from spdm.geometry.line import Line
+
         p0 = (4, 5, 6)
         p1 = (1, 2, 3)
         gobj = Line(p0, p1)
@@ -29,6 +31,7 @@ class TestGeometryObject(unittest.TestCase):
 
     def test_coordinates(self):
         from spdm.geometry.line import Line
+
         p0 = (4, 5, 6)
         p1 = (1, 2, 3)
 
@@ -46,5 +49,5 @@ class TestGeometryObject(unittest.TestCase):
     #     logger.debug(len(gobj))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
