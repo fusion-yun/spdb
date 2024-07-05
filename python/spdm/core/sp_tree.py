@@ -46,6 +46,7 @@ from _thread import RLock
 
 from spdm.core.htree import HTree, HTreeNode
 from spdm.core.path import Path, as_path
+from spdm.core.entry import as_entry, EntryChain
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_, _undefined_
 
@@ -109,16 +110,28 @@ class SpTree(HTree):
 
         super().__init_subclass__()
 
-    def __init__(self, cache=_not_found_, **kwargs):
-        if isinstance(cache, SpTree):
-            cache = cache.__getstate__()
-            
+    def __init__(self, *args, _entry=None, **kwargs):
+        cache = {}
+        entries = []
+        for a in args:
+            if isinstance(a, HTree):
+                cache = Path().update(cache, a._cache)
+                if a._entry is not None:
+                    entries.append(a._entry)
+            elif isinstance(a, dict):
+                cache = Path().update(cache, a)
+            elif a is not None and a is not _not_found_:
+                entries.append(as_entry(a))
+
         if isinstance(cache, dict) or cache is _not_found_:
             cache = Path().update(cache, {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")})
         elif cache is not _not_found_:
             raise TypeError(f"Invalid cache {cache}!")
 
-        super().__init__(cache, **kwargs)
+        if len(entries) > 0:
+            _entry = EntryChain(*entries, _entry)
+
+        super().__init__(cache, _entry=_entry, **kwargs)
 
     def __getstate__(self) -> dict:
         state = super().__getstate__()
