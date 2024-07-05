@@ -622,7 +622,8 @@ class Path(list):
         #     res = {k: Path._get(source, k, *args, **kwargs) for k in key}
         # elif isinstance(key, dict):  # mapping
         #     res = {k: Path._get(source, v, *args, **kwargs) for k, v in key.items()}
-
+        elif isinstance(key, str) and key.isidentifier() and hasattr(target.__class__, key):
+            res = getattr(target, key, _not_found_)
         elif hasattr(target.__class__, "__get_node__") and not (isinstance(key, str) and key.startswith("_")):
             res = target.__get_node__(key, *args, **kwargs)
             args = tuple()

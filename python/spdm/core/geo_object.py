@@ -289,12 +289,17 @@ class GeoObject(GeoObjectBase, SpTree):
     def __init__(self, *args, points=None, **kwargs) -> None:
         if not (len(args) == 0 or (len(args) == 1 and isinstance(args[0], dict)) or points is not None):
             if len(args) == 1:
-                points = np.asarray(args[0], dtype=float)
+                points = np.asarray(args[0])
             else:
                 points = np.stack(args, axis=-1)
             args = ()
 
         super().__init__(*args, points=points, **kwargs)
+        if self.points.shape[-1] != self.__class__._ndim:
+            self._ndim = self.points.shape[-1]
+
+    def __str__(self) -> str:
+        return f"<{self.__class__.__name__}> {self.points}</{self.__class__.__name__}>"
 
     def __equal__(self, other: typing.Self) -> bool:
         return (other.__class__ is self.__class__) and np.all(self.points == other.points)
@@ -423,6 +428,9 @@ class GeoObjectSet(List[_TGeo], GeoObjectBase):
 
     # def __svg__(self) -> str:
     #     return f"<g >\n" + "\t\n".join([g.__svg__ for g in self if isinstance(g, GeoObject)]) + "</g>"
+    def __str__(self) -> str:
+        contents = "\n\t".join([str(g) for g in self])
+        return f"""<{self.__class__.__name__}> {contents} </{self.__class__.__name__}>"""
 
     @sp_property
     def bbox(self) -> BBox:
