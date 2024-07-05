@@ -226,8 +226,9 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         elif isinstance(obj, Rectangle):
             p0 = obj.points[0]
             p1 = obj.points[1]
-            w = p1 - p0
-            canvas.add_patch(plt.Rectangle((p0[0], p0[1]), w[0], w[1], fill=False, **s_styles))
+            w = p1[0] - p0[0]
+            h = p1[1] - p0[1]
+            canvas.add_patch(plt.Rectangle((p0[0], p0[1]), w, h, fill=False, **s_styles))
 
         elif isinstance(obj, Circle):
             canvas.add_patch(plt.Circle((obj.origin[0], obj.origin[1]), obj.radius, fill=False, **s_styles))

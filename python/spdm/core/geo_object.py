@@ -287,11 +287,15 @@ class GeoObject(GeoObjectBase, SpTree):
         cls.__make_class__(coordinate_name, rank, ndim, create_new_class=False)
 
     def __init__(self, *args, points=None, **kwargs) -> None:
-        if points is None and not (len(args) == 0 or (len(args) == 1 and isinstance(args[0], dict))):
-            if len(args) == 1:
-                points = np.asarray(args[0])
-            else:
-                points = np.stack(args, axis=-1)
+        if points is not None:
+            pass
+        elif len(args)==1 and isinstance(args[0],  dict ):
+            pass
+        elif len(args)==1 and isinstance(args[0],  ( np.ndarray,list,tuple) ):
+            points = np.asarray(args[0])
+            args =tuple()
+        else:
+            points = np.stack(args, axis=-1)
             args = ()
 
         super().__init__(*args, points=points, **kwargs)

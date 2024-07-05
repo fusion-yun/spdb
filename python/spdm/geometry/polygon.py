@@ -2,7 +2,7 @@ import collections.abc
 import typing
 
 import numpy as np
-
+from spdm.core.sp_tree import sp_property
 from spdm.core.geo_object import GeoObject, BBox
 from spdm.geometry.line import Segment
 from spdm.geometry.point import Point
