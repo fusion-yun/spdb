@@ -289,11 +289,14 @@ class GeoObject(GeoObjectBase, SpTree):
     def __init__(self, *args, points=None, **kwargs) -> None:
         if points is not None:
             pass
-        elif len(args)==1 and isinstance(args[0],  dict ):
+        elif len(args) == 1 and isinstance(args[0], dict):
             pass
-        elif len(args)==1 and isinstance(args[0],  ( np.ndarray,list,tuple) ):
+        elif len(args) == 1 and isinstance(args[0], (np.ndarray, list, tuple)):
             points = np.asarray(args[0])
-            args =tuple()
+            args = tuple()
+        elif len(args) == 1 and isinstance(args[0], GeoObject):
+            points = args[0].points
+            args = ()
         else:
             points = np.stack(args, axis=-1)
             args = ()

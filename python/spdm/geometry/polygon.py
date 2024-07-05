@@ -1,12 +1,14 @@
-import collections.abc
 import typing
 
-import numpy as np
 from spdm.core.sp_tree import sp_property
-from spdm.core.geo_object import GeoObject, BBox
+from spdm.core.geo_object import GeoObject
 from spdm.geometry.line import Segment
 from spdm.geometry.point import Point
 from spdm.geometry.polyline import Polyline
+
+
+class Rectangle(GeoObject, plugin_name="rectangle"):
+    pass
 
 
 class Polygon(GeoObject, plugin_name="polygon", rank=2):
@@ -41,10 +43,6 @@ class Polygon(GeoObject, plugin_name="polygon", rank=2):
     @property
     def boundary(self) -> Polyline:
         return Polyline(self._points, is_closed=True)
-
-
-class Rectangle(GeoObject, plugin_name="rectangle"):
-    pass
 
 
 class RegularPolygon(Polygon, plugin_name="regular_polygon"):

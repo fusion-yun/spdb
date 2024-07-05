@@ -221,6 +221,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             canvas.add_artist(plt.Line2D([obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **s_styles))
 
         elif isinstance(obj, Curve):
+            logger.debug(obj.points.shape)
             canvas.add_patch(plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **s_styles))
 
         elif isinstance(obj, Rectangle):
