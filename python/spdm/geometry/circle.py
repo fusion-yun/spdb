@@ -1,8 +1,7 @@
 import typing
-
-from spdm.utils.type_hint import ArrayType
+import numpy as np
 from spdm.core.geo_object import GeoObject, BBox
-
+from spdm.core.sp_tree import sp_property
 from spdm.geometry.line import Line
 from spdm.geometry.plane import Plane
 from spdm.geometry.point import Point
@@ -10,32 +9,22 @@ from spdm.geometry.solid import Solid
 from spdm.geometry.surface import Surface
 
 
-class Circle(GeoObject, plugin_name="circle"):
+class Circle(GeoObject, plugin_name="circle", rank=1):
     """Circle
     圆，具有一个固定圆心和一个固定半径
     """
 
-    def __init__(self, x: float, y: float, r: float, **kwargs) -> None:
-        super().__init__(rank=1, ndims=2, is_closed=True, **kwargs)
-        self._x = x
-        self._y = y
-        self._r = r
-
-    @property
+    @sp_property
     def bbox(self) -> BBox:
-        return BBox([self._x - self._r, self._y - self._r], [2.0 * self._r, 2.0 * self._r])
+        o = self.origin
+        r = self.radius
+        return BBox(o - r, [2.0 * r, 2.0 * r])
 
-    @property
-    def x(self) -> float:
-        return self._x
+    origin: Point = sp_property(alias="points/0")
 
-    @property
-    def y(self) -> float:
-        return self._y
-
-    @property
-    def r(self) -> float:
-        return self._r
+    @sp_property
+    def radius(self) -> float:
+        return np.sqrt(np.sum((self.points[1] - self.points[0]) ** 2))
 
     def map(self, u, *args, **kwargs):
         return NotImplemented

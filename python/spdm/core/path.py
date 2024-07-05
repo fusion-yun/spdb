@@ -121,8 +121,8 @@ class Path(list):
 
     # fmt:on
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(Path.parser(*args, **kwargs))
+    def __init__(self, *args):
+        super().__init__(Path.parser(*args))
 
     def __repr__(self):
         return Path._to_str(self)
@@ -443,7 +443,7 @@ class Path(list):
             yield Query(path)
 
     @staticmethod
-    def parser(*args, **kwargs) -> list:
+    def parser(*args) -> list:
         """Parse the PathLike to list"""
         if len(args) == 1 and (args[0] is None or args[0] is _not_found_):
             return []
@@ -634,6 +634,8 @@ class Path(list):
                 res = _not_found_
             else:
                 res = target[key]
+        elif isinstance(target, collections.abc.Sequence) and isinstance(key, tuple):
+            res = target[*key]
         elif isinstance(target, collections.abc.Sequence) and isinstance(key, slice):
             res = target[key]
         elif isinstance(target, collections.abc.Sequence) and isinstance(key, (str)):
@@ -798,8 +800,11 @@ class Path(list):
         elif isinstance(key, (int, str)):
             value = Path._find(Path._get(target, key), sub_path, *p_args, **p_kwargs)
         elif isinstance(key, tuple):
-            value = [Path._find(target, Path(k)[:] + sub_path) for k in key]
-            value = tuple(value)
+            if isinstance(target, np.ndarray):
+                value = Path._find(target[*key], sub_path, *p_args, **p_kwargs)
+            else:
+                value = [Path._find(target, Path(k)[:] + sub_path) for k in key]
+                value = tuple(value)
             value = Path._project(value, *p_args, **p_kwargs)
         elif isinstance(key, list):
             value = [Path._find(target, Path(k)[:] + sub_path) for k in key]
@@ -945,11 +950,15 @@ def merge_tree(*args, **kwargs) -> _T:
     return update_tree({}, *args, **kwargs)
 
 
-def as_path(*args, **kwargs):
-    if len(args) == 1 and len(kwargs) == 0 and isinstance(args[0], Path):
-        return args[0]
+def as_path(*args):
+    if len(args) == 0:
+        return Path()
+    path = args[0]
+    args = args[1:]
+    if isinstance(path, Path):
+        return path
 
-    if len(args) > 0 and isinstance(args[0], pathlib.Path):
-        args = (args[0].as_posix(), *args[1:])
+    if isinstance(path, pathlib.Path):
+        path = path.as_posix()
 
-    return Path(*args, **kwargs)
+    return Path(path, *args)

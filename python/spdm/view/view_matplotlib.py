@@ -211,16 +211,16 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             )
 
         elif isinstance(obj, Polygon):
-            canvas.add_patch(plt.Polygon(obj._points, fill=False, **s_styles))
+            canvas.add_patch(plt.Polygon(obj.points, fill=False, **s_styles))
 
         elif isinstance(obj, Polyline):
-            canvas.add_patch(plt.Polygon(obj._points, fill=False, closed=obj.is_closed, **s_styles))
+            canvas.add_patch(plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **s_styles))
 
         elif isinstance(obj, Line):
-            canvas.add_artist(plt.Line2D([obj.p0.x, obj.p1.x], [obj.p0.y, obj.p1.y], **s_styles))
+            canvas.add_artist(plt.Line2D([obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **s_styles))
 
         elif isinstance(obj, Curve):
-            canvas.add_patch(plt.Polygon(obj._points, fill=False, closed=obj.is_closed, **s_styles))
+            canvas.add_patch(plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **s_styles))
 
         elif isinstance(obj, Rectangle):
             canvas.add_patch(plt.Rectangle((obj._x, obj._y), obj._width, obj._height, fill=False, **s_styles))
@@ -229,7 +229,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             canvas.add_patch(plt.Circle((obj.x, obj.y), obj.r, fill=False, **s_styles))
 
         elif isinstance(obj, Point):
-            canvas.scatter(obj.x, obj.y, **s_styles)
+            canvas.scatter(obj[0], obj[1], **s_styles)
 
         elif isinstance(obj, PointSet):
             canvas.scatter(*obj.points, **s_styles)

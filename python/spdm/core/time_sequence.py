@@ -1,5 +1,3 @@
-
-
 import collections.abc
 import typing
 import numpy as np
@@ -117,7 +115,7 @@ class TimeSequence(List[_TSlice]):
             pos = self._entry_cursor or 0
 
             while True:
-                t_time = self._entry.child(f"{pos}/time").find(default_value=_not_found_)
+                t_time = self._entry.child(f"{pos}/time").get()
 
                 if t_time is _not_found_ or t_time is None or t_time > time:
                     time = None

@@ -43,9 +43,9 @@ class Entry:  # pylint: disable=R0904
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, _plugin_name=None):
         self._cache = _not_found_ if len(args) == 0 else args[0]
-        self._path: Path = as_path(*args[1:], **kwargs)
+        self._path: Path = as_path(*args[1:])
 
     def __copy__(self) -> typing.Self:
         other = object.__new__(self.__class__)
@@ -283,7 +283,7 @@ class EntryChain(Entry):
         return any(res)
 
 
-def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, format=None, **kwargs):
+def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, _plugin_name=None, **kwargs):
     """open entry from uri"""
 
     uri = uri_split(uri)
@@ -292,20 +292,20 @@ def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, format=None, **
 
     uri.fragment = ""
 
-    if format is None:
-        format = uri.protocol
+    if _plugin_name is None:
+        _plugin_name = uri.protocol
 
     entry = None
     # FIXME: 注册更多的默认file类型
-    if format.startswith("file+") or format in ("file", "mdsplus", "hdf5", "netcdf", "json", "yaml"):
+    if _plugin_name.startswith("file+") or _plugin_name in ("file", "mdsplus", "hdf5", "netcdf", "json", "yaml"):
         from spdm.core.file import File
 
         if not uri.path:
             entry = Entry()
         else:
-            entry = File(uri, *args, format=format, **kwargs).__entry__()
+            entry = File(uri, *args, format=_plugin_name, **kwargs).__entry__()
 
-    elif format.startswith("service+") or format in (
+    elif _plugin_name.startswith("service+") or _plugin_name in (
         "service",
         "http",
         "https",
@@ -318,12 +318,12 @@ def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, format=None, **
     ):
         from spdm.core.service import Service
 
-        entry = Service(uri, *args, format=format, **kwargs).__entry__()
+        entry = Service(uri, *args, _plugin_name=_plugin_name, **kwargs).__entry__()
     else:
         from spdm.core.mapper import Mapper
 
         try:
-            entry = Mapper(uri, *args, format=format, **kwargs)
+            entry = Mapper(uri, *args, _plugin_name=_plugin_name, **kwargs)
         except ModuleNotFoundError as error:
             raise ModuleNotFoundError(f"{uri.protocol} is not a mapping!") from error
 
@@ -331,17 +331,17 @@ def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, format=None, **
 
 
 @singledispatch
-def as_entry(obj, *args, plugin_name=None, **kwargs) -> Entry:
+def as_entry(obj, *args, plugin_name=None) -> Entry:
     """Try convert obj to Entry."""
 
     if plugin_name is not None:
-        entry = Entry(obj, *args, _plugin_name=plugin_name, **kwargs)
+        entry = Entry(obj, *args, _plugin_name=plugin_name)
     elif hasattr(obj.__class__, "__entry__"):
         if len(args) + len(kwargs) > 0:
             raise RuntimeError(f"Unused arguments {args} {kwargs}")
         entry = obj.__entry__()
     else:
-        entry = Entry(obj, *args, **kwargs)
+        entry = Entry(obj, *args)
 
     return entry
 

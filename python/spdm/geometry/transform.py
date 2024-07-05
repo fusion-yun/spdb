@@ -1,10 +1,10 @@
-from .solid import Solid
-from .plane import Plane
-from .point import Point
-from .line import Line
+from spdm.geometry.solid import Solid
+from spdm.geometry.plane import Plane
+from spdm.geometry.point import Point
+from spdm.geometry.line import Line
 
 
-class Sweep:
+class Sweep(Solid):
     def __init__(self, shape: Plane | Line, axis: Point | Line, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._section = shape
@@ -27,6 +27,6 @@ class SweepSurface(Solid):
 class SweepSolid(Solid):
     Boundary = SweepSurface
 
-    def __init__(self, shape: Plane, axis:  Line, *args, **kwargs) -> None:
+    def __init__(self, shape: Plane, axis: Line, *args, **kwargs) -> None:
         super().__init__(shape, axis, *args, **kwargs)
         self._boundary = self.__class__.Boundary(shape.boundary, axis, *args)

@@ -4,35 +4,21 @@ from functools import cached_property
 
 import numpy as np
 
-from spdm.utils.tags import _not_found_
-from spdm.utils.logger import logger
 from spdm.utils.type_hint import ArrayType
 from spdm.core.sp_tree import annotation
-from spdm.core.geo_object import GeoObject, BBox
+from spdm.core.geo_object import GeoObject
 from spdm.geometry.point import Point
 from spdm.geometry.vector import Vector
 
 
-class Line(GeoObject, plugin_name="line"):
+class Line(GeoObject, plugin_name="line", rank=1):
     """Line
     线，一维几何体
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        if len(args) == 1 and isinstance(args[0], (list, tuple)):
-            args = args[0]
+    p0: Point = annotation(alias="points/0")
 
-        if len(args) == 1 and (isinstance(args[0], dict) or args[0] is _not_found_):
-            cache = args[0]
-        elif len(args) == 2:
-            cache = {"p0": args[0], "p1": args[1]}
-        else:
-            cache = _not_found_
-
-        super().__init__(cache, rank=1, **kwargs)
-
-    p0: Point
-    p1: Point
+    p1: Point = annotation(alias="points/1")
 
     length: float = annotation(alias="measure")
 
@@ -47,11 +33,6 @@ class Line(GeoObject, plugin_name="line"):
     @property
     def boundary(self) -> typing.List[Point]:
         return [self.p0, self.p1]
-
-    @property
-    def bbox(self) -> BBox:
-        """boundary box of geometry [ [...min], [...max] ]"""
-        return BBox([self.p0.x, self.p0.y], [self.p1.x - self.p0.x, self.p1.y - self.p0.y])
 
     def contains(self, o) -> bool:
         return self._impl.contains(o._impl if isinstance(o, GeoObject) else o)

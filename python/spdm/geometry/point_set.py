@@ -6,14 +6,19 @@ from copy import copy
 
 import numpy as np
 
-from ..utils.logger import logger
+from spdm.utils.logger import logger
 from spdm.utils.type_hint import ArrayLike, ArrayType, NumericType, array_type, nTupleType
 
-from ..core.geo_object import GeoObject, BBox
-from .point import Point
+from spdm.core.geo_object import GeoObject, BBox
+from spdm.geometry.point import Point
 
 
 class PointSet(GeoObject):
+    """PointSet 点集
+    ================
+    A set of points in n-dimensional space.
+    """
+
     def __init__(self, *args, **kwargs) -> None:
         if len(args) == 1:
             if isinstance(args[0], collections.abc.Sequence):
@@ -36,9 +41,8 @@ class PointSet(GeoObject):
         else:
             raise TypeError(f"illegal type args[0]={type(args[0])}")
 
-        super().__init__(ndim=points.shape[-1], **kwargs)
+        super().__init__(ndim=points.shape[-1], points=points, **kwargs)
 
-        self._points: array_type = points
         self.set_coordinates()
 
     def set_coordinates(self, *args):

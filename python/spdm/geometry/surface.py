@@ -3,15 +3,13 @@ import typing
 from copy import copy
 import numpy as np
 
-from spdm.utils.logger import logger
-from spdm.utils.type_hint import ArrayLike, ArrayType, NumericType, array_type, nTupleType
-from spdm.core.geo_object import GeoObject, BBox
-from spdm.geometry.point_set import PointSet
+from spdm.utils.type_hint import ArrayType, array_type
+from spdm.core.geo_object import GeoObject
 from spdm.geometry.curve import Curve
 from spdm.geometry.line import Segment
 
 
-class Surface(PointSet):
+class Surface(GeoObject, plugin_name="surface", rank=2):
     """Surface"""
 
     def __init__(self, *args, uv=None, **kwargs) -> None:

@@ -388,13 +388,11 @@ class HTree(HTreeNode):
     # -----------------------------------------------------------------------------------
     # Python special methods
 
-    @typing.final
     def __getitem__(self, *path: PathLike) -> _T:
         """Get item from tree by path. 当找不到时，调用 __missing__ 方法"""
         node = self.get(Path(*path), default_value=_not_found_)
         return node if node is not _not_found_ else self.__missing__(path)
 
-    @typing.final
     def __setitem__(self, path: PathLike, value) -> None:
         """Set item to tree by path. alias of update"""
         if isinstance(path, tuple):
@@ -402,7 +400,6 @@ class HTree(HTreeNode):
         else:
             return self.update(path, value)
 
-    @typing.final
     def __delitem__(self, *path: PathLike) -> None:
         """Delete item. alias of delete"""
         return self.delete(*path)

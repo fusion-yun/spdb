@@ -1,23 +1,15 @@
-import abc
 import typing
 
-import numpy as np
-from spdm.utils.type_hint import ArrayType
-from ..core.geo_object import GeoObject,BBox
-from .line import Line, Segment
-from .plane import Plane
-from .point import Point
-from .polygon import Polygon
-from .point_set import PointSet
+from spdm.core.geo_object import GeoObject
+from spdm.geometry.line import Segment
+from spdm.geometry.polygon import Polygon
 
 
-class Polyhedron(PointSet):
-
-    def __init__(self, *args,  **kwargs) -> None:
-        super().__init__(*args, rank=3, **kwargs)
+class Polyhedron(GeoObject, plugin_name="polyhedron"):
 
     @property
-    def is_convex(self) -> bool: return True
+    def is_convex(self) -> bool:
+        return True
 
     @property
     def edges(self) -> typing.Generator[Segment, None, None]:

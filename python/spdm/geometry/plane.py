@@ -1,21 +1,12 @@
-import abc
-import typing
-
-import numpy as np
-
-from spdm.core.geo_object import GeoObject, BBox
-from spdm.geometry.line import Line
+from spdm.core.geo_object import GeoObject
 
 
-class Plane(GeoObject):
+class Plane(GeoObject, rank=2, plugin_name="plane"):
     """Plane
     平面，二维几何体
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, rank=2, **kwargs)
-
-    @abc.abstractproperty
+    @property
     def boundary(self) -> GeoObject:
         raise NotImplementedError(f"{self.__class__.__name__}")
 

@@ -1,6 +1,8 @@
 import abc
 import collections.abc
 import typing
+import inspect
+import functools
 from copy import copy
 import numpy as np
 
@@ -8,8 +10,11 @@ from spdm.utils.type_hint import ArrayLike, ArrayType, array_type
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 
+from spdm.core.htree import List
 from spdm.core.sp_tree import sp_property
-from spdm.core.sp_object import SpObject
+
+from spdm.core.pluggable import Pluggable
+from spdm.core.sp_tree import SpTree
 
 
 class BBox:
@@ -38,11 +43,15 @@ class BBox:
 
     @property
     def is_valid(self) -> bool:
-        return np.all(self._dimensions > 0) == True
+        return np.all(self._dimensions > 0)
 
     @property
     def is_degraded(self) -> bool:
-        return (np.any(np.isclose(self._dimensions, 0.0))) == True
+        return np.any(np.isclose(self._dimensions, 0.0))
+
+    @property
+    def is_null(self) -> bool:
+        return np.allclose(self._dimensions, 0)
 
     # def __equal__(self, other: BBox) -> bool:
     #     return np.allclose(self._xmin, other._xmin) and np.allclose(self._xmax, other._xmax)
@@ -137,45 +146,34 @@ class BBox:
         raise NotImplementedError(f"translate")
 
 
-class GeoObject(SpObject):
-    """Geomertic object
-    几何对象，包括点、线、面、体等
-
-    TODO:
-        - 支持3D可视化 （Jupyter+？）
-
+class GeoObjectBase(Pluggable):
+    """Geometry object base class
+    ===============================
+    几何对象基类，两个子类
+    - GeoEntity: 几何体，包括点、线、面、体等
+    - GeoObjectSet: 几何对象集合，包括多个几何体
     """
 
     _plugin_prefix = "spdm.geometry."
     _plugin_registry = {}
 
-    def __init__(self, *args, rank: int = 0, **kwargs) -> None:
-        super().__init__(*args, rank=rank, **kwargs)
+    _ndim = 3
+    _rank = 0
 
-    def __view__(self, *args, **kwargs):
-        return self
+    def __new__(cls, *args, _entry=None, **kwargs):
+        plugin_name = kwargs.pop("type", None)
 
-    # def _repr_html_(self) -> str:
-    #     """Jupyter 通过调用 _repr_html_ 显示对象"""
-    #     from ..view.View import display
-    #     return display(self, schema="html")
+        if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
+            plugin_name = args[0].get("type", None)
 
-    def __equal__(self, other: typing.Self) -> bool:
-        return (
-            isinstance(other, GeoObject)
-            and self.rank == other.rank
-            and self.ndim == other.ndim
-            and self.bbox == other.bbox
-        )
+        if plugin_name is None and _entry is not None:
+            plugin_name = _entry.get("type", None) or _entry.get("@type", None)
 
-    bbox: BBox
-    """boundary box of geometry [ [...min], [...max] ]"""
+        return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
 
-    points: array_type
-    """几何体端点的坐标 [*shape,ndim] (x0,y0),(x1,y1)"""
-
-    rank: int
-    """几何体（流形）维度  rank <=ndims
+    @property
+    def rank(self) -> int:
+        """几何体（流形）维度  rank <=ndims
 
             0: point
             1: curve
@@ -186,9 +184,11 @@ class GeoObject(SpObject):
         in which it extends. For example, a point has rank 0, a line has rank 1,
         a plane has rank 2, and a volume has rank 3.
         """
+        return self._rank
 
-    ndim: int = sp_property(alias="points/shape/-1")
-    """几何体所处的空间维度， = 0，1，2，3 ,...
+    @property
+    def ndim(self) -> int:
+        """几何体所处的空间维度， = 0，1，2，3 ,...
         The dimension of a geometric object, on the other hand, refers to the minimum number of
         coordinates needed to specify any point within it. In general, the rank and dimension of
         a geometric object are the same. However, there are some cases where they can differ.
@@ -196,6 +196,131 @@ class GeoObject(SpObject):
         it extends in only one independent direction, but it has dimension 3 because three
         coordinates are needed to specify any point on the curve.
         """
+        return self._ndim
+
+    def _repr_svg_(self) -> str:
+        """Jupyter 通过调用 _repr_html_ 显示对象"""
+        from spdm.view.sp_view import display
+
+        return display(self, schema="svg")
+
+    def __view__(self, *args, **kwargs) -> typing.Self:
+        """
+        TODO:
+        - 支持3D可视化 （Jupyter+？）
+
+        """
+        return self
+
+
+class GeoObject(GeoObjectBase, SpTree):
+    """Geomertic object
+    几何对象，包括点、线、面、体等
+
+
+    """
+
+    @classmethod
+    def __make_class__(
+        cls,
+        coordinate_name: str | list = None,
+        rank: int = None,
+        ndim: int = None,
+        create_new_class=True,
+    ):
+        """
+        example:
+            Point["RZ"]
+        """
+        n_cls_name = cls.__name__
+        cls_attrs = {}
+        if coordinate_name is not None:
+            n_cls_name += ("".join(coordinate_name)).upper()
+
+            cls_attrs.update(
+                {k.lower(): sp_property(alias=["points", (..., idx)]) for idx, k in enumerate(coordinate_name)}
+            )
+            if ndim is None:
+                ndim = len(coordinate_name)
+
+        if ndim is None:
+            ndim = getattr(cls, "_ndim", None)
+
+        if ndim is not None:
+            n_cls_name += f"{ndim}D"
+            cls_attrs["_ndim"] = ndim
+
+        if rank is None:
+            rank = getattr(cls, "_rank", None)
+
+        if rank is None:
+            rank = ndim
+
+        if rank is not None:
+            cls_attrs["_rank"] = rank
+
+        if len(cls_attrs) == 0:
+            n_cls = cls
+        elif create_new_class:
+            n_cls = type(
+                n_cls_name,
+                (cls,),
+                {"__module__": cls.__module__, "__package__": getattr(cls, "__package__", None), **cls_attrs},
+            )
+        else:
+            n_cls = cls
+            for k, v in cls_attrs.items():
+                setattr(n_cls, k, v)
+
+        return n_cls
+
+    def __class_getitem__(cls, args):
+        if issubclass(cls, GeoObjectSet):
+            return cls
+
+        if not isinstance(args, tuple):
+            args = (args,)
+        return cls.__make_class__(*args, create_new_class=True)
+
+    def __init_subclass__(cls, coordinate_name: str | list = None, rank: int = None, ndim: int = None, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.__make_class__(coordinate_name, rank, ndim, create_new_class=False)
+
+    def __init__(self, *args, points=None, **kwargs) -> None:
+        if not (len(args) == 0 or (len(args) == 1 and isinstance(args[0], dict)) or points is not None):
+            if len(args) == 1:
+                points = np.asarray(args[0], dtype=float)
+            else:
+                points = np.stack(args, axis=-1)
+            args = ()
+
+        super().__init__(*args, points=points, **kwargs)
+
+    def __equal__(self, other: typing.Self) -> bool:
+        return (other.__class__ is self.__class__) and np.all(self.points == other.points)
+
+    points: array_type
+    """几何体控制点的坐标 例如 (x0,y0),(x1,y1)， 
+        数组形状为 [*shape,ndim], shape 为控制点网格的形状，ndim 空间维度。"""
+
+    def __array__(self) -> array_type:
+        return self.points
+
+    def __getitem__(self, idx) -> array_type | float:
+        return self.points[idx]
+
+    def __setitem__(self, idx, value: array_type | float):
+        self.points[idx] = value
+
+    def __delitem__(self, idx):
+        del self.points[idx]
+
+    @sp_property
+    def bbox(self) -> BBox:
+        """boundary box of geometry [ [...min], [...max] ]"""
+        xmin = np.asarray([np.min(self.points[..., n]) for n in range(self.ndim)])
+        xmax = np.asarray([np.max(self.points[..., n]) for n in range(self.ndim)])
+        return BBox(xmin, xmax - xmin)
 
     @property
     def boundary(self) -> typing.Self | None:
@@ -207,7 +332,7 @@ class GeoObject(SpObject):
 
     @property
     def is_null(self) -> bool:
-        return self._bbox is None
+        return self.bbox.is_null
 
     @property
     def is_convex(self) -> bool:
@@ -275,59 +400,36 @@ class GeoObject(SpObject):
             raise TypeError(f"args has wrong type {type(args[0])} {args}")
 
 
-class GeoObjectSet(GeoObject, typing.List[GeoObject]):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args)
-        rank = kwargs.pop("rank", None)
-        ndim = kwargs.pop("ndim", None)
-        if rank is None:
-            ranks = [obj.rank for obj in self if isinstance(obj, GeoObject)]
-            rank = max(ranks) if len(ranks) > 0 else 0
+_TGeo = typing.TypeVar("_TGeo", bound=GeoObjectBase)
 
-        if ndim is None:
-            ndim_list = [obj.ndim for obj in self if isinstance(obj, GeoObject)]
-            if len(ndim_list) > 0:
-                ndim = max(ndim_list)  # [0]
-            else:
-                raise RuntimeError(f"Can not get ndim from {ndim_list}")
-        self._rank = rank
-        self._ndim = ndim
-        self._metadata = kwargs
-        # GeoObject.__init__(self, rank=rank, ndim=ndim, **kwargs)
 
-    def _repr_svg_(self) -> str:
-        """Jupyter 通过调用 _repr_html_ 显示对象"""
-        from ..view.sp_view import display
+class GeoObjectSet(List[_TGeo], GeoObjectBase):
+    """Geometry object set"""
 
-        return display(self, schema="svg")
+    OBJ_TYPE = _TGeo
+
+    def __class_getitem__(cls, item):
+        n_cls = super().__class_getitem__(item)
+
+        if not inspect.isclass(n_cls):
+            return n_cls
+
+        g_cls = n_cls.__args__[0]
+        if issubclass(g_cls, GeoObjectBase):
+            n_cls._rank = g_cls._rank
+            n_cls._ndim = g_cls._ndim
+
+        return n_cls
 
     # def __svg__(self) -> str:
     #     return f"<g >\n" + "\t\n".join([g.__svg__ for g in self if isinstance(g, GeoObject)]) + "</g>"
 
-    @property
+    @sp_property
     def bbox(self) -> BBox:
         return np.bitwise_or.reduce([g.bbox for g in self if isinstance(g, GeoObject)])
 
     def enclose(self, other) -> bool:
         return all([g.enclose(other) for g in self if isinstance(g, GeoObject)])
-
-    # class Box(GeoObject):
-    #     def __init__(self, *args, **kwargs) -> None:
-    #         super().__init__(*args, **kwargs)
-
-    #     @property
-    #     def bbox(self) -> typing.Tuple[ArrayType, ArrayType]: return self._points[0], self._points[1]
-
-    #     def enclose(self, *xargs) -> bool:
-    #         if all([isinstance(x, numeric_type) for x in xargs]):  # 点坐标
-    #             if len(xargs) != self.ndim:
-    #                 raise RuntimeError(f"len(xargs)={len(xargs)}!=self.ndim={self.ndim} {xargs}")
-    #             xmin, xmax = self.bbox
-    #             return np.bitwise_and.reduce([((xargs[i] >= xmin[i]) & (xargs[i] <= xmax[i])) for i in range(self.ndim)])
-    #         elif len(xargs) == 1 and isinstance(xargs[0], GeoObject):
-    #             raise NotImplementedError(f"{self.__class__.__name__}.enclose(GeoObject)")
-    #         else:
-    #             return np.bitwise_and.reduce([self.enclose(x) for x in xargs])
 
 
 def as_geo_object(*args, **kwargs) -> GeoObject | GeoObjectSet:

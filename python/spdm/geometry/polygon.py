@@ -3,19 +3,14 @@ import typing
 
 import numpy as np
 
-from spdm.utils.type_hint import ArrayType
 from spdm.core.geo_object import GeoObject, BBox
 from spdm.geometry.line import Segment
 from spdm.geometry.point import Point
-from spdm.geometry.point_set import PointSet
 from spdm.geometry.polyline import Polyline
 
 
-class Polygon(PointSet, plugin_name="polygon"):
+class Polygon(GeoObject, plugin_name="polygon", rank=2):
     """Polygon 多边形"""
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, rank=2, **kwargs)
 
     @property
     def is_valid(self) -> bool:

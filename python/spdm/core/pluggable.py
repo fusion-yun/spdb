@@ -65,7 +65,13 @@ class Pluggable(abc.ABC):
             for name in plugin_name:
                 if not isinstance(name, str):
                     continue
-                cls._plugin_registry[cls._complete_path(name)] = plugin_cls
+                p_name = cls._complete_path(name)
+                if not hasattr(plugin_cls, "__plugin_name__"):
+                    plugin_cls.__plugin_name__ = p_name
+
+                cls._plugin_registry[p_name] = plugin_cls
+
+                logger.verbose(f"Register plugin  {plugin_cls.__module__}.{plugin_cls.__qualname__} as {p_name} ")
 
             return None
 
@@ -150,8 +156,10 @@ class Pluggable(abc.ABC):
     def __init_subclass__(cls, plugin_name=None, default_plugin=None, **kwargs) -> None:
         if plugin_name is not None:
             cls.register(plugin_name, cls)
+
         if default_plugin is not None:
             cls.default_plugin = default_plugin
+
         return super().__init_subclass__(**kwargs)
 
     def __init__(self, *args, _plugin_name=None, **kwargs):

@@ -4,7 +4,6 @@ import unittest
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from scipy import constants
 from spdm.utils.logger import logger
 from spdm.core.geo_object import GeoObject
 
@@ -15,10 +14,10 @@ class TestGeometryObject(unittest.TestCase):
         from spdm.geometry.point import Point
 
         p0: Point = GeoObject((0, 1, 2), type="point")
-        p1 = Point(1, 2, 3)
+        p1 = Point["xyz"](1, 2, 3)
         self.assertIsInstance(p0, Point)
-        assert_array_equal(p0.coordinate, np.asarray([0, 1, 2]))
-        assert_array_equal(p1.coordinate, np.asarray([1, 2, 3]))
+        assert_array_equal(p0.points, np.asarray([0, 1, 2]))
+        assert_array_equal(p1.points, np.asarray([1, 2, 3]))
 
         self.assertEqual(p1.x, 1)
         self.assertEqual(p1.y, 2)
@@ -31,10 +30,12 @@ class TestGeometryObject(unittest.TestCase):
         p0 = (0, 0)
         p1 = (1, 1)
         l0 = GeoObject(p0, p1, type="line")
-        l1 = Line((p0, p1))
+        l1 = Line["xy"]((p0, p1))
         self.assertIsInstance(l0, Line)
         assert_array_equal(l1.p0, np.asarray(p0))
         assert_array_equal(l1.p1, np.asarray(p1))
+        assert_array_equal(l1.x, [p0[0], p1[0]])
+        assert_array_equal(l1.y, [p0[1], p1[1]])
 
     # def test_set(self):
     #     from spdm.geometry.Point import Point

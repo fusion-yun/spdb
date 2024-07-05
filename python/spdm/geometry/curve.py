@@ -8,23 +8,25 @@ from scipy.interpolate import CubicSpline, PPoly
 from spdm.utils.logger import logger
 from spdm.utils.type_hint import ArrayLike, ArrayType, NumericType, array_type, nTupleType
 from spdm.core.geo_object import GeoObject, BBox
-from spdm.geometry.point_set import PointSet
 
 
-class Curve(PointSet, plugin_name="curve"):
+class Curve(GeoObject, plugin_name="curve", rank=1):
     """Curve
     曲线，一维几何体
     """
 
     def __init__(self, *args, uv=None, **kwargs) -> None:
-        super().__init__(*args, rank=1, **kwargs)
-        self._metadata["closed"] = np.allclose(self._points[0], self._points[-1])
-        self._uv = uv if uv is not None else np.linspace(0, 1.0, self._points.shape[0])
+        super().__init__(*args, **kwargs)
+        self._uv = uv if uv is not None else np.linspace(0, 1.0, self.points.shape[:-1])
 
     def __copy__(self) -> typing.Self:
         other: Curve = super().__copy__()  # type:ignore
         other._uv = self._uv
         return other
+
+    @property
+    def is_closed(self) -> bool:
+        return np.allclose(self.points[0], self.points[-1]) or self._metadata.get("closed", False)
 
     @functools.cached_property
     def dl(self) -> array_type:
