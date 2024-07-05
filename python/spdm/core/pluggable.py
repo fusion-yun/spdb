@@ -71,7 +71,7 @@ class Pluggable(abc.ABC):
 
                 cls._plugin_registry[p_name] = plugin_cls
 
-                logger.verbose(f"Register plugin  {plugin_cls.__module__}.{plugin_cls.__qualname__} as {p_name} ")
+                # logger.verbose(f"Register plugin  {plugin_cls.__module__}.{plugin_cls.__qualname__} as {p_name} ")
 
             return None
 

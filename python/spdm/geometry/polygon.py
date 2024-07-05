@@ -43,22 +43,11 @@ class Polygon(GeoObject, plugin_name="polygon", rank=2):
         return Polyline(self._points, is_closed=True)
 
 
-@Polygon.register("rectangle")
-class Rectangle(GeoObject):
-    def __init__(self, x, y, width, height, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self._x = x
-        self._y = y
-        self._width = width
-        self._height = height
-
-    @property
-    def bbox(self) -> BBox:
-        return BBox([self._x, self._y], [self._width, self._height])
+class Rectangle(GeoObject, plugin_name="rectangle"):
+    pass
 
 
-@Polygon.register("regular_polygon")
-class RegularPolygon(Polygon):
+class RegularPolygon(Polygon, plugin_name="regular_polygon"):
     """Regular Polygon
     正多边形
 
@@ -72,9 +61,8 @@ class RegularPolygon(Polygon):
         旋转角度
     """
 
-    def __init__(self, center: Point, radius: float, num_of_edges: int, *args, **kwargs) -> None:
-        center = Point(center) if not isinstance(center, Point) else center
-        super().__init__(*args, **kwargs)
+    def __init__(self, cneter: Point, second_point, num_of_edges: int, **kwargs) -> None:
+        super().__init__(cneter, second_point, num_of_edges=num_of_edges, **kwargs)
 
     @property
     def area(self) -> float:
@@ -84,9 +72,7 @@ class RegularPolygon(Polygon):
     def length(self) -> float:
         return self._impl.length
 
-    @property
-    def center(self) -> Point:
-        return Point(self._impl.center)
+    center: Point = sp_property(alias="points/0")
 
     @property
     def radius(self) -> float:

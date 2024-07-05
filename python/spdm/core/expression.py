@@ -124,7 +124,7 @@ class Expression(HTreeNode):
         else:
             return super().__new__(cls)
 
-    def __init__(self, op_value, *children: typing.Self, domain: Domain = _not_found_, **metadata) -> None:
+    def __init__(self, op_value, *children: typing.Self, domain: Domain = _not_found_, _entry=None, **metadata) -> None:
         """初始化表达式
 
         Args:
@@ -137,7 +137,8 @@ class Expression(HTreeNode):
         else:
             value = None
             op = op_value
-
+        if value is _not_found_ and _entry is not None:
+            value = _entry.get()
         super().__init__(value, **metadata)
 
         self._op = op  # 表达式算符

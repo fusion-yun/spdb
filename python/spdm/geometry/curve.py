@@ -17,7 +17,7 @@ class Curve(GeoObject, plugin_name="curve", rank=1):
 
     def __init__(self, *args, uv=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._uv = uv if uv is not None else np.linspace(0, 1.0, self.points.shape[:-1])
+        self._uv = uv if uv is not None else np.linspace(0, 1.0, self.points.shape[0])
 
     def __copy__(self) -> typing.Self:
         other: Curve = super().__copy__()  # type:ignore
@@ -93,3 +93,8 @@ class Curve(GeoObject, plugin_name="curve", rank=1):
         else:
             raise TypeError(f"illegal type u={type(u)}")
         return other
+
+
+CurveRZ = Curve["RZ"]
+CurveXY = Curve["XY"]
+CurveXYZ = Curve["XYZ"]

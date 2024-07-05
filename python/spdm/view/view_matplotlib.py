@@ -10,6 +10,7 @@ from spdm.core.expression import Expression
 from spdm.core.signal import Signal
 from spdm.core.field import Field
 from spdm.core.function import Function
+from spdm.core.htree import List
 
 from spdm.geometry.circle import Circle
 from spdm.geometry.curve import Curve
@@ -162,7 +163,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         if obj is None or obj is _not_found_:
             pass
 
-        elif isinstance(obj, list):
+        elif isinstance(obj, (list, List)):
             for idx, g in enumerate(obj):
                 self._draw(canvas, g, {"id": idx}, *styles, view_point=view_point, **kwargs)
 
@@ -223,10 +224,13 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             canvas.add_patch(plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **s_styles))
 
         elif isinstance(obj, Rectangle):
-            canvas.add_patch(plt.Rectangle((obj._x, obj._y), obj._width, obj._height, fill=False, **s_styles))
+            p0 = obj.points[0]
+            p1 = obj.points[1]
+            w = p1 - p0
+            canvas.add_patch(plt.Rectangle((p0[0], p0[1]), w[0], w[1], fill=False, **s_styles))
 
         elif isinstance(obj, Circle):
-            canvas.add_patch(plt.Circle((obj.x, obj.y), obj.r, fill=False, **s_styles))
+            canvas.add_patch(plt.Circle((obj.origin[0], obj.origin[1]), obj.radius, fill=False, **s_styles))
 
         elif isinstance(obj, Point):
             canvas.scatter(obj[0], obj[1], **s_styles)

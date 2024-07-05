@@ -110,7 +110,9 @@ class SpTree(HTree):
         super().__init_subclass__()
 
     def __init__(self, cache=_not_found_, **kwargs):
-
+        if isinstance(cache, SpTree):
+            cache = cache.__getstate__()
+            
         if isinstance(cache, dict) or cache is _not_found_:
             cache = Path().update(cache, {k: kwargs.pop(k) for k in list(kwargs.keys()) if not k.startswith("_")})
         elif cache is not _not_found_:

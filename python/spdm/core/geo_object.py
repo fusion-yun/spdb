@@ -287,7 +287,7 @@ class GeoObject(GeoObjectBase, SpTree):
         cls.__make_class__(coordinate_name, rank, ndim, create_new_class=False)
 
     def __init__(self, *args, points=None, **kwargs) -> None:
-        if not (len(args) == 0 or (len(args) == 1 and isinstance(args[0], dict)) or points is not None):
+        if points is None and not (len(args) == 0 or (len(args) == 1 and isinstance(args[0], dict))):
             if len(args) == 1:
                 points = np.asarray(args[0])
             else:
@@ -295,6 +295,9 @@ class GeoObject(GeoObjectBase, SpTree):
             args = ()
 
         super().__init__(*args, points=points, **kwargs)
+        if len(self.points.shape) == 0:
+            raise RuntimeError(f"{self.__class__.__name__} has no points")
+
         if self.points.shape[-1] != self.__class__._ndim:
             self._ndim = self.points.shape[-1]
 
@@ -319,6 +322,9 @@ class GeoObject(GeoObjectBase, SpTree):
 
     def __delitem__(self, idx):
         del self.points[idx]
+
+    def __iter__(self) -> typing.Generator[array_type, None, None]:
+        yield from self.points
 
     @sp_property
     def bbox(self) -> BBox:
