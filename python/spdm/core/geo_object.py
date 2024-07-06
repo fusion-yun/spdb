@@ -239,14 +239,12 @@ class GeoObject(GeoObjectBase, SpTree):
     """
 
     @classmethod
-    def __make_class__(cls, coordinate_name: str | list = None, rank=None, create_new_class=True):
+    def __make_class__(cls, coordinate_name: str | list = None, ndim=None, rank=None, create_new_class=True):
         """
         example:
             Point["RZ"]
         """
         n_cls_name = cls.__name__
-
-        ndim = getattr(cls, "_ndim", None)
 
         cls_attrs = {}
         if coordinate_name is not None:
@@ -288,8 +286,8 @@ class GeoObject(GeoObjectBase, SpTree):
 
         return cls.__make_class__(*args, create_new_class=True)
 
-    def __init_subclass__(cls, coordinate_name: str | list = None, rank=None, **kwargs):
-        cls.__make_class__(coordinate_name, rank=rank, create_new_class=False)
+    def __init_subclass__(cls, coordinate_name: str | list = None, **kwargs):
+        cls.__make_class__(coordinate_name, create_new_class=False)
         super().__init_subclass__(**kwargs)
 
     def __init__(self, *args, points=None, _entry=None, _parent=None, **metadata) -> None:

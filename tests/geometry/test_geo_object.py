@@ -31,9 +31,9 @@ class TestGeoObject(unittest.TestCase):
         self.assertEqual(PointRZ.__name__, "PointRZ2D")
         self.assertEqual(p.ndim, 2)
         self.assertEqual(p.rank, 0)
-        assert_array_equal(p.points, (10, 12))
         self.assertEqual(p.r, 10)
         self.assertEqual(p.z, 12)
+        assert_array_equal(p.points, (10, 12))
 
 
 if __name__ == "__main__":
