@@ -32,8 +32,8 @@ class SpObject(Pluggable, SpTree):
 
         return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
 
-    def __init__(self, *args, _entry=None, **kwargs) -> None:
-        kwargs.pop("type", None)
+    def __init__(self, *args, _entry=None, _parent=None, **kwargs) -> None:
+
         entries = []
         cache = {}
         for a in args:
@@ -48,7 +48,9 @@ class SpObject(Pluggable, SpTree):
 
         entries.append(_entry)
 
-        super().__init__(cache, _entry=as_entry(tuple(entries)), **kwargs)
+        cache = Path().update(cache, kwargs)
+
+        super().__init__(cache, _entry=as_entry(tuple(entries)), _parent=_parent)
 
     def __copy__(self) -> typing.Self:
         return SpTree.__copy__(self)

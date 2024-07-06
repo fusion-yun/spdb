@@ -141,7 +141,7 @@ class Pluggable(abc.ABC):
             # Not pluggable
             logger.error("%s is not pluggable!", cls.__name__)
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
-        
+
         if _plugin_name is None:
             _plugin_name = getattr(cls, "default_plugin", None)
 
@@ -161,7 +161,7 @@ class Pluggable(abc.ABC):
         if default_plugin is not None:
             cls.default_plugin = default_plugin
 
-        return super().__init_subclass__(**kwargs)
+        super().__init_subclass__(**kwargs)
 
     def __init__(self, *args, _plugin_name=None, **kwargs):
         super().__init__(*args, **kwargs)

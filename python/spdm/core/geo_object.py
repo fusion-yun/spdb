@@ -14,7 +14,7 @@ from spdm.utils.logger import logger
 from spdm.core.path import Path
 from spdm.core.htree import List
 from spdm.core.sp_tree import sp_property
-
+from spdm.core.metadata import Metadata
 from spdm.core.pluggable import Pluggable
 from spdm.core.sp_tree import SpTree
 
@@ -148,7 +148,7 @@ class BBox:
         raise NotImplementedError(f"translate")
 
 
-class GeoObjectBase(Pluggable):
+class GeoObjectBase(Pluggable, Metadata):
     """Geometry object base class
     ===============================
     几何对象基类，两个子类
@@ -159,10 +159,15 @@ class GeoObjectBase(Pluggable):
     _plugin_prefix = "spdm.geometry."
     _plugin_registry = {}
 
+    _metadata = {}
+
     _ndim = 3
     _rank = 0
 
     def __new__(cls, *args, _entry=None, **kwargs):
+        if cls is not GeoObject:
+            return super().__new__(cls, *args, _entry=_entry, **kwargs)
+
         plugin_name = kwargs.pop("type", None)
 
         if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
@@ -173,15 +178,16 @@ class GeoObjectBase(Pluggable):
 
         return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
 
-    def __init_subclass__(cls, rank: int = None, ndim: int = None, **kwargs):
-        super().__init_subclass__(**kwargs)
+    def __init_subclass__(cls, rank: int = None, ndim: int = None, **kwargs) -> None:
         if ndim is not None:
             cls._ndim = ndim
         if rank is not None:
             cls._rank = rank
+        super().__init_subclass__(**kwargs)
 
-    def __init__(self, **metadata):
-        self._metadata = Path().update(deepcopy(getattr(self.__class__, "_metadata", {})), metadata)
+    @property
+    def name(self) -> str:
+        return self._metadata.get("name", self.__class__.__name__)
 
     @property
     def rank(self) -> int:

@@ -49,6 +49,7 @@ from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_, _undefined_
 from spdm.core.htree import HTree, HTreeNode
 from spdm.core.path import Path, as_path
+from spdm.core.metadata import Metadata
 
 
 def _copy(obj, *args, **kwargs):
@@ -78,7 +79,7 @@ def _copy(obj, *args, **kwargs):
         return deepcopy(obj)
 
 
-class SpTree(HTree):
+class SpTree(HTree, Metadata):
     """SpTree 根据 class 的 typhint 自动绑定转换类型
     ===============================================
 
@@ -107,15 +108,11 @@ class SpTree(HTree):
 
             attr.__set_name__(cls, name)
 
-        cls._metadata = Path().update(getattr(cls, "_metadata", {}), kwargs)
+        super().__init_subclass__(**kwargs)
 
-        super().__init_subclass__()
-
-    def __init__(self, cache=_not_found_, _entry=None, _parent=None, **kwargs):
-        cache = Path().update(cache, kwargs)
+    def __init__(self, cache=_not_found_, _entry=None, _parent=None):
         super().__init__(cache, _entry=_entry, _parent=_parent)
 
-    
     def __getstate__(self) -> dict:
         state = super().__getstate__()
         for k, prop in inspect.getmembers(self.__class__, is_sp_property):
@@ -397,7 +394,7 @@ def sp_dataclass(cls=None, /, **metadata):
         self.assertEqual(foo0.z, 0.1)
     """
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, _entry=None, _parent=None, **kwargs):
         keys = [*typing.get_type_hints(cls).keys()]
 
         n_cls = _make_sptree(cls, **metadata)
@@ -408,7 +405,7 @@ def sp_dataclass(cls=None, /, **metadata):
                 raise KeyError(f"Redefined argument '{key}'!")
             kwargs[key] = value
 
-        return n_cls(_not_found_, **kwargs)
+        return n_cls(kwargs, _entry, _parent)
 
     if cls is None:
         return lambda c: sp_dataclass(c, **metadata)

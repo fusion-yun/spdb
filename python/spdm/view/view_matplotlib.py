@@ -270,7 +270,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
             text_styles.setdefault("position", pos)
 
-            self._draw(canvas, text, {f"${self.backend}": text_styles})
+            self._draw(canvas, text, {f"$matplotlib": text_styles})
 
         return obj
 

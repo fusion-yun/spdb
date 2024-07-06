@@ -10,7 +10,7 @@ class TestGeoObject(unittest.TestCase):
 
     def test_define_new_class(self):
 
-        class GObj(GeoObject):
+        class GObj(GeoObject, rank=1, name="gobj"):
 
             @property
             def rank(self) -> int:
@@ -18,6 +18,7 @@ class TestGeoObject(unittest.TestCase):
 
         obj = GObj(10, 10)
 
+        self.assertEqual(GObj._metadata.get("name", None), "gobj")
         self.assertEqual(obj.rank, 10)
 
     def test_classgetitem(self):
