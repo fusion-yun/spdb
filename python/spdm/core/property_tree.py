@@ -1,9 +1,6 @@
-
 import typing
-
 from spdm.core.htree import HTree, List
 from spdm.utils.tags import _not_found_
-from spdm.utils.type_hint import primary_type
 
 
 class PropertyTree(HTree):
@@ -11,7 +8,6 @@ class PropertyTree(HTree):
 
     def __as_node__(self, *args, **kwargs) -> typing.Self | List[typing.Self]:
         node = super().__as_node__(*args, **kwargs)
-
         if node.__class__ is HTree:
             node = node._entry.get()
 

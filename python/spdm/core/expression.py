@@ -139,12 +139,13 @@ class Expression(HTreeNode):
             op = op_value
         if value is _not_found_ and _entry is not None:
             value = _entry.get()
-        super().__init__(value, **metadata)
+        super().__init__(value)
 
         self._op = op  # 表达式算符
         self._children = children  # 构成表达式的子节点
         self._domain = domain  # 定义域
         self._ppoly = _not_found_  # 表达式的近似多项式，缓存
+        self._metadata = metadata
 
     def __copy__(self) -> typing.Self:
         """复制一个新的 Expression 对象"""

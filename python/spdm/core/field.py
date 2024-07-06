@@ -91,7 +91,7 @@ class Field(Expression):
         if self.domain is None:
             return {}
         else:
-            return self.domain.view(self, label=self.__label__, **kwargs)
+            return self.domain.view(self, label=str(self), **kwargs)
 
     def __compile__(self) -> typing.Callable[..., array_type]:
         """对函数进行编译，用插值函数替代原始表达式，提高运算速度

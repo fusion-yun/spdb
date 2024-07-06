@@ -5,21 +5,14 @@ from logging import log
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.core.entry import Entry
-from spdm.core.Mapper import MapperPath
+from spdm.core.mapper import MapperPath
 
 
 class TestEntryMap(unittest.TestCase):
     data = {
-        "a": [
-            "hello world {name}!",
-            "hello world2 {name}!",
-            1, 2, 3, 4
-        ],
+        "a": ["hello world {name}!", "hello world2 {name}!", 1, 2, 3, 4],
         "c": "I'm {age}!",
-        "d": {
-            "e": "{name} is {age}",
-            "f": "{address}"
-        }
+        "d": {"e": "{name} is {age}", "f": "{address}"},
     }
     mapping = """<?xml version="1.0" ?>
     <root>
@@ -37,10 +30,10 @@ class TestEntryMap(unittest.TestCase):
     def test_mapping_path(self):
         pathmapper = MapperPath(Entry(self.mapping, scheme="XML"))
 
-        self.assertEqual((pathmapper/"first").as_request(), "a/0")
-        self.assertEqual((pathmapper/"second").as_request(), "a/1")
-        self.assertEqual((pathmapper/"others").as_request(), "c/2:5")
-        self.assertEqual((pathmapper/"words/address").as_request(), "[c,d/e,d/f]")
+        self.assertEqual((pathmapper / "first").as_request(), "a/0")
+        self.assertEqual((pathmapper / "second").as_request(), "a/1")
+        self.assertEqual((pathmapper / "others").as_request(), "c/2:5")
+        self.assertEqual((pathmapper / "words/address").as_request(), "[c,d/e,d/f]")
 
     def test_get(self):
         entry = EntryMapper(self.data, PathMapper(Entry(self.mapping, scheme="XML")))
@@ -49,5 +42,5 @@ class TestEntryMap(unittest.TestCase):
         self.assertEqual(entry.get("others"), self.data["c"][2:5])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

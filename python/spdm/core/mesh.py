@@ -88,12 +88,6 @@ class Mesh(Domain):
     _plugin_registry = {}
     _plugin_prefix = "spdm.mesh.mesh_"
 
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls, *args, **kwargs)
-        if instance.__class__ is Mesh:
-            raise RuntimeError(f"Can not make mesh from {args} {kwargs}")
-        return instance
-
     shape: Vector[int]
     """
         存储网格点数组的形状
@@ -101,38 +95,24 @@ class Mesh(Domain):
         非结构化网格 shape 如 [<number of vertices>]
     """
 
-    # points: typing.Tuple[ArrayType, ...]
-    # """ 网格对应的网格点坐标，ndim 个 形状为 shape 的数组。"""
+    def __new__(cls, *args, **kwargs):
+        if cls is not Mesh:
+            return super().__new__(cls)
+        else:
+            return super().__new__(cls, *args, **kwargs)
 
     @property
-    def axis_label(self) -> typing.Tuple[str]:
+    @abc.abstractmethod
+    def points(self) -> array_type:
+        """网格点的 _空间坐标_  形状为 [...shape,ndim]"""
+
+    @property
+    def axis_label(self) -> typing.Tuple[str, ...]:
         return self._metadata.get("axis_label", ["[-]"] * self.ndim)
 
-    def parametric_coordinates(self, *xyz) -> ArrayType:
-        """parametric coordinates
-
-        网格点的 _参数坐标_
-        Parametric coordinates, also known as computational coordinates or intrinsic coordinates,
-        are a way to represent the position of a point within an element of a mesh.
-        一般记作 u,v,w \in [0,1] ,其中 0 表示“起点”或 “原点” origin，1 表示终点end
-        mesh的参数坐标(u,v,w)，(...,0)和(...,1)表示边界
-
-        @return: 数组形状为 [geometry.rank, <shape of xyz ...>]的数组
-        """
-        if len(xyz) == 0:
-            return np.stack(np.meshgrid(*[np.linspace(0.0, 1.0, n, endpoint=True) for n in self.shape]))
-        else:
-            raise NotImplementedError(f"{self.__class__.__name__}.parametric_coordinates for unstructured mesh")
-
-    def coordinates(self, *uvw) -> ArrayType:
-        """网格点的 _空间坐标_
-        @return: _数组_ 形状为 [<shape of uvw ...>,geometry.ndim]
-        """
-        return self.geometry.coordinates(uvw if len(uvw) > 0 else self.parametric_coordinates())
-
-    def uvw(self) -> ArrayType:
-        """alias of parametric_coordiantes"""
-        return self.parametric_coordinates(*self.xyz)
+    @property
+    def coordinates(self) -> typing.Tuple[ArrayType, ...]:
+        return tuple([self.points[..., i] for i in range(self.ndim)])
 
     @property
     def vertices(self) -> ArrayType:
@@ -140,17 +120,12 @@ class Mesh(Domain):
         return np.stack(self.points, axis=-1)
 
     @property
-    def points(self) -> typing.Tuple[ArrayType]:
-        """网格点的 _空间坐标_  tuple"""
-        raise NotImplementedError()
-
-    @property
     def cells(self) -> typing.Any:
         """refer to the individual units that make up the mesh"""
         raise NotImplementedError(f"{self.__class__.__name__}.cells")
 
     def interpolate(self, func: typing.Callable | ArrayType) -> typing.Callable[..., ArrayType]:
-        xargs = self.points
+        xargs = self.coordinates
         if callable(func):
             value = func(*xargs)
         elif isinstance(func, array_type):

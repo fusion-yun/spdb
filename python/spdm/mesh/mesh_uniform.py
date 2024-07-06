@@ -12,6 +12,10 @@ class UniformMesh(StructuredMesh, plugin_name="uniform"):
 
     origin: Point = sp_property(alias="geometry/bbox/origin")
 
+    @property
+    def points(self) -> ArrayType:
+        return np.linspace()
+
     @sp_property
     def dx(self) -> typing.Tuple[float]:
         return self.geometry.bbox.dimensions / np.asarray(self.shape, dtype=float)

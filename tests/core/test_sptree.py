@@ -2,7 +2,7 @@ import unittest
 import typing
 import numpy as np
 from spdm.core.htree import List, Dict
-from spdm.core.sp_tree import SpTree, sp_property
+from spdm.core.sp_tree import SpTree, sp_property, sp_dataclass
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
@@ -70,22 +70,6 @@ class Eq(SpTree):
 
 class TestSpTree(unittest.TestCase):
 
-    def test_create(self):
-        # class Foo1(SpTree):
-        #     x: float
-        #     y: float
-        #     z: float = 0.1
-
-        # foo0 = Foo1(1, 2)
-        # self.assertEqual(foo0.x, 1)
-        # self.assertEqual(foo0.y, 2)
-        # self.assertEqual(foo0.z, 0.1)
-
-        # foo2 = Foo1(2, 3, 4)
-        # self.assertEqual(foo2.x, 2)
-        # self.assertEqual(foo2.y, 3)
-        # self.assertEqual(foo2.z, 4)
-
     def test_get(self):
         cache = {"foo": {"a": 1234}}
         d = Doo(cache)
@@ -106,7 +90,6 @@ class TestSpTree(unittest.TestCase):
         self.assertEqual(d._cache["goo"].value, 3.14)
 
     def test_get_list(self):
-
         cache = {
             "foo_list": [
                 {"a": 1234},
@@ -172,6 +155,25 @@ class TestSpTree(unittest.TestCase):
         self.assertEqual(d[-1].a, 1)
         self.assertEqual(d[-1].b, 2)
         self.assertEqual(d[-1].c, 3)
+
+    def test_dataclass(self):
+
+        @sp_dataclass(name="Foo1")
+        class Foo1:
+            x: float
+            y: float
+            z: float = 0.1
+
+        foo0 = Foo1(1, 2)
+        self.assertEqual(foo0.x, 1)
+        self.assertEqual(foo0.y, 2)
+        self.assertEqual(foo0.z, 0.1)
+        # self.assertEqual(foo0._metadata.get("name", None), "Foo1")
+
+        foo2 = Foo1(2, 3, 4)
+        self.assertEqual(foo2.x, 2)
+        self.assertEqual(foo2.y, 3)
+        self.assertEqual(foo2.z, 4)
 
 
 if __name__ == "__main__":

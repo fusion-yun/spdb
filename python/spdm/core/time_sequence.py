@@ -93,8 +93,8 @@ class TimeSequence(List[_TSlice]):
 
         time_coord = getattr(self, "_time_coord", _not_found_)
 
-        if time_coord is _not_found_:
-            time_coord = self._metadata.get("coordinate1", _not_found_)
+        # if time_coord is _not_found_:
+        #     time_coord = self._metadata.get("coordinate1", _not_found_)
 
         if isinstance(time_coord, str):
             time_coord = self.get(time_coord, default_value=_not_found_)
@@ -147,7 +147,7 @@ class TimeSequence(List[_TSlice]):
             else:
                 entry_cursor = 0
 
-        return super().__as_node__(cache_pos, value, _entry=entry)
+        return super().__as_node__(cache_pos, value, entry=entry)
 
     def initialize(self, *args, **kwargs):
         """初始化 TimeSeries"""
@@ -165,12 +165,12 @@ class TimeSequence(List[_TSlice]):
 
         self._entry_cursor, time_hint = self._find_slice_by_time(time)
 
-        default_value = deepcopy(self._metadata.get("default_initial_value", {}))
+        # default_value = deepcopy(self._metadata.get("default_initial_value", {}))
 
         if time_hint is not None:
             time = time_hint
 
-        current = update_tree(default_value, current, {"time": time})
+        current = Path().update(current, {"time": time})
 
         self._cache[self._cache_cursor] = current
 

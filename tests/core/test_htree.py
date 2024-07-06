@@ -66,7 +66,7 @@ class TestHTree(unittest.TestCase):
         # self.assertEqual(len(n) == 0)
 
     def test_type_hint(self):
-        d1 = List[Dict]([])
+        d1 = List[Dict]()
 
         d1.insert({"a": 1, "b": 2})
 

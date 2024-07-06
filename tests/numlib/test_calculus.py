@@ -4,7 +4,7 @@ import numpy as np
 from scipy import constants
 from spdm.core.expression import Expression, Variable
 from spdm.core.function import Function
-from spdm.numlib.calculus import antiderivative, derivative, partial_derivative
+# from spdm.numlib.calculus import antiderivative, derivative, partial_derivative
 from spdm.utils.logger import logger
 
 TWOPI = constants.pi*2.0

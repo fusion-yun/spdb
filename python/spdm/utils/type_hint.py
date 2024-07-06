@@ -307,7 +307,7 @@ def get_args(tp: typing.Any) -> typing.Tuple[typing.Type, ...]:
 
     else:
         res = tuple()
-        
+
     return tuple([t for t in res if t is not None and not isinstance(t, typing.TypeVar)])
 
 
@@ -369,21 +369,20 @@ def isinstance_generic(obj: typing.Any, type_hint: typing.Type) -> bool:
         return False
 
 
-def type_convert(tp: typing.Type, value: typing.Any, default_value=_not_found_) -> typing.Any:
+def type_convert(tp: typing.Type, value: typing.Any) -> typing.Any:
     if value is _not_found_:
-        value = default_value
-
-    if tp is None or tp is _not_found_ or tp is typing.Any:
-        return value
+        pass
+    elif tp is None or tp is _not_found_ or tp is typing.Any:
+        pass
 
     elif isinstance(tp, typing.types.UnionType):
-        return type_convert(typing.get_args(tp)[0], value, default_value=default_value)
+        value = type_convert(typing.get_args(tp)[0], value)
 
     elif isinstance_generic(value, tp):
-        return value
+        pass
 
     elif tp in (set, list, dict, tuple):
-        return tp(value)
+        value = tp(value)
 
     elif issubclass(get_origin(tp), array_type):
         value = as_array(value)

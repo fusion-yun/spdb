@@ -3,13 +3,15 @@ import collections.abc
 import typing
 import inspect
 import functools
-from copy import copy
+from copy import deepcopy
+
 import numpy as np
 
 from spdm.utils.type_hint import ArrayLike, ArrayType, array_type
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 
+from spdm.core.path import Path
 from spdm.core.htree import List
 from spdm.core.sp_tree import sp_property
 
@@ -171,6 +173,16 @@ class GeoObjectBase(Pluggable):
 
         return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
 
+    def __init_subclass__(cls, rank: int = None, ndim: int = None, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if ndim is not None:
+            cls._ndim = ndim
+        if rank is not None:
+            cls._rank = rank
+
+    def __init__(self, **metadata):
+        self._metadata = Path().update(deepcopy(getattr(self.__class__, "_metadata", {})), metadata)
+
     @property
     def rank(self) -> int:
         """几何体（流形）维度  rank <=ndims
@@ -221,18 +233,15 @@ class GeoObject(GeoObjectBase, SpTree):
     """
 
     @classmethod
-    def __make_class__(
-        cls,
-        coordinate_name: str | list = None,
-        rank: int = None,
-        ndim: int = None,
-        create_new_class=True,
-    ):
+    def __make_class__(cls, coordinate_name: str | list = None, rank=None, create_new_class=True):
         """
         example:
             Point["RZ"]
         """
         n_cls_name = cls.__name__
+
+        ndim = getattr(cls, "_ndim", None)
+
         cls_attrs = {}
         if coordinate_name is not None:
             n_cls_name += ("".join(coordinate_name)).upper()
@@ -240,21 +249,11 @@ class GeoObject(GeoObjectBase, SpTree):
             cls_attrs.update(
                 {k.lower(): sp_property(alias=["points", (..., idx)]) for idx, k in enumerate(coordinate_name)}
             )
-            if ndim is None:
-                ndim = len(coordinate_name)
-
-        if ndim is None:
-            ndim = getattr(cls, "_ndim", None)
+            ndim = len(coordinate_name)
 
         if ndim is not None:
             n_cls_name += f"{ndim}D"
             cls_attrs["_ndim"] = ndim
-
-        if rank is None:
-            rank = getattr(cls, "_rank", None)
-
-        if rank is None:
-            rank = ndim
 
         if rank is not None:
             cls_attrs["_rank"] = rank
@@ -280,13 +279,14 @@ class GeoObject(GeoObjectBase, SpTree):
 
         if not isinstance(args, tuple):
             args = (args,)
+
         return cls.__make_class__(*args, create_new_class=True)
 
-    def __init_subclass__(cls, coordinate_name: str | list = None, rank: int = None, ndim: int = None, **kwargs):
+    def __init_subclass__(cls, coordinate_name: str | list = None, rank=None, **kwargs):
+        cls.__make_class__(coordinate_name, rank=rank, create_new_class=False)
         super().__init_subclass__(**kwargs)
-        cls.__make_class__(coordinate_name, rank, ndim, create_new_class=False)
 
-    def __init__(self, *args, points=None, **kwargs) -> None:
+    def __init__(self, *args, points=None, _entry=None, _parent=None, **metadata) -> None:
         if points is not None:
             pass
         elif len(args) == 1 and isinstance(args[0], dict):
@@ -301,12 +301,19 @@ class GeoObject(GeoObjectBase, SpTree):
             points = np.stack(args, axis=-1)
             args = ()
 
-        super().__init__(*args, points=points, **kwargs)
-        if len(self.points.shape) == 0:
+        if len(points.shape) == 0:
             raise RuntimeError(f"{self.__class__.__name__} has no points")
 
-        if self.points.shape[-1] != self.__class__._ndim:
-            self._ndim = self.points.shape[-1]
+        ndim = self.__class__._ndim
+        if points.shape[-1] != self.__class__._ndim:
+            ndim = points.shape[-1]
+
+        cache = {"points": points}
+
+        SpTree.__init__(self, cache, _entry=_entry, _parent=_parent)
+        GeoObjectBase.__init__(self, **metadata)
+
+        self._ndim = ndim
 
     def __str__(self) -> str:
         return f"<{self.__class__.__name__}> {self.points}</{self.__class__.__name__}>"
@@ -438,6 +445,10 @@ class GeoObjectSet(List[_TGeo], GeoObjectBase):
             n_cls._ndim = g_cls._ndim
 
         return n_cls
+
+    def __init__(self, *args, _entry=None, _parent=None, **metadata):
+        List.__init__(self, *args, _entry=_entry, _parent=_parent)
+        GeoObjectBase.__init__(self, **metadata)
 
     # def __svg__(self) -> str:
     #     return f"<g >\n" + "\t\n".join([g.__svg__ for g in self if isinstance(g, GeoObject)]) + "</g>"

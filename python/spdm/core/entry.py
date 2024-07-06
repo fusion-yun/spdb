@@ -205,6 +205,10 @@ class Entry:  # pylint: disable=R0904
 
 
 class EntryChain(Entry):
+    """EntryChain
+    ==================================================
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__()
         self._entries: typing.List[Entry] = [
@@ -331,43 +335,71 @@ def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, _plugin_name=No
 
 
 @singledispatch
-def as_entry(obj, *args, plugin_name=None) -> Entry:
+def as_entry(obj, **kwargs) -> Entry:
     """Try convert obj to Entry."""
 
-    if plugin_name is not None:
-        entry = Entry(obj, *args, _plugin_name=plugin_name)
-    elif hasattr(obj.__class__, "__entry__"):
-        if len(args) + len(kwargs) > 0:
-            raise RuntimeError(f"Unused arguments {args} {kwargs}")
+    if hasattr(obj.__class__, "__entry__"):
+        if len(kwargs) > 0:
+            logger.warning(f"Unused kwargs   {kwargs}")
         entry = obj.__entry__()
+    elif obj is not None and obj is not _not_found_:
+        entry = Entry(obj, **kwargs)
     else:
-        entry = Entry(obj, *args)
+        entry = None
 
     return entry
 
 
 @as_entry.register(Entry)
-def _as_entry(obj, *args, **kwargs):
-    if len(args) + len(kwargs) > 0:
-        raise RuntimeError(f"Unused arguments {args} {kwargs}")
+def _as_entry(obj, **kwargs):
+    if len(kwargs) > 0:
+        raise RuntimeError(f"Unused arguments  {kwargs}")
     return obj
 
 
 @as_entry.register(str)
-def _as_entry(uri, *args, **kwargs):
-    return open_entry(uri, *args, **kwargs)
+def _as_entry(uri, **kwargs):
+    return open_entry(uri, **kwargs)
 
 
 @as_entry.register(URITuple)
-def _as_entry(uri, *args, **kwargs):
-    return open_entry(uri, *args, **kwargs)
+def _as_entry(uri, **kwargs):
+    return open_entry(uri, **kwargs)
 
 
 @as_entry.register(Path)
-def _as_entry(uri, *args, **kwargs):
-    return open_entry(uri, *args, **kwargs)
+def _as_entry(uri, **kwargs):
+    return open_entry(uri, **kwargs)
 
 
 @as_entry.register(pathlib.Path)
 def _as_entry(uri, *args, **kwargs):
-    return open_entry(uri, *args, **kwargs)
+    return open_entry(uri, **kwargs)
+
+
+@as_entry.register(tuple)
+def _as_entry(uri, **kwargs):
+    return EntryChain(uri, **kwargs)
+
+
+def _as_entrychain(uris, **kwargs):
+    entries = []
+    for uri in uris:
+        if isinstance(uri, EntryChain):
+            entries.extend(uri._entries)
+        elif isinstance(uri, (list, tuple)):
+            entries.extend(uri)
+        else:
+            entries.append(as_entry(uri))
+
+    return EntryChain(*entries, **kwargs)
+
+
+@as_entry.register(list)
+def _as_entry(uris, **kwargs):
+    return _as_entrychain(uris, **kwargs)
+
+
+@as_entry.register(tuple)
+def _as_entry(uris, **kwargs):
+    return _as_entrychain(uris, **kwargs)
