@@ -5,8 +5,9 @@ from copy import copy
 
 from spdm.utils.tags import _not_found_
 from spdm.core.pluggable import Pluggable
+from spdm.core.path import Path
 from spdm.core.entry import as_entry
-from spdm.core.htree import HTree
+from spdm.core.htree import HTreeNode
 from spdm.core.sp_tree import SpTree
 
 
@@ -17,31 +18,37 @@ class SpObject(Pluggable, SpTree):
 
     """
 
-    def __new__(cls, cache=_not_found_, _entry=None, **kwargs):
+    def __new__(cls, *args, _entry=None, **kwargs):
+        if "_plugin_prefix" not in cls.__dict__:
+            return super().__new__(cls, *args, _entry=_entry, **kwargs)
+
         plugin_name = kwargs.pop("type", None)
 
-        if plugin_name is None and isinstance(cache, dict):
-            plugin_name = cache.get("type", None) or cache.get("@type", None)
+        if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
+            plugin_name = args[0].get("type", None)
 
         if plugin_name is None and _entry is not None:
-            plugin_name = _entry.get("type", None) or _entry.get("@type", None)
-        if not isinstance(plugin_name, str) and plugin_name is not None:
-            raise TypeError(plugin_name)
-        return super().__new__(cls, cache, _plugin_name=plugin_name, _entry=_entry, **kwargs)
+            plugin_name = _entry.get("type", None)
 
-    def __init__(self, cache=_not_found_, _entry=None, **kwargs) -> None:
+        return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
+
+    def __init__(self, *args, _entry=None, **kwargs) -> None:
+        kwargs.pop("type", None)
         entries = []
-        if isinstance(cache, HTree):
-            if cache._entry is not None:
-                entries.append(cache._entry)
-            cache = copy(cache._cache)
-        elif isinstance(cache, dict):
-            pass
-        elif cache is not _not_found_:
-            _entry = as_entry(tuple([cache, _entry]))
-            cache = _not_found_
+        cache = {}
+        for a in args:
+            if isinstance(a, HTreeNode):
+                entries.append(a._entry)
+                cache = Path().update(cache, a._cache)
+            elif isinstance(a, dict):
+                entries.append(a.pop("$entry", _not_found_))
+                cache = Path().update(cache, a)
+            elif a is not _not_found_:
+                entries.append(a)
 
-        super().__init__(cache, _entry=_entry, **kwargs)
+        entries.append(_entry)
+
+        super().__init__(cache, _entry=as_entry(tuple(entries)), **kwargs)
 
     def __copy__(self) -> typing.Self:
         return SpTree.__copy__(self)

@@ -385,14 +385,21 @@ def _as_entry(uri, **kwargs):
 def _as_entrychain(uris, **kwargs):
     entries = []
     for uri in uris:
-        if isinstance(uri, EntryChain):
+        if uri is None or uri is _not_found_:
+            continue
+        elif isinstance(uri, EntryChain):
             entries.extend(uri._entries)
         elif isinstance(uri, (list, tuple)):
             entries.extend(uri)
         else:
-            entries.append(as_entry(uri))
+            entries.append(uri)
 
-    return EntryChain(*entries, **kwargs)
+    if len(entries) == 0:
+        return None
+    elif len(entries) == 1:
+        return as_entry(entries[0], **kwargs)
+    else:
+        return EntryChain(*entries, **kwargs)
 
 
 @as_entry.register(list)
