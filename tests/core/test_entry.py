@@ -83,20 +83,24 @@ class TestEntry(unittest.TestCase):
         self.assertDictEqual(res, {"a/2": cache["a"][2], "c": cache["c"], "d/e": cache["d"]["e"], "e": _not_found_})
 
     def test_search(self):
-        data = [1, 2, 3, 4, 5]
-        d0 = Entry(data)
-        self.assertListEqual([*d0.search()], data)
+        data1 = [1, 2, 3, 4, 5]
+        d1 = Entry(data1)
+        self.assertListEqual([*d1.search()], data1)
 
         d1 = Entry([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}])
 
-        self.assertListEqual([*d1.child("*/id").search()], data)
+        self.assertListEqual([*d1.child("*/id").search()], data1)
 
         data2 = {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}
-        d1 = Entry(data2)
+        d2 = Entry(data2)
 
-        self.assertSetEqual(set([*d1.search(Query.tags.get_key)]), set([*data2.keys()]))
-        self.assertSetEqual(set([*d1.search(Query.tags.get_value)]), set([*data2.values()]))
-        self.assertDictEqual({kv[0]: kv[1] for kv in d1.search(Query.tags.get_item)}, data2)
+        self.assertSetEqual(set([*d2.search(Query.tags.get_key)]), set([*data2.keys()]))
+        self.assertSetEqual(set([*d2.search(Query.tags.get_value)]), set([*data2.values()]))
+        self.assertDictEqual({kv[0]: kv[1] for kv in d2.search(Query.tags.get_item)}, data2)
+
+        data3 = [{"name": "John", "age": 20}, {"name": "Jane", "age": 30}, {"name": "Jack", "age": 40}]
+        d3 = Entry(data3)
+        self.assertSetEqual({k for k in d3.child("*/name").search()}, {"John", "Jane", "Jack"})
 
 
 if __name__ == "__main__":
