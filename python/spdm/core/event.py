@@ -5,10 +5,9 @@ from enum import Enum, auto, Flag
 
 from spdm.core.time import Time
 from spdm.core.port import Ports
-from spdm.core.sp_object import sp_object, SpObject
+from spdm.core.sp_object import SpObject
 
 
-@sp_object
 class Event(SpObject):
     """An Event represents an independent and indivisible operation or state change that occurs at a specific moment in time.
     Events are the building blocks of processes.

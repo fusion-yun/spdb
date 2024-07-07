@@ -8,12 +8,12 @@ import copy
 import inspect
 import itertools
 
-from ..utils.logger import logger
-from ..utils.tags import _not_found_
-from ..core.htree import HTreeNode, Dict
-from ..core.template import Template
-from ..core.sp_object import sp_object, SpObject
-from ..core.event import SpState
+from spdm.utils.logger import logger
+from spdm.utils.tags import _not_found_
+from spdm.core.htree import HTreeNode, Dict
+from spdm.core.template import Template
+from spdm.core.sp_object import SpObject
+from spdm.core.event import SpState
 
 SpGraphLightTheme = Dict(
     {

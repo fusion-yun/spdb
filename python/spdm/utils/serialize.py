@@ -2,7 +2,7 @@
 """
 
 import collections.abc
-from spdm.core.generic_helper import primary_type
+from spdm.core.generic import primary_type
 
 
 def serialize(obj):

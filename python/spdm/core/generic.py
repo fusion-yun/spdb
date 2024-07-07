@@ -3,7 +3,6 @@
 import typing
 import inspect
 from copy import copy
-from spdm.utils.logger import logger
 
 _Ts = typing.TypeVarTuple("_Ts")
 
@@ -69,7 +68,7 @@ def spec_members(members: dict, cls, tp_map) -> dict:
 
         base = cls.__bases__[idx]
 
-        if not issubclass(base, typing.Generic) or base is typing.Generic or base is GenericHelper:
+        if not issubclass(base, typing.Generic) or base is typing.Generic or base is Generic:
             continue
 
         base_tp_map = {k: generic_specification(v, tp_map) for k, v in (zip(base.__parameters__, orig_base.__args__))}
@@ -79,7 +78,8 @@ def spec_members(members: dict, cls, tp_map) -> dict:
     return members
 
 
-class _TGenericAlias(typing._GenericAlias, _root=True):
+class _GenericAlias(typing._GenericAlias, _root=True):
+    """重载了 typing._GenericAlias 类，使得 Generic 类型的实例化更加方便。"""
 
     @typing._tp_cache
     def __getitem__(self, args):
@@ -109,22 +109,24 @@ class _TGenericAlias(typing._GenericAlias, _root=True):
         return n_cls
 
 
-class GenericHelper(typing.Generic[*_Ts]):
-    """A helper class for typing generic."""
+class Generic(typing.Generic[*_Ts]):
+    """重载 typing.Generic 类，强化类型参数的特化 (specification) 能力。
+    - 所有类参数都被特化时，返回新的类，而不是 typing._GenericAlias。
+    - 类型中的 typevar 会被替换为具体的类型。
+    - 类参数未被特化时，依然返回._GenericAlias
+    """
 
     @typing._tp_cache
     def __class_getitem__(cls, item):
         alias = super().__class_getitem__(item)
-
-        alias.__class__ = _TGenericAlias
-
-        if cls is not GenericHelper and len(alias.__parameters__) == 0:
+        alias.__class__ = _GenericAlias
+        if cls is not Generic and len(alias.__parameters__) == 0:
             return alias[()]
         else:
             return alias
 
 
-__all__ = ["GenericHelper"]
+__all__ = ["Generic"]
 # if len(alias.__parameters__) > 0:
 #     # alias.__origin__ = n_cls
 # else:

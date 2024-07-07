@@ -1,22 +1,15 @@
-import abc
 import collections.abc
 import typing
 import inspect
-import functools
-from copy import deepcopy
-
 import numpy as np
 
 from spdm.utils.type_hint import ArrayLike, ArrayType, array_type
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 
-from spdm.core.path import Path
-from spdm.core.htree import List
-from spdm.core.sp_tree import sp_property
-from spdm.core.metadata import Metadata
+from spdm.core.htree import List, HTree
+from spdm.core.sp_tree import sp_property, WithProperty, WithMetadata
 from spdm.core.pluggable import Pluggable
-from spdm.core.sp_tree import SpTree
 
 
 class BBox:
@@ -148,7 +141,7 @@ class BBox:
         raise NotImplementedError(f"translate")
 
 
-class GeoObjectBase(Pluggable, Metadata):
+class GeoObjectBase(WithMetadata, Pluggable):
     """Geometry object base class
     ===============================
     几何对象基类，两个子类
@@ -231,7 +224,7 @@ class GeoObjectBase(Pluggable, Metadata):
         return self
 
 
-class GeoObject(GeoObjectBase, SpTree):
+class GeoObject(HTree, WithProperty, GeoObjectBase):
     """Geomertic object
     几何对象，包括点、线、面、体等
 
@@ -314,8 +307,7 @@ class GeoObject(GeoObjectBase, SpTree):
 
         cache = {"points": points}
 
-        SpTree.__init__(self, cache, _entry=_entry, _parent=_parent)
-        GeoObjectBase.__init__(self, **metadata)
+        super().__init__(cache, _entry=_entry, _parent=_parent, **metadata)
 
         self._ndim = ndim
 

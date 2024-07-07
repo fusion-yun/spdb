@@ -7,13 +7,13 @@ import functools
 import networkx as nx
 from networkx.classes.reportviews import DegreeView, EdgeView, NodeView
 
-from spdm.utils.type_hint import GenericHelper, type_convert
+from spdm.utils.type_hint import Generic, type_convert
 
 
 TNode = typing.TypeVar("TNode")
 
 
-class _TNodeView(GenericHelper[TNode], NodeView):
+class _TNodeView(Generic[TNode], NodeView):
     """泛型版本的 NodeView 类。仅用以了解其类型。"""
 
     def __iter__(self) -> typing.Generator[TNode, None, None]:
@@ -27,15 +27,15 @@ class _TNodeView(GenericHelper[TNode], NodeView):
         return NodeView.__getstate__(self)
 
 
-class _TEdgeView(GenericHelper[TNode], EdgeView):
+class _TEdgeView(Generic[TNode], EdgeView):
     """泛型版本的 EdgeView 类。"""
 
 
-class _TDegreeView(GenericHelper[TNode], DegreeView):
+class _TDegreeView(Generic[TNode], DegreeView):
     """A view of node degrees as returned by the degree method."""
 
 
-class _TGraphHelper(GenericHelper[TNode]):
+class _TGraphHelper(Generic[TNode]):
     """A helper class for typing generic Graph.
 
     Note: 在 Python 中使用多重继承时，如果多个基类都包含相同名字的方法，

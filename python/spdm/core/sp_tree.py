@@ -39,7 +39,7 @@
 
 """
 
-import collections.abc
+import abc
 import inspect
 import typing
 from copy import deepcopy
@@ -47,9 +47,8 @@ from _thread import RLock
 
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_, _undefined_
-from spdm.core.htree import HTree, HTreeNode
+from spdm.core.htree import HTree, HTreeNode, List
 from spdm.core.path import Path, as_path
-from spdm.core.metadata import Metadata
 
 
 def _copy(obj, *args, **kwargs):
@@ -77,73 +76,6 @@ def _copy(obj, *args, **kwargs):
 
     else:
         return deepcopy(obj)
-
-
-class SpTree(HTree, Metadata):
-    """SpTree 根据 class 的 typhint 自动绑定转换类型
-    ===============================================
-
-    """
-
-    def __init_subclass__(cls, default_value=_not_found_, **kwargs) -> None:
-        """根据 cls 的 type hint，为 cls 属性"""
-        if default_value is _not_found_:
-            default_value = {}
-
-        for name, type_hint in typing.get_type_hints(cls).items():
-            attr = getattr(cls, name, default_value.get(name, _not_found_))
-
-            if isinstance(attr, property):
-                continue
-
-            if isinstance(attr, SpProperty):
-                if name not in cls.__dict__:
-                    attr = SpProperty(getter=attr.getter, setter=attr.setter, deleter=attr.deleter, **attr.metadata)
-            else:
-                attr = SpProperty(default_value=attr)
-
-            attr.type_hint = type_hint
-
-            setattr(cls, name, attr)
-
-            attr.__set_name__(cls, name)
-
-        super().__init_subclass__(**kwargs)
-
-    def __init__(self, cache=_not_found_, _entry=None, _parent=None):
-        super().__init__(cache, _entry=_entry, _parent=_parent)
-
-    def __getstate__(self) -> dict:
-        state = super().__getstate__()
-        for k, prop in inspect.getmembers(self.__class__, is_sp_property):
-            if prop.getter is not None:
-                continue
-
-            value = getattr(self, k, _not_found_)
-
-            if value is _not_found_:
-                continue
-
-            state[k] = value
-
-        return state
-
-    def __as_node__(
-        self, key, value, /, type_hint=None, entry=None, default_value=_not_found_, **metadata
-    ) -> typing.Self:
-
-        node = super().__as_node__(key, value, type_hint=type_hint, entry=entry, default_value=default_value)
-
-        # if isinstance(node, SpTree):
-        #     node._metadata.update(metadata)
-        #     if isinstance(key, str):
-        #         node._metadata.setdefault("name", key)
-
-        #     elif isinstance(key, int):
-        #         node._metadata.setdefault("index", key)
-        #         if self._metadata.get("name", _not_found_) in (_not_found_, None, "unnamed"):
-        #             self._metadata["name"] = str(key)
-        return node
 
 
 _T = typing.TypeVar("_T")
@@ -179,6 +111,8 @@ class SpProperty:
             会在读写property phi 时调用 __set__,__get__ 方法，
             从Node的_cache或entry获得名为 'phi' 的值，将其转换为 type_hint 指定的类型 Profile[float]。
     """
+
+    is_property = True
 
     def __init__(
         self,
@@ -315,7 +249,6 @@ class SpProperty:
                     type_hint=self.type_hint,
                     getter=self.getter,
                     default_value=deepcopy(self.default_value),
-                    **self.metadata,
                 )
 
             if self.strict and (value is _undefined_ or value is _not_found_):
@@ -325,7 +258,7 @@ class SpProperty:
 
         return value
 
-    def __delete__(self, instance: SpTree) -> None:
+    def __delete__(self, instance: HTree) -> None:
         with self.lock:
             instance.__del_node__(self.property_name, deleter=self.deleter)
 
@@ -334,13 +267,115 @@ def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
     return SpProperty(getter=getter, **kwargs)
 
 
+class WithProperty(abc.ABC):
+    """自动添加 SpProperty
+    ==============================================
+    根据 type hint 在创建子类时自动添加 SpProperty"""
+
+    def __init_subclass__(cls, default_value=_not_found_, **kwargs) -> None:
+        """根据 cls 的 type hint，为 cls 属性"""
+        if default_value is _not_found_:
+            default_value = {}
+
+        for name, type_hint in typing.get_type_hints(cls).items():
+            attr = getattr(cls, name, default_value.get(name, _not_found_))
+
+            if isinstance(attr, property):
+                continue
+
+            if getattr(attr.__class__, "is_property", False):
+                if name not in cls.__dict__:
+                    attr = SpProperty(getter=attr.getter, setter=attr.setter, deleter=attr.deleter, **attr.metadata)
+            else:
+                attr = SpProperty(default_value=attr)
+
+            attr.type_hint = type_hint
+
+            setattr(cls, name, attr)
+
+            attr.__set_name__(cls, name)
+
+        super().__init_subclass__(**kwargs)
+
+    def __getstate__(self) -> dict:
+        state = super().__getstate__()
+        for k, prop in inspect.getmembers(self.__class__, lambda o: isinstance(o, SpProperty)):
+            if prop.getter is not None:
+                continue
+
+            value = getattr(self, k, _not_found_)
+
+            if value is _not_found_:
+                continue
+
+            state[k] = value
+
+        return state
+
+
+class WithMetadata(abc.ABC):
+    """元数据
+    ===============================================
+    在创建子类时候，添加 metadata 作为类变量"""
+
+    _metadata = {}
+
+    def __init_subclass__(cls, **metadata):
+        if len(metadata) > 0:
+            cls._metadata = Path().update(deepcopy(cls._metadata), metadata)
+
+        super().__init_subclass__()
+
+
+class WithAttribute(abc.ABC):
+    """Attribute 绑定
+    ===============================================
+    属性树，通过 __getattr__ 访问成员，并转换为对应的类型
+    MRO 中需要有 __getnode__ 和 __setnode__
+    """
+
+    def __as_node__(self, *args, **kwargs) -> typing.Self | List[typing.Self]:
+        node = super().__as_node__(*args, **kwargs)
+        if node.__class__ is HTree:
+            node = node._entry.get()
+
+        if node is _not_found_:
+            pass
+        # elif node.__class__ is HTree and node._entry.is_list:
+        #     node = List[PropertyTree](node._cache, _entry=node._entry)
+        # elif node.__class__ is HTree and node._entry.is_dict:
+        #     node.__class__ = PropertyTree
+        elif isinstance(node, dict):
+            node = self.__class__(node)
+        elif isinstance(node, list) and (len(node) == 0 or any(isinstance(n, dict) for n in node)):
+            node = List[self.__class__](node)
+
+        return node
+
+    def __getattr__(self, key: str) -> typing.Self | List[typing.Self]:
+        if key.startswith("_"):
+            return super().__getattribute__(key)
+        return self.__get_node__(key, default_value=_not_found_)
+
+    def __setattr__(self, key: str, value: typing.Any):
+        if key.startswith("_"):
+            return super().__setattr__(key, value)
+
+        return self.__set_node__(key, value)
+
+
 def annotation(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
     """alias of sp_property"""
     return SpProperty(getter=getter, **kwargs)
 
 
-def is_sp_property(obj) -> bool:
-    return isinstance(obj, SpProperty)
+class SpTree(WithProperty, WithMetadata, HTree):
+    """SpTree 根据 class 的 typhint 自动绑定转换类型
+    ===============================================
+    """
+
+    def __init__(self, cache=..., /, _entry=None, _parent=None, **kwargs):
+        super().__init__(cache, _entry, _parent, **kwargs)
 
 
 def _make_sptree(cls, **metdata) -> typing.Type[SpTree]:
@@ -366,7 +401,7 @@ def sp_tree(cls: _T = None, /, **metadata) -> _T:
         return _make_sptree(cls, **metadata)
 
 
-class SpDataclass(SpTree):
+class AsDataclass:
     def __init__(self, *args, **kwargs):
         keys = [*typing.get_type_hints(self.__class__).keys()]
 
@@ -375,8 +410,11 @@ class SpDataclass(SpTree):
             if kwargs.get(key, _not_found_) is not _not_found_:
                 raise KeyError(f"Redefined argument '{key}'!")
             kwargs[key] = value
-
         super().__init__(**kwargs)
+
+
+class Dataclass(AsDataclass, HTree, WithProperty):
+    pass
 
 
 def sp_dataclass(cls=None, /, **metadata):
@@ -411,3 +449,7 @@ def sp_dataclass(cls=None, /, **metadata):
         return lambda c: sp_dataclass(c, **metadata)
     else:
         return wrapper
+
+
+class AttributeTree(WithAttribute, SpTree):
+    pass

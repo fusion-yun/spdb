@@ -1,6 +1,6 @@
 import unittest
 from spdm.core.htree import List
-from spdm.core.property_tree import PropertyTree
+from spdm._obsolete.property_tree import PropertyTree
 
 
 class TestPropertyTree(unittest.TestCase):

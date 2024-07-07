@@ -2,7 +2,7 @@ import unittest
 import typing
 import numpy as np
 from spdm.core.htree import List, Dict
-from spdm.core.sp_tree import SpTree, sp_property, sp_dataclass
+from spdm.core.sp_tree import SpTree, sp_property, Dataclass
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
@@ -158,8 +158,7 @@ class TestSpTree(unittest.TestCase):
 
     def test_dataclass(self):
 
-        @sp_dataclass(name="Foo1")
-        class Foo1:
+        class Foo1(Dataclass):
             x: float
             y: float
             z: float = 0.1

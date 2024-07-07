@@ -11,7 +11,7 @@ from spdm.utils.type_hint import ArrayType, as_array, primary_type, PrimaryType,
 
 from spdm.core.entry import Entry, as_entry
 from spdm.core.path import Path, Query, PathLike, as_path
-from spdm.core.generic_helper import GenericHelper
+from spdm.core.generic import Generic
 
 
 def get_state(obj: typing.Any) -> dict:
@@ -282,7 +282,6 @@ _T = typing.TypeVar("_T")
 _TR = typing.TypeVar("_TR")  # return value type
 
 
-
 class HTree(HTreeNode):
     """Hierarchical Tree:
     - 其成员类型为 _T，用于存储一组数据或对象，如列表，字典等
@@ -300,11 +299,12 @@ class HTree(HTreeNode):
       - path 指向
     """
 
-    def __init__(self, cache=_not_found_, /, _entry=None, _parent=None):
+    def __init__(self, cache=..., /, _entry=None, _parent=None, **kwargs):
         """Initialize a HTree object."""
         if not (isinstance(cache, (dict, list)) or cache is _not_found_):
             raise TypeError(f"Invalid cache type, cache must be a dict or _not_found_ not {cache}!")
-
+        if len(kwargs) > 0:
+            cache = Path().update(cache, kwargs)
         super().__init__(cache, _entry=_entry, _parent=_parent)
 
     @property
@@ -437,7 +437,6 @@ class HTree(HTreeNode):
         self,
         key,
         value,
-        /,
         type_hint=None,
         entry=None,
         parent=None,
@@ -496,7 +495,9 @@ class HTree(HTreeNode):
 
         return node
 
-    def __get_node__(self, key, /, entry=None, getter=None, **kwargs) -> _T:
+    def __get_node__(
+        self, key, /, getter=None, type_hint=None, entry=None, parent=None, default_value=_not_found_
+    ) -> _T:
         if key is None:
             return self
 
@@ -508,7 +509,7 @@ class HTree(HTreeNode):
         if entry is None and self._entry is not None:
             entry = self._entry.child(key)
 
-        return self.__as_node__(key, value, entry=entry, **kwargs)
+        return self.__as_node__(key, value, type_hint, entry, parent, default_value)
 
     def __set_node__(self, key, *args, setter=None, **kwargs) -> None:
         if callable(setter):
@@ -555,7 +556,7 @@ class HTree(HTreeNode):
                 yield Path().project(node, *args, **kwargs)
 
 
-class Dict(GenericHelper[_T], HTree):
+class Dict(Generic[_T], HTree):
     """Dict 类型的 HTree 对象"""
 
     def __init__(self, cache: dict = _not_found_, /, **kwargs):
@@ -617,7 +618,7 @@ class Dict(GenericHelper[_T], HTree):
 collections.abc.MutableMapping.register(Dict)
 
 
-class List(GenericHelper[_T], HTree):
+class List(Generic[_T], HTree):
     """List 类型的 HTree 对象"""
 
     def __init__(self, cache: list = _not_found_, **kwargs):

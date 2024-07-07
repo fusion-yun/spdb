@@ -1,14 +1,11 @@
 import typing
-import inspect
-from copy import copy
-
 
 from spdm.utils.tags import _not_found_
-from spdm.core.pluggable import Pluggable
 from spdm.core.path import Path
 from spdm.core.entry import as_entry
-from spdm.core.htree import HTreeNode
+from spdm.core.htree import HTreeNode, HTree
 from spdm.core.sp_tree import SpTree
+from spdm.core.pluggable import Pluggable
 
 
 class SpObject(Pluggable, SpTree):
@@ -19,8 +16,6 @@ class SpObject(Pluggable, SpTree):
     """
 
     def __new__(cls, *args, _entry=None, **kwargs):
-        if "_plugin_prefix" not in cls.__dict__:
-            return super().__new__(cls, *args, _entry=_entry, **kwargs)
 
         plugin_name = kwargs.pop("type", None)
 
@@ -30,7 +25,7 @@ class SpObject(Pluggable, SpTree):
         if plugin_name is None and _entry is not None:
             plugin_name = _entry.get("type", None)
 
-        return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
+        return super().__new__(cls, _plugin_name=plugin_name)
 
     def __init__(self, *args, _entry=None, _parent=None, **kwargs) -> None:
 
@@ -52,50 +47,5 @@ class SpObject(Pluggable, SpTree):
 
         super().__init__(cache, _entry=as_entry(tuple(entries)), _parent=_parent)
 
-    def __copy__(self) -> typing.Self:
-        return SpTree.__copy__(self)
-
-    # @property
-    # @cache
-    # def metadata(self):
-    #     """
-    #     Return the metadata.
-
-    #     Returns:
-    #         PropertyTree: The metadata.
-    #     """
-    #     return PropertyTree(self._metadata)
-
-
-_T = typing.TypeVar("_T")
-
-
-def sp_object(cls: _T = None, /, **kwargs) -> _T:
-    """
-    Decorator to convert cls into SpObject.
-
-    Args:
-        cls: The class to be converted.
-        **kwargs: Arbitrary keyword arguments.
-
-    Returns:
-        _T: The converted class.
-    """
-
-    from spdm.core.sp_tree import _make_sptree
-
-    def wrap(_cls, _kwargs=copy(kwargs)):
-        if not inspect.isclass(_cls):
-            raise TypeError(f"Not a class {_cls}")
-
-        if not issubclass(_cls, SpObject):
-            n_cls = type(_cls.__name__, (_cls, SpObject), {})
-            n_cls.__module__ = _cls.__module__
-        else:
-            n_cls = _cls
-
-        n_cls = _make_sptree(n_cls, **_kwargs)
-
-        return n_cls
-
-    return wrap if cls is None else wrap(cls)
+    # def __copy__(self) -> typing.Self:
+    #     return SpTree.__copy__(self)

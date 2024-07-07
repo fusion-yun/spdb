@@ -2,7 +2,7 @@ import typing
 import unittest
 
 
-from spdm.core.generic_helper import GenericHelper
+from spdm.core.generic  import Generic 
 
 
 class TestGeneric(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestGeneric(unittest.TestCase):
         _S2 = typing.TypeVar("_S2")
         _Ts = typing.TypeVarTuple("_Ts")
 
-        class Foo(GenericHelper[_T0, _T1, _T2]):
+        class Foo(Generic[_T0, _T1, _T2]):
             TValue = _T2
             goo: _T0
             boo: _T1 = 10
@@ -55,7 +55,7 @@ class TestGeneric(unittest.TestCase):
         _S1 = typing.TypeVar("_S1")
         _S2 = typing.TypeVar("_S2")
 
-        class Foo(GenericHelper[_T0, _T1, _T2]):
+        class Foo(Generic[_T0, _T1, _T2]):
             TValue = _T2
             foo: _T0
             boo: _T1 = 10
@@ -64,7 +64,7 @@ class TestGeneric(unittest.TestCase):
             def func(self, a: _T0, b: _T2) -> _T1:
                 pass
 
-        class Goo(GenericHelper[_T0, _T1, _T2]):
+        class Goo(Generic[_T0, _T1, _T2]):
             GType = _T2
             goo: _T0
             koo: typing.Tuple[_T1, _T2]

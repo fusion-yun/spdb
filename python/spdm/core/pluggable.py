@@ -5,9 +5,11 @@ Classes:
 - Pluggable: Factory class to create objects from a registry.
 """
 
+import abc
 import typing
-import inspect
-import abc  # Abstract Base Classes
+
+# import inspect
+# import abc  # Abstract Base Classes
 
 from spdm.utils.sp_export import sp_load_module, walk_namespace_modules
 from spdm.utils.logger import logger
@@ -93,6 +95,8 @@ class Pluggable(abc.ABC):
         Returns:
         - typing.Type[typing.Self]: The plugin class.
         """
+        if plugin_name is None:
+            plugin_name = getattr(cls, "default_plugin", None)
 
         if plugin_name is None:
             return None
@@ -132,6 +136,9 @@ class Pluggable(abc.ABC):
 
     def __new__(cls, *args, _plugin_name=None, **kwargs) -> typing.Type[typing.Self]:
         """Create a new instance of the class."""
+        
+        if "_plugin_prefix" not in cls.__dict__:
+            return object.__new__(cls)
 
         if cls is Pluggable:
             # Can not create instance of Pluggable
@@ -139,17 +146,12 @@ class Pluggable(abc.ABC):
 
         if not issubclass(cls, Pluggable):
             # Not pluggable
-            logger.error("%s is not pluggable!", cls.__name__)
             raise RuntimeError(f"{cls.__name__} is not pluggable!")
 
-        if _plugin_name is None:
-            _plugin_name = getattr(cls, "default_plugin", None)
-
-        n_cls = cls._get_plugin(_plugin_name) if _plugin_name is not None else cls
+        n_cls = cls._get_plugin(_plugin_name)
 
         if n_cls is None:
-            logger.verbose(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
-            n_cls = cls
+            raise RuntimeError(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
 
         # Return the plugin class
         return object.__new__(n_cls)
