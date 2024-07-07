@@ -231,24 +231,21 @@ class EntryChain(Entry):
             return res
 
         if len(args) > 0 and args[0] is Query.count:
-            res = super().find(*args, default_value=_not_found_, **kwargs)
-            if res is _not_found_ or res == 0:
-                for e in self._entries:
-                    res = e.child(self._path).find(*args, default_value=_not_found_, **kwargs)
-                    if res is not _not_found_ and res != 0:
-                        break
+            # res = super().find(*args, default_value=_not_found_, **kwargs)
+            for e in self._entries:
+                res = e.child(self._path).find(*args, default_value=_not_found_, **kwargs)
+                if res is not _not_found_ and res != 0:
+                    break
         else:
-            res = super().find(*args, default_value=_not_found_, **kwargs)
+            # res = super().find(*args, default_value=_not_found_, **kwargs)
+            for e in self._entries:
+                e_child = e.child(self._path)
+                res = e_child.find(*args, default_value=_not_found_, **kwargs)
+                if res is not _not_found_:
+                    break
 
-            if res is _not_found_:
-                for e in self._entries:
-                    e_child = e.child(self._path)
-                    res = e_child.find(*args, default_value=_not_found_, **kwargs)
-                    if res is not _not_found_:
-                        break
-
-            if res is _not_found_:
-                res = default_value
+        if res is _not_found_:
+            res = default_value
 
         return res
 
@@ -388,7 +385,7 @@ def _as_entrychain(uris, **kwargs):
         if uri is None or uri is _not_found_:
             continue
         elif isinstance(uri, EntryChain):
-            entries.extend(uri._entries)
+            entries.extend([e.child(uri._path) for e in uri._entries])
         elif isinstance(uri, (list, tuple)):
             entries.extend(uri)
         else:

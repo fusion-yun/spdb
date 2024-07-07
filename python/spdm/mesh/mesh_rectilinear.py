@@ -6,7 +6,7 @@ import numpy as np
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, array_type
 from spdm.core.function import Function
-from spdm.core.sp_tree import sp_property
+
 from spdm.geometry.box import Box
 from spdm.numlib.interpolate import interpolate
 from spdm.mesh.mesh_structured import StructuredMesh

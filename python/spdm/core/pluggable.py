@@ -136,7 +136,7 @@ class Pluggable(abc.ABC):
 
     def __new__(cls, *args, _plugin_name=None, **kwargs) -> typing.Type[typing.Self]:
         """Create a new instance of the class."""
-        
+
         if "_plugin_prefix" not in cls.__dict__:
             return object.__new__(cls)
 
@@ -151,8 +151,8 @@ class Pluggable(abc.ABC):
         n_cls = cls._get_plugin(_plugin_name)
 
         if n_cls is None:
-            raise RuntimeError(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
-
+            # raise RuntimeError(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
+            n_cls = cls
         # Return the plugin class
         return object.__new__(n_cls)
 

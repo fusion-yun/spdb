@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import abc
 import os
-import collections.abc
 import datetime
 import getpass
 
 import matplotlib.pyplot as plt
 import os
 
-from ..utils.logger import logger
-from ..core.sp_object import SpObject
+from spdm.utils.logger import logger
+from spdm.core.sp_object import SpObject
 
 SP_VIEW = os.environ.get("SP_VIEW", "matplotlib")
 
@@ -46,7 +45,7 @@ def plot(*args, plugin=SP_VIEW, **kwargs):
     return SpView(type=plugin).plot(*args, **kwargs)
 
 
-from .render import Render
+from spdm.view.render import Render
 
 SP_RENDER = os.environ.get("SP_RENDER", "graphviz")
 
