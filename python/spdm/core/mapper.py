@@ -106,12 +106,17 @@ class Mapper(Entry):
         if mapper is not _not_found_:
             return mapper, handlers
 
-        mapping_paths = resources.files(namespace.replace("/", "."))
+        mapping_paths = []
+        for ns in namespace.replace("/", ".").split(":"):
+            try:
+                files = resources.files(ns)
+            except ModuleNotFoundError:
+                continue
 
-        if not isinstance(mapping_paths, pathlib.Path):
-            mapping_paths = mapping_paths._paths
-        else:
-            mapping_paths = [mapping_paths]
+            if not isinstance(files, pathlib.Path):
+                mapping_paths.extend(files._paths)
+            else:
+                mapping_paths.append(files)
 
         mapping_files = []
 
