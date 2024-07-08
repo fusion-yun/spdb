@@ -11,7 +11,7 @@ from spdm.core.entry import Entry, as_entry
 from spdm.core.file import File
 
 
-default_namespace = "spdm/mapping/{schema}"
+path = "spdm/mapping/{schema}"
 
 
 class Mapper(Entry):
@@ -93,7 +93,7 @@ class Mapper(Entry):
         uri = uri_split(uri)
 
         if namespace is None:
-            namespace = default_namespace
+            namespace = path
 
         namespace: str = namespace.format(schema=schema)
 
