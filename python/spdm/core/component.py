@@ -21,5 +21,5 @@ class Component(Entity):
         raise NotImplementedError("TODO: time_slice ")
 
     @property
-    def geometry(self) -> typing.Type[GeoObject]:
+    def geometry(self) -> GeoObject:
         return {}

@@ -336,6 +336,7 @@ class WithAttribute(abc.ABC):
     """
 
     def __as_node__(self, *args, **kwargs) -> typing.Self | List[typing.Self]:
+
         node = super().__as_node__(*args, **kwargs)
         if node.__class__ is HTree:
             node = node._entry.get()
@@ -347,9 +348,9 @@ class WithAttribute(abc.ABC):
         # elif node.__class__ is HTree and node._entry.is_dict:
         #     node.__class__ = PropertyTree
         elif isinstance(node, dict):
-            node = self.__class__(node)
+            node = AttributeTree(node)
         elif isinstance(node, list) and (len(node) == 0 or any(isinstance(n, dict) for n in node)):
-            node = List[self.__class__](node)
+            node = List[AttributeTree](node)
 
         return node
 
@@ -363,6 +364,10 @@ class WithAttribute(abc.ABC):
             return super().__setattr__(key, value)
 
         return self.__set_node__(key, value)
+
+
+class AttributeTree(WithAttribute, WithProperty, HTree):
+    pass
 
 
 def annotation(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
@@ -447,7 +452,3 @@ def sp_dataclass(cls=None, /, **metadata):
         return lambda c: sp_dataclass(c, **metadata)
     else:
         return wrapper
-
-
-class AttributeTree(WithAttribute, WithProperty, HTree):
-    pass
