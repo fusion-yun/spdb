@@ -3,12 +3,10 @@ import collections.abc
 
 import numpy as np
 
-from spdm.utils.tags import _not_found_, _undefined_
+from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 from spdm.utils.misc import group_dict_by_prefix
-
 from spdm.numlib.interpolate import interpolate
-
 
 from spdm.utils.type_hint import (
     ArrayType,
@@ -22,11 +20,10 @@ from spdm.utils.type_hint import (
 )
 
 
-from spdm.core.functor import Functor
 from spdm.core.path import Path
-from spdm.core.htree import HTreeNode, HTree, HTreeNode, List
-from spdm.core.domain import Domain, PPolyDomain
-from spdm.core.functor import Functor, DerivativeOp
+from spdm.core.htree import HTreeNode, HTree, List
+from spdm.core.domain import Domain
+from spdm.core.functor import Functor
 
 _T = typing.TypeVar("_T", float, bool, array_type, HTreeNode)
 
@@ -239,7 +236,7 @@ class Expression(HTreeNode):
                 else:
                     res = rf"{{{vargs[0]}}} {op_tag} {{{vargs[1]}}}"
             else:
-                raise RuntimeError(f"Tri-op is not defined!")
+                raise RuntimeError("Tri-op is not defined!")
 
         elif (op_tag := self._metadata.get("label", None) or self._metadata.get("name", None)) is not None:
             if len(vargs) == 0:
@@ -327,17 +324,6 @@ class Expression(HTreeNode):
             self._ppoly = None
 
         return self._ppoly
-
-        # with warnings.catch_warnings():
-        #     warnings.filterwarnings("error", category=RuntimeWarning)
-        #     try:
-        #         # 执行当前节点算符
-        #         res = self._op(*new_children)
-        #     except RuntimeWarning:
-        #         logger.exception(f"{self._render_latex_()} {self._op} {new_children}")
-        #         # raise RuntimeError((res, args))
-        #         # res=np.nan_to_num(res,nan=1.0e-33)
-        #         res = np.nan
 
     def __recompile__(self) -> typing.Callable[..., array_type]:
         self._ppoly = _not_found_
@@ -437,6 +423,7 @@ class Expression(HTreeNode):
         return res
 
     # fmt: off
+    # pylint: off
     def __neg__      (self                              ) : return Expression(np.negative     ,  self     )
     def __add__      (self, o: NumericType | typing.Self) : return Expression(np.add          ,  self, o  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self
     def __sub__      (self, o: NumericType | typing.Self) : return Expression(np.subtract     ,  self, o  ) if not ((is_scalar(o) and o == 0 ) or isinstance(o, ConstantZero) or o is _not_found_ and o is None) else self
@@ -477,6 +464,7 @@ class Expression(HTreeNode):
     def __round__    (self, n=None                      ) : return Expression(np.round        ,  self, n  )
     def __floor__    (self                              ) : return Expression(np.floor        ,  self     )
     def __ceil__     (self                              ) : return Expression(np.ceil         ,  self     )
+    # pylint: on
     # fmt: on
 
 
@@ -587,6 +575,8 @@ class Variable(Expression):
 
 
 class Scalar(Expression):
+    """标量"""
+
     def __init__(self, value: float | int | bool | complex, **kwargs) -> None:
         if not isinstance(value, (float, int, bool, complex)):
             raise ValueError(f"value should be float|int|bool|complex, but got {type(value)}!")
@@ -616,6 +606,8 @@ class Scalar(Expression):
 
 
 class ConstantZero(Scalar):
+    """常数 0"""
+
     def __init__(self, **kwargs):
         super().__init__(0, **kwargs)
 
@@ -638,6 +630,8 @@ class ConstantZero(Scalar):
 
 
 class ConstantOne(Scalar):
+    """常数 1"""
+
     def __init__(self, **kwargs):
         super().__init__(1, **kwargs)
 
@@ -660,6 +654,8 @@ one = ConstantOne()
 
 
 class Derivative(Expression):
+    """导数表达式"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(None, *args, **kwargs)
 
@@ -720,6 +716,8 @@ class Derivative(Expression):
 
 
 class Antiderivative(Derivative):
+    """antiderivate 表达式"""
+
     def __init__(self, *args, order=1, **kwargs):
         super().__init__(*args, order=-order, **kwargs)
 
@@ -742,7 +740,7 @@ class PartialDerivative(Derivative):
         return f"d_{{{self.order}}} ({Expression._repr_s(self._expr)})"
 
 
-from ..numlib.smooth import smooth as _smooth
+from spdm.numlib.smooth import smooth as _smooth
 
 from scipy.signal import savgol_filter
 

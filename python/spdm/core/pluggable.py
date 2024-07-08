@@ -50,7 +50,12 @@ class Pluggable(abc.ABC):
         if prefix is None:
             prefix = cls.__module__ + "."
 
-        return prefix + f"{plugin_name}"
+        prefix = prefix.replace("/", ".").lstrip(".")
+
+        if not plugin_name.startswith(prefix):
+            plugin_name = prefix + f"{plugin_name}"
+
+        return plugin_name
 
     @classmethod
     def register(cls, plugin_name: str | list | None = None, plugin_cls=None):
@@ -74,8 +79,6 @@ class Pluggable(abc.ABC):
 
                 cls._plugin_registry[p_name] = plugin_cls
 
-                # logger.verbose(f"Register plugin  {plugin_cls.__module__}.{plugin_cls.__qualname__} as {p_name} ")
-
             return None
 
         def decorator(o_cls):
@@ -96,7 +99,7 @@ class Pluggable(abc.ABC):
         - typing.Type[typing.Self]: The plugin class.
         """
         if plugin_name is None:
-            plugin_name = getattr(cls, "default_plugin", None)
+            plugin_name = getattr(cls, "_plugin_default", None)
 
         if plugin_name is None:
             return None
@@ -156,12 +159,18 @@ class Pluggable(abc.ABC):
         # Return the plugin class
         return object.__new__(n_cls)
 
-    def __init_subclass__(cls, plugin_name=None, default_plugin=None, **kwargs) -> None:
-        if plugin_name is not None:
-            cls.register(plugin_name, cls)
+    def __init_subclass__(cls, plugin_name=None, plugin_default=None, plugin_prefix=None, **kwargs) -> None:
+        if plugin_default is not None:
+            cls._plugin_default = plugin_default
 
-        if default_plugin is not None:
-            cls.default_plugin = default_plugin
+        if plugin_prefix is not None:
+            if not plugin_prefix.startswith("/"):
+                plugin_prefix = f"{getattr(cls,'_plugin_prefix','')}{plugin_prefix}".replace(".", "/")
+            cls._plugin_prefix = plugin_prefix
+
+        if plugin_name is not None:
+            cls._plugin_name = plugin_name
+            cls.register(plugin_name, cls)
 
         super().__init_subclass__(**kwargs)
 

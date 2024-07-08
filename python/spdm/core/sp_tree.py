@@ -249,6 +249,7 @@ class SpProperty:
                     type_hint=self.type_hint,
                     getter=self.getter,
                     default_value=deepcopy(self.default_value),
+                    metadata=self.metadata,
                 )
 
             if self.strict and (value is _undefined_ or value is _not_found_):
@@ -374,9 +375,6 @@ class SpTree(WithProperty, WithMetadata, HTree):
     ===============================================
     """
 
-    def __init__(self, cache=..., /, _entry=None, _parent=None, **kwargs):
-        super().__init__(cache, _entry, _parent, **kwargs)
-
 
 def _make_sptree(cls, **metdata) -> typing.Type[SpTree]:
     if not inspect.isclass(cls):
@@ -451,5 +449,5 @@ def sp_dataclass(cls=None, /, **metadata):
         return wrapper
 
 
-class AttributeTree(WithAttribute, SpTree):
+class AttributeTree(WithAttribute, WithProperty, HTree):
     pass

@@ -1,14 +1,12 @@
-import collections.abc
 import typing
 import numpy as np
-from copy import deepcopy
 
-from .entry import Entry
-from .htree import List, HTree
-from .path import update_tree, merge_tree, Path
-from .sp_tree import SpTree, sp_property, sp_tree
-from ..utils.tags import _not_found_
-from ..utils.logger import logger
+from spdm.utils.logger import logger
+from spdm.utils.tags import _not_found_
+from spdm.core.entry import Entry
+from spdm.core.htree import List, HTree
+from spdm.core.path import update_tree, merge_tree, Path
+from spdm.core.sp_tree import SpTree, sp_property
 
 
 class TimeSlice(SpTree):

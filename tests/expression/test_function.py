@@ -34,7 +34,7 @@ class TestFunction(unittest.TestCase):
     def test_construct_from_expression(self):
         x = np.linspace(0, 1, 128)
         y = np.linspace(0, 2, 128)
-        
+
         fun = Function(x, y * 2)
 
         self.assertTrue(np.allclose(fun, y * 2))

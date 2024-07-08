@@ -441,6 +441,7 @@ class HTree(HTreeNode):
         entry=None,
         parent=None,
         default_value=_not_found_,
+        metadata=None,
     ) -> typing.Self:
 
         if parent is None:
@@ -487,8 +488,11 @@ class HTree(HTreeNode):
 
             node = type_convert(type_hint, value)
 
-        if isinstance(node, HTreeNode) and node._parent is None:
-            node._parent = self
+        if isinstance(node, HTreeNode):
+            if node._parent is None:
+                node._parent = self
+            if metadata is not None and len(metadata) > 0:
+                node._metadata = Path().update(deepcopy(getattr(node, "_metadata", {})), metadata)
 
         if node is not _not_found_ and key is not None:
             self._cache = Path([key]).update(self._cache, node)
@@ -496,7 +500,15 @@ class HTree(HTreeNode):
         return node
 
     def __get_node__(
-        self, key, /, getter=None, type_hint=None, entry=None, parent=None, default_value=_not_found_
+        self,
+        key,
+        /,
+        getter=None,
+        type_hint=None,
+        entry=None,
+        parent=None,
+        default_value=_not_found_,
+        metadata=None,
     ) -> _T:
         if key is None:
             return self
@@ -509,7 +521,9 @@ class HTree(HTreeNode):
         if entry is None and self._entry is not None:
             entry = self._entry.child(key)
 
-        return self.__as_node__(key, value, type_hint, entry, parent, default_value)
+        return self.__as_node__(
+            key, value, type_hint=type_hint, entry=entry, parent=parent, default_value=default_value, metadata=metadata
+        )
 
     def __set_node__(self, key, *args, setter=None, **kwargs) -> None:
         if callable(setter):

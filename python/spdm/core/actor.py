@@ -16,7 +16,7 @@ from spdm.core.path import Path
 from spdm.core.entity import Entity
 from spdm.core.generic import Generic
 
-_TSlice = typing.TypeVar("_TSlice")
+_TSlice = typing.TypeVar("_TSlice", bound=TimeSlice)
 
 
 class Actor(Generic[_TSlice], Entity):
@@ -60,12 +60,12 @@ class Actor(Generic[_TSlice], Entity):
         return self._outports
 
     @property
-    def current(self) -> typing.Type[TimeSlice]:
+    def current(self) -> _TSlice:
         """当前时间片，指向 Actor 所在时间点的状态。"""
         return self.time_slice.current
 
     @property
-    def previous(self) -> typing.Generator[typing.Type[TimeSlice], None, None]:
+    def previous(self) -> typing.Generator[_TSlice, None, None]:
         """倒序返回前面的时间片，"""
         yield from self.time_slice.previous
 
@@ -86,7 +86,7 @@ class Actor(Generic[_TSlice], Entity):
 
         self.time_slice.initialize(*args, **kwargs)
 
-        from .context import Context
+        from fytok.context import Context
 
         ctx = self
 
@@ -104,7 +104,7 @@ class Actor(Generic[_TSlice], Entity):
             if p.node is None:
                 logger.warning(f"Input {k} is not provided! context = {ctx}")
 
-    def preprocess(self, *args, **kwargs) -> typing.Type[TimeSlice]:
+    def preprocess(self, *args, **kwargs) -> _TSlice:
         """Actor 的预处理，若需要，可以在此处更新 Actor 的状态树。"""
 
         for k in [*kwargs.keys()]:
@@ -119,18 +119,18 @@ class Actor(Generic[_TSlice], Entity):
 
         return current
 
-    def execute(self, current: typing.Type[TimeSlice], *args) -> typing.Type[TimeSlice]:
+    def execute(self, current: _TSlice, *args) -> _TSlice:
         """根据 inports 和 前序 time slice 更新当前time slice"""
         return current
 
-    def postprocess(self, current: typing.Type[TimeSlice]) -> typing.Type[TimeSlice]:
+    def postprocess(self, current: _TSlice) -> _TSlice:
         """Actor 的后处理，若需要，可以在此处更新 Actor 的状态树。
         @param current: 当前时间片
         @param working_dir: 工作目录
         """
         return current
 
-    def refresh(self, *args, **kwargs) -> typing.Type[TimeSlice]:
+    def refresh(self, *args, **kwargs) -> _TSlice:
         """更新当前 Actor 的状态。
         更新当前状态树 （time_slice），并执行 self.iteration+=1
 
@@ -157,7 +157,7 @@ class Actor(Generic[_TSlice], Entity):
         self.flush()
         self.time_slice.finalize()
 
-    def fetch(self, *args, **kwargs) -> typing.Type[TimeSlice]:
+    def fetch(self, *args, **kwargs) -> _TSlice:
         """根据当前状态，根据参数返回一个时间片描述。
         例如，根据给定的坐标，对 object 进行插值，构建相应的时间片。
         """
@@ -184,12 +184,12 @@ class Actor(Generic[_TSlice], Entity):
 
         try:
             yield current_dir
-        except Exception as error:
+        except FileExistsError as error:
             if temp_dir is not None:
                 shutil.copytree(temp_dir.name, working_dir, dirs_exist_ok=True)
             os.chdir(pwd)
             logger.info(f"Enter directory {pwd}")
-            logger.exception(f"Failed to execute actor {self.tag}! \n See log in {working_dir} ")
+            logger.error(f"Failed to execute actor {self.tag}! \n See log in {working_dir} ", exc_info=error)
         else:
             if temp_dir is not None:
                 temp_dir.cleanup()
