@@ -522,7 +522,13 @@ class HTree(HTreeNode):
             entry = self._entry.child(key)
 
         return self.__as_node__(
-            key, value, type_hint=type_hint, entry=entry, parent=parent, default_value=default_value, metadata=metadata
+            key,
+            value,
+            type_hint=type_hint,
+            entry=entry,
+            parent=parent,
+            default_value=default_value,
+            metadata=metadata,
         )
 
     def __set_node__(self, key, *args, setter=None, **kwargs) -> None:
