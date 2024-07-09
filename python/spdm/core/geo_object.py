@@ -105,7 +105,10 @@ class BBox:
             else:
                 res = all(
                     [
-                        ((args[idx] >= self._origin[idx]) and (args[idx] <= self._origin[idx] + self._dimensions[idx]))
+                        (
+                            (args[idx] >= self._origin[idx])
+                            and (args[idx] <= self._origin[idx] + self._dimensions[idx])
+                        )
                         for idx in range(self.ndim)
                     ]
                 )
@@ -141,7 +144,7 @@ class BBox:
         raise NotImplementedError(f"translate")
 
 
-class GeoObjectBase(WithMetadata, Pluggable):
+class GeoObjectBase(Pluggable, WithMetadata):
     """Geometry object base class
     ===============================
     几何对象基类，两个子类
@@ -161,7 +164,7 @@ class GeoObjectBase(WithMetadata, Pluggable):
         if cls is not GeoObject:
             return super().__new__(cls, *args, _entry=_entry, **kwargs)
 
-        plugin_name = kwargs.pop("type", None)
+        plugin_name = kwargs.pop("kind", None)
 
         if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
             plugin_name = args[0].get("type", None)
@@ -227,7 +230,6 @@ class GeoObjectBase(WithMetadata, Pluggable):
 class GeoObject(HTree, WithProperty, GeoObjectBase):
     """Geomertic object
     几何对象，包括点、线、面、体等
-
 
     """
 

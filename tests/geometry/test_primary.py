@@ -13,7 +13,7 @@ class TestGeometryObject(unittest.TestCase):
     def test_point(self):
         from spdm.geometry.point import Point
 
-        p0: Point = GeoObject((0, 1, 2), type="point")
+        p0: Point = GeoObject((0, 1, 2), kind="point")
         p1 = Point["xyz"](1, 2, 3)
         self.assertIsInstance(p0, Point)
         assert_array_equal(p0.points, np.asarray([0, 1, 2]))
@@ -29,7 +29,7 @@ class TestGeometryObject(unittest.TestCase):
 
         p0 = (0, 0)
         p1 = (1, 1)
-        l0 = GeoObject(p0, p1, type="line")
+        l0 = GeoObject(p0, p1, kind="line")
         l1 = Line["xy"]((p0, p1))
         self.assertIsInstance(l0, Line)
         assert_array_equal(l1.p0, np.asarray(p0))

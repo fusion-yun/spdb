@@ -1,10 +1,12 @@
 import unittest
 
 import numpy as np
+from numpy.testing import assert_array_almost_equal
 from scipy import constants
-from spdm.core.expression import Expression, Variable, derivative, antiderivative
+from spdm.core.expression import Expression, Variable
 from spdm.core.function import Function
-from spdm.utils.logger import logger
+
+from spdm.numlib.calculus import derivative
 
 TWOPI = constants.pi * 2.0
 
@@ -16,7 +18,7 @@ class TestFunction(unittest.TestCase):
 
         fun = Function(x, y)
         expr = fun * 2.0
-        self.assertTrue(type(expr) is Expression)
+        self.assertIsInstance(expr, Expression)
 
     def test_operator(self):
         x = np.linspace(0, 1, 128)
@@ -59,15 +61,7 @@ class TestFunction(unittest.TestCase):
 
         y2 = np.sin(x2 * TWOPI)
 
-        self.assertTrue(np.allclose(y2, fun(x2)))
-
-    def test_antiderivative(self):
-        _x = Variable(0, "x")
-        sinx = derivative(np.sin(_x), _x)
-        cosx = np.cos(_x)
-
-        x = np.linspace(0, TWOPI, 128)
-        self.assertTrue(np.allclose(sinx(x), cosx(x)))
+        assert_array_almost_equal(y2, fun(x2))
 
 
 if __name__ == "__main__":

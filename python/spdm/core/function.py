@@ -1,22 +1,10 @@
-
-
 import typing
-import functools
-import collections
 import numpy as np
-import numpy.typing as np_tp
-import collections.abc
-from copy import copy, deepcopy
-
-from spdm.core.expression import Expression, zero
-from spdm.core.functor import Functor
-from spdm.core.path import update_tree, Path
-from spdm.core.domain import Domain, PPolyDomain
-from spdm.core.htree import List
-
 from spdm.utils.logger import logger
+from spdm.utils.type_hint import array_type
 from spdm.utils.tags import _not_found_
-from spdm.utils.type_hint import ArrayType, NumericType, array_type, get_args, get_origin, as_array
+from spdm.core.expression import Expression
+from spdm.core.domain import DomainPPoly
 
 
 class Function(Expression):
@@ -30,31 +18,23 @@ class Function(Expression):
     函数定义域为多维空间时，网格采用rectlinear mesh，即每个维度网格表示为一个数组 _dims_ 。
     """
 
-    Domain = PPolyDomain
+    _domain_class = DomainPPoly
 
-    def __init__(self, *args, domain=None, **metadata):
-        """
-        Parameters
-        ----------
-        *x : typing.Tuple[ArrayType]
-            自变量
-        y : ArrayType
-            变量
-        kwargs : 命名参数，
-                *           : 用于传递给 Node 的参数
-        """
+    def __init__(self, *args, domain=None, **kwargs):
 
-        value = None
-        if len(args) > 0:
-            value = args[-1]
-
+        if len(args) > 1:
             if domain is None:
-                domain = args[:-1]
+                domain = args[1:]
+            else:
+                raise RuntimeError(f"Too much args! {args}")
 
-        super().__init__(value, domain=domain, **metadata)
+        super().__init__(*args[:1], domain=domain, **kwargs)
+        if self._cache is _not_found_ and self._entry is not None:
+            self._cache = self._entry.get()
+        if self._cache is _not_found_ and self.domain is not None:
+            self._cache = np.full(self.domain.shape, np.nan)
 
-    def __getitem__(self, idx) -> NumericType:
-        assert self._cache is not None, "Function is not indexable!"
+    def __getitem__(self, idx) -> float:
         return self._cache[idx]
 
     def __setitem__(self, idx, value) -> None:
@@ -67,7 +47,7 @@ class Function(Expression):
         - 由 points，value  生成插值函数，并赋值给 self._op
         插值函数相对原始表达式的优势是速度快，缺点是精度低。
         """
-        if self._ppoly is _not_found_:  # not callable(self._ppoly):
+        if self._ppoly is None:  # not callable(self._ppoly):
             if self._op is None and isinstance(self._cache, np.ndarray):
                 self._ppoly = self.domain.interpolate(self._cache)
             elif callable(self._op):
@@ -88,7 +68,7 @@ class Function(Expression):
             value = self._cache
 
         if value is None:
-            raise RuntimeError(f" value is None! {self.__str__()}")
+            raise RuntimeError(f" value is None! {self}")
 
         if isinstance(value, array_type):
             v_shape = tuple(value.shape)
@@ -100,77 +80,3 @@ class Function(Expression):
         else:
             logger.warning(f" value.shape is not match with dims! {v_shape}!={m_shape} ")
             return False
-
-
-class Polynomials(Expression):
-    """A wrapper for numpy.polynomial
-    TODO: imcomplete
-    """
-
-    def __init__(
-        self,
-        coeff,
-        *args,
-        type: str = None,
-        domain=None,
-        window=None,
-        symbol="x",
-        preprocess=None,
-        postprocess=None,
-        **kwargs,
-    ) -> None:
-        match type:
-            case "chebyshev":
-                from numpy.polynomial.chebyshev import Chebyshev
-
-                Op = Chebyshev
-            case "hermite":
-                from numpy.polynomial.hermite import Hermite
-
-                Op = Hermite
-            case "hermite":
-                from numpy.polynomial.hermite_e import HermiteE
-
-                Op = HermiteE
-            case "laguerre":
-                from numpy.polynomial.laguerre import Laguerre
-
-                Op = Laguerre
-            case "legendre":
-                from numpy.polynomial.legendre import Legendre
-
-                Op = Legendre
-            case _:  # "power"
-                import numpy.polynomial.polynomial as polynomial
-
-                Op = polynomial
-
-        op = Op(coeff, domain=domain, window=window, symbol=symbol)
-
-        super().__init__(op, *args, **kwargs)
-        self._preprocess = preprocess
-        self._postprocess = postprocess
-
-    def __eval__(self, x: array_type | float, *args, **kwargs) -> array_type | float:
-        if len(args) + len(kwargs) > 0:
-            logger.warning(f"Ignore arguments {args} {kwargs}")
-
-        if not isinstance(x, (array_type, float)):
-            return super().__call__(x)
-
-        if self._preprocess is not None:
-            x = self._preprocess(x)
-
-        y = self._op(x)
-
-        if self._postprocess is not None:
-            y = self._postprocess(y)
-
-        return y
-
-
-def function_like(y: NumericType, *args: NumericType, **kwargs) -> Function:
-    if len(args) == 0 and isinstance(y, Function):
-        return y
-    else:
-        return Function(y, *args, **kwargs)

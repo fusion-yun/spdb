@@ -9,7 +9,6 @@ from spdm.core.sp_tree import sp_property
 from spdm.core.sp_object import SpObject
 from spdm.core.geo_object import GeoObject
 from spdm.numlib.interpolate import interpolate
-from spdm.numlib.numeric import float_nan, bitwise_and
 from spdm.geometry.vector import Vector
 
 
@@ -22,11 +21,10 @@ class Domain(SpObject):
 
     """
 
-    def __new__(cls, *args, **kwargs):
-        d_type = kwargs.get("type", None)
-        if cls is Domain and d_type is None and all(isinstance(d, np.ndarray) for d in args):
-            return super().__new__(PPolyDomain)
-        return super().__new__(cls, *args, **kwargs)
+    def __new__(cls, *args, kind=None, **kwargs):
+        if cls is Domain and kind is None and all(isinstance(d, np.ndarray) for d in args):
+            return super().__new__(DomainPPoly)
+        return super().__new__(cls, *args, kind=kind, **kwargs)
 
     geometry: GeoObject
 
@@ -35,6 +33,16 @@ class Domain(SpObject):
 
     rank: int = sp_property(alias="geometry/rank")
     """所在流形的维度，0:点， 1:线， 2:面， 3:体"""
+
+    @property
+    @abc.abstractmethod
+    def points(self) -> array_type:
+        return NotImplemented
+
+    @property
+    def coordinates(self):
+        points = self.points
+        return tuple([points[..., i] for i in range(self.ndim)])
 
     @property
     def is_simple(self) -> bool:
@@ -69,7 +77,13 @@ class Domain(SpObject):
         pass
 
 
-class PPolyDomain(Domain):
+class DomainExpr(Domain):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        raise NotImplementedError()
+
+
+class DomainPPoly(Domain):
     """多项式定义域。
     根据离散网格点构建插值
           extrapolate: int |str
@@ -84,30 +98,32 @@ class PPolyDomain(Domain):
         ndim = len(args)
 
         if all([isinstance(d, np.ndarray) and d.ndim == ndim for d in args]):
-            self._points = args
+            self._coordinates = args
         elif all([isinstance(d, np.ndarray) and d.ndim == 1 for d in args]):
-            self._dims = args
-            self._points = None
+            self.dims = args
+            self._coordinates = None
         else:
             raise RuntimeError(f"Invalid points {args}")
         super().__init__(**kwargs)
 
     shape: Vector[int]
 
+    dims: typing.Tuple[ArrayType, ...]
+
     @property
-    def points(self) -> typing.Tuple[array_type, ...]:
-        if self._points is not None and self._points is not _not_found_:
-            pass
-        elif self._dims is not None:
-            self._points = np.meshgrid(*self._dims, indexing="ij")
-        return self._points
+    def points(self) -> array_type:
+        return np.stack(self.coordinates).reshape(-1)
+
+    @property
+    def coordinates(self) -> typing.Tuple[ArrayType, ...]:
+        if self._coordinates is None:
+            self._coordinates = np.meshgrid(*self.dims, indexing="ij")
+        return self._coordinates
 
     def interpolate(self, func: array_type, **kwargs):
-
         periods = self._metadata.get("periods", None)
         extrapolate = self._metadata.get("extrapolate", 0)
-
-        return interpolate(*self.points, func, periods=periods, extrapolate=extrapolate, **kwargs)
+        return interpolate(*self.coordinates, func, periods=periods, extrapolate=extrapolate, **kwargs)
 
     def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
         return False
@@ -116,4 +132,4 @@ class PPolyDomain(Domain):
         return True
 
     def eval(self, func, *xargs, **kwargs) -> ArrayType:
-        return NotImplemented()
+        return NotImplemented

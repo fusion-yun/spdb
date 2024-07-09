@@ -195,7 +195,7 @@ class HTreeNode:
         return self._cache
 
     def __array__(self) -> ArrayType:  # for numpy
-        return as_array(self.read())
+        return as_array(self.__value__)
 
     def __null__(self) -> bool:
         """判断节点是否为空，若节点为空，返回 True，否则返回 False

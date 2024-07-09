@@ -17,7 +17,7 @@ class SpObject(Pluggable, WithProperty, WithMetadata, HTree):
 
     def __new__(cls, *args, _entry=None, **kwargs):
 
-        plugin_name = kwargs.pop("type", None)
+        plugin_name = kwargs.pop("kind", None) or kwargs.pop("type", None)
 
         if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
             plugin_name = args[0].get("type", None)

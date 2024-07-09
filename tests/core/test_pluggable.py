@@ -2,7 +2,7 @@ import unittest
 from spdm.core.pluggable import Pluggable
 
 
-class Dummy(Pluggable):
+class Dummy(Pluggable, plugin_prefix="dummy."):
     _plugin_registry = {}
 
 
@@ -11,10 +11,10 @@ class TestPluggable(unittest.TestCase):
         class Foo(Dummy, plugin_name="foo"):
             pass
 
-        self.assertIs(Dummy._plugin_registry.get(f"{self.__module__}.foo", None), Foo)
+        self.assertIs(Dummy._plugin_registry.get("dummy.foo", None), Foo)
 
         Dummy.register("foo0", Foo)
-        self.assertIs(Dummy._plugin_registry.get(f"{self.__module__}.foo0", None), Foo)
+        self.assertIs(Dummy._plugin_registry.get("dummy.foo0", None), Foo)
 
     def test_decorator(self):
 
@@ -22,7 +22,7 @@ class TestPluggable(unittest.TestCase):
         class Foo1(Dummy):
             pass
 
-        self.assertIs(Dummy._plugin_registry.get(f"{self.__module__}.foo1", None), Foo1)
+        self.assertIs(Dummy._plugin_registry.get("dummy.foo1", None), Foo1)
 
     def test_create(self):
         class Goo(Dummy, plugin_name="goo"):

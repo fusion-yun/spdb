@@ -235,10 +235,6 @@ class NullMesh(Mesh, plugin_name=["null"]):
         super().__init__()
 
 
-class RegularMesh(Mesh, plugin_name="regular"):
-    pass
-
-
 def as_mesh(*args, **kwargs) -> Mesh:
     if len(args) == 1 and isinstance(args[0], Mesh):
         return args[0]
