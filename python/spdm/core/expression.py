@@ -272,9 +272,9 @@ class Expression(HTreeNode):
                 else:
                     xargs.append(v)
 
-        self._cache = self._op(*xargs)
+        return  self._op(*xargs)
 
-        return self._cache
+         
 
     def __call__(self, *args) -> typing.Self | array_type:
         """重载函数调用运算符，用于计算表达式的值"""
