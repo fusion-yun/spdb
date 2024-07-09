@@ -108,11 +108,8 @@ class Field(Expression):
 
         return self._ppoly
 
-    def __call__(self, *args, **kwargs) -> typing.Callable[..., ArrayType]:
-        if all([isinstance(a, (array_type, float, int)) for a in args]):
-            return self.__compile__()(*args, **kwargs)
-        else:
-            return super().__call__(*args, **kwargs)
+    def _eval(self, *args, **kwargs) -> typing.Callable[..., ArrayType]:
+        return self.__compile__()(*args, **kwargs)
 
     def grad(self, n=1) -> typing.Self:
         ppoly = self.__functor__()

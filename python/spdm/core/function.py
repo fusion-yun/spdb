@@ -56,7 +56,7 @@ class Function(Expression):
 
         return self._ppoly
 
-    def __call__(self, *args) -> array_type:
+    def _eval(self, *args) -> array_type:
         if callable(self._ppoly):
             return self._ppoly(*args)
         elif callable(self._op):
