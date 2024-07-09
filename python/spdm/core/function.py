@@ -30,8 +30,8 @@ class Function(Expression):
         super().__init__(*args[-1:], domain=domain, **kwargs)
         if self._cache is _not_found_ and self._entry is not None:
             self._cache = self._entry.get()
-        if self._cache is _not_found_ and self.domain is not None:
-            self._cache = np.full(self.domain.shape, np.nan)
+        # if self._cache is _not_found_ and self.domain is not None:
+        #     self._cache = np.full(self.domain.shape, np.nan)
 
     def __getitem__(self, idx) -> float:
         return self._cache[idx]

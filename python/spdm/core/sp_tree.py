@@ -248,7 +248,7 @@ class SpProperty:
                     self.property_name,
                     type_hint=self.type_hint,
                     getter=self.getter,
-                    default_value=deepcopy(self.default_value),
+                    default_value=self.default_value,
                     metadata=self.metadata,
                 )
 

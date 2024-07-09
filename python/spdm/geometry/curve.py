@@ -30,8 +30,8 @@ class Curve(GeoObject, plugin_name="curve", rank=1):
 
     @functools.cached_property
     def dl(self) -> array_type:
-        x, y = self.points
-        a, b = self.derivative()
+        x, y = self.coordinates
+        a, b = self.derivative
 
         # a = a[:-1]
         # b = b[:-1]
@@ -52,31 +52,22 @@ class Curve(GeoObject, plugin_name="curve", rank=1):
         return np.sum(self.dl)
 
     def integral(self, func: typing.Callable) -> float:
-        x, y = self.points
+        x, y = self.coordinates
         val = func(x, y)
-
         # c_pts = self.points((self._mesh[0][1:] + self._mesh[0][:-1])*0.5)
-
         return np.sum(0.5 * (val[:-1] + val[1:]) * self.dl)
-
-    def coordinates(self, *uvw, **kwargs) -> ArrayType:
-        if len(uvw) == 0:
-            return self._points
-        else:
-            return self._spl(*uvw, **kwargs)
 
     @functools.cached_property
     def _spl(self) -> PPoly:
-        return CubicSpline(self._uv, self._points, bc_type="periodic" if self.is_closed else "not-a-knot")
+        return CubicSpline(self._uv, self.points, bc_type="periodic" if self.is_closed else "not-a-knot")
 
     @functools.cached_property
     def _derivative(self):
         return self._spl.derivative()
 
-    def derivative(self, *args, **kwargs):
-        if len(args) == 0:
-            args = [self._uv]
-        res = self._derivative(*args, **kwargs)
+    @functools.cached_property
+    def derivative(self):
+        res = self._derivative(self._uv)
         return res[:, 0], res[:, 1]
 
     def enclose(self, *args) -> bool:

@@ -1,17 +1,13 @@
 from __future__ import annotations
 
-import collections.abc
 import typing
-from functools import cached_property
 import numpy as np
 from scipy import interpolate
+from functools import cached_property
 
-from spdm.utils.logger import logger
-from spdm.utils.type_hint import ArrayType, ScalarType, array_type
-from spdm.core.geo_object import GeoObject, GeoObjectSet, as_geo_object
-from spdm.geometry.curve import Curve
+from spdm.utils.type_hint import ArrayType
+from spdm.core.geo_object import GeoObjectBase
 from spdm.geometry.point import Point
-from spdm.geometry.surface import Surface
 
 
 from spdm.mesh.mesh_rectilinear import RectilinearMesh
@@ -27,9 +23,9 @@ class CurvilinearMesh(RectilinearMesh, plugin_name="curvilinear"):
 
     def axis(self, idx, axis=0):
         if axis == 0:
-            return self._geometry[idx]
+            return self.geometry[idx]
         else:
-            s = [slice(None, None, None)] * self.ndims
+            s = [slice(None, None, None)] * self.geometry.ndims
             s[axis] = idx
             s = s + [slice(None, None, None)]
 
@@ -43,38 +39,24 @@ class CurvilinearMesh(RectilinearMesh, plugin_name="curvilinear"):
     def uv(self) -> ArrayType:
         return self._uv
 
-    @cached_property
+    @property
     def points(self) -> typing.List[ArrayType]:
-        if isinstance(self.geometry, GeoObject):
-            return self.geometry.points()
-        elif isinstance(self.geometry, GeoObjectSet):
-            d = np.stack([surf.points for surf in self.geometry], axis=0)
-            return tuple(d[..., i] for i in range(self.geometry.ndims))
-        else:
+        if not isinstance(self.geometry, GeoObjectBase):
             raise RuntimeError(f"Unknown type {type(self.geometry)}")
+        return self.geometry.points
 
     @cached_property
     def volume_element(self) -> ArrayType:
         raise NotImplementedError()
-
-    @property
-    def xyz(self):
-        return self.points
-
-    # def pushforward(self, new_uv):
-    #     new_shape = [len(u) for u in new_uv]
-    #     if new_shape != self.shape:
-    #         raise ValueError(f"illegal shape! {new_shape}!={self.shape}")
-    #     return CurvilinearMesh(self._xy, new_uv, cycles=self.cycles)
 
     def interpolator(self, value, **kwargs):
         if value.shape != self.shape:
             raise ValueError(f"{value.shape} {self.shape}")
 
         if self.ndims == 1:
-            interp = interpolate.InterpolatedUnivariateSpline(self._dims[0], value, **kwargs)
+            interp = interpolate.InterpolatedUnivariateSpline(self.dims[0], value, **kwargs)
         elif self.ndims == 2:
-            interp = interpolate.RectBivariateSpline(self._dims[0], self._dims[1], value, **kwargs)
+            interp = interpolate.RectBivariateSpline(self.dims[0], self.dims[1], value, **kwargs)
         else:
             raise NotImplementedError(f"NDIMS {self.ndims}>2")
         return interp

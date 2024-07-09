@@ -1,4 +1,6 @@
+import abc
 import collections.abc
+
 import typing
 import inspect
 import numpy as np
@@ -323,6 +325,10 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
     """几何体控制点的坐标 例如 (x0,y0),(x1,y1)， 
         数组形状为 [*shape,ndim], shape 为控制点网格的形状，ndim 空间维度。"""
 
+    @property
+    def coordinates(self) -> array_type:
+        return tuple([self.points[..., idx] for idx in range(self.ndim)])
+
     def __array__(self) -> array_type:
         return self.points
 
@@ -460,6 +466,10 @@ class GeoObjectSet(List[_TGeo], GeoObjectBase):
 
     def enclose(self, other) -> bool:
         return all([g.enclose(other) for g in self if isinstance(g, GeoObject)])
+
+    @property
+    def points(self) -> array_type:
+        return np.stack([surf.points for surf in self], axis=0)
 
 
 def as_geo_object(*args, **kwargs) -> GeoObject | GeoObjectSet:

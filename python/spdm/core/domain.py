@@ -7,7 +7,7 @@ from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import array_type, ArrayType
 from spdm.core.sp_tree import sp_property
 from spdm.core.sp_object import SpObject
-from spdm.core.geo_object import GeoObject
+from spdm.core.geo_object import GeoObjectBase
 from spdm.numlib.interpolate import interpolate
 from spdm.geometry.vector import Vector
 
@@ -26,7 +26,7 @@ class Domain(SpObject):
             return super().__new__(DomainPPoly)
         return super().__new__(cls, *args, kind=kind, **kwargs)
 
-    geometry: GeoObject
+    geometry: GeoObjectBase
 
     ndim: int = sp_property(alias="geometry/ndim")
     """所在的空间维度"""

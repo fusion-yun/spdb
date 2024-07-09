@@ -393,7 +393,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         styles = update_tree(kwargs, styles)
 
-        s_styles = styles.get(f"${self.backend}", {})
+        s_styles = styles.get(f"matplotlib", {})
 
         label = styles.get("label", None)
 
