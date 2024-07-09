@@ -23,12 +23,11 @@ class Function(Expression):
     def __init__(self, *args, domain=None, **kwargs):
 
         if len(args) > 1:
-            if domain is None:
-                domain = args[1:]
-            else:
+            if domain is not None:
                 raise RuntimeError(f"Too much args! {args}")
+            domain = DomainPPoly(*args[:-1])
 
-        super().__init__(*args[:1], domain=domain, **kwargs)
+        super().__init__(*args[-1:], domain=domain, **kwargs)
         if self._cache is _not_found_ and self._entry is not None:
             self._cache = self._entry.get()
         if self._cache is _not_found_ and self.domain is not None:
@@ -48,14 +47,22 @@ class Function(Expression):
         插值函数相对原始表达式的优势是速度快，缺点是精度低。
         """
         if self._ppoly is None:  # not callable(self._ppoly):
-            if self._op is None and isinstance(self._cache, np.ndarray):
-                self._ppoly = self.domain.interpolate(self._cache)
-            elif callable(self._op):
+            if callable(self._op):
                 self._ppoly = self.domain.interpolate(self._op)
             else:
-                raise RuntimeError(f"Function is not evaluable! {self._op} {self._cache}")
+                if self._cache is _not_found_:
+                    self._cache = self._entry.get()
+                self._ppoly = self.domain.interpolate(self._cache)
 
         return self._ppoly
+
+    def __call__(self, *args) -> array_type:
+        if callable(self._ppoly):
+            return self._ppoly(*args)
+        elif callable(self._op):
+            return self._op(*args)
+        else:
+            return self.__compile__()(*args)
 
     def validate(self, value=None, strict=False) -> bool:
         """检查函数的定义域和值是否匹配"""

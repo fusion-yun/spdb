@@ -121,9 +121,13 @@ class DomainPPoly(Domain):
         return self._coordinates
 
     def interpolate(self, func: array_type, **kwargs):
-        periods = self._metadata.get("periods", None)
-        extrapolate = self._metadata.get("extrapolate", 0)
-        return interpolate(*self.coordinates, func, periods=periods, extrapolate=extrapolate, **kwargs)
+        return interpolate(
+            *self.coordinates,
+            func,
+            periods=self._metadata.get("periods", None),
+            extrapolate=self._metadata.get("extrapolate", 0),
+            **kwargs,
+        )
 
     def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
         return False
