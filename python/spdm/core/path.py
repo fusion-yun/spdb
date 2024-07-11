@@ -913,7 +913,12 @@ class Path(list):
                     yield from Path._search(obj, sub_path, *p_args, **p_kwargs)
             elif key is Path.tags.children:
                 if hasattr(target.__class__, "children"):
-                    yield from target.children()
+                    for obj in target.children():
+                        res = Path._search(obj, sub_path, *p_args, **p_kwargs)
+                        if isinstance(res, collections.abc.Iterable):
+                            yield from res
+                        else:
+                            yield res
                 elif isinstance(target, collections.abc.Sequence) and not isinstance(target, str):
                     for obj in target:
                         yield from Path._search(obj, sub_path, *p_args, **p_kwargs)

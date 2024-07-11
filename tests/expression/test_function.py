@@ -35,7 +35,7 @@ class TestFunction(unittest.TestCase):
 
     def test_interpolate(self):
         x = np.linspace(0, 1.0, 128)
-        y = np.sin(x, TWOPI)
+        y = np.sin(x * TWOPI)
 
         fun = Function(x, y)
 
