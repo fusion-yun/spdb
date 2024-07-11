@@ -86,8 +86,6 @@ class Actor(Generic[_TSlice], Entity):
 
         self.time_slice.initialize(*args, **kwargs)
 
-        from fytok.context import Context
-
         ctx = self
 
         while ctx is not None:

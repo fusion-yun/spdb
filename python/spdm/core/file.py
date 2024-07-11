@@ -1,4 +1,3 @@
-
 from spdm.utils.uri_utils import uri_split
 
 from spdm.core.document import Document
@@ -12,26 +11,26 @@ class File(Document):
 
     _plugin_prefix = Document._plugin_prefix + "file_"
 
-    def __new__(cls, uri, *args, format=None, **kwargs):
-        if isinstance(format, str) and format.startswith("file+"):
-            format = format[5:]
-        if format == "file":
-            format = None
-            
-        if cls is not File or format is not None:
-            return super().__new__(cls, _plugin_name=format)
+    def __new__(cls, uri, *args, kind=None, **kwargs):
+        if isinstance(kind, str) and kind.startswith("file+"):
+            kind = kind[5:]
+        if kind == "file":
+            kind = None
 
-        if format is None:
+        if cls is not File or kind is not None:
+            return super().__new__(cls, _plugin_name=kind)
+
+        if kind is None:
             uri = uri_split(uri)
-            format = uri.protocol
-            if format in ["", "file"]:
+            kind = uri.protocol
+            if kind in ["", "file"]:
                 ext = as_path(uri.path)[-1].rsplit(".", maxsplit=1)[-1]
-                format = ext
+                kind = ext
 
-        if format.startswith("file+"):
-            format = format[5:]
+        if kind.startswith("file+"):
+            kind = kind[5:]
 
-        return super().__new__(cls, *args, _plugin_name=format, **kwargs)
+        return super().__new__(cls, *args, _plugin_name=kind, **kwargs)
 
     # def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
     #     if plugin_name is not None:

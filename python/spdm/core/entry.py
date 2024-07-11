@@ -304,7 +304,7 @@ def open_entry(uri: str | URITuple | Path | pathlib.Path, *args, _plugin_name=No
         if not uri.path:
             entry = Entry()
         else:
-            entry = File(uri, *args, format=_plugin_name, **kwargs).__entry__()
+            entry = File(uri, *args, kind=_plugin_name, **kwargs).__entry__()
 
     elif _plugin_name.startswith("service+") or _plugin_name in (
         "service",

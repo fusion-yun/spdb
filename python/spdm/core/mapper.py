@@ -138,7 +138,7 @@ class Mapper(Entry):
         if len(mapping_files) == 0:
             raise FileNotFoundError(f"Can not find mapping files for {mapper_tag} MAPPING_PATH={cls._mapping_path}!")
 
-        mapper: Entry = File(mapping_files, mode="r", format="xml").__entry__()
+        mapper: Entry = File(mapping_files, mode="r", kind="xml").__entry__()
 
         if not isinstance(handlers, dict):
             handlers = {}

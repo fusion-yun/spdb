@@ -1,7 +1,10 @@
+import typing
 import numpy as np
 
 from spdm.utils.logger import logger
+from spdm.utils.type_hint import array_type
 from spdm.numlib.interpolate import interpolate
+from spdm.core.expression import Expression
 
 
 def smooth(x, window_len=11, window="hanning"):
@@ -92,8 +95,8 @@ class SmoothOp(Expression):
             return self.__eval__(*self._children)
 
 
-def smooth(expr, *args, op=None, **kwargs):
-    if isinstance(expr, array_type):
-        return SmoothOp(op, expr, *args, **kwargs)()
-    else:
-        return SmoothOp(op, expr, *args, **kwargs)
+# def smooth(expr, *args, op=None, **kwargs):
+#     if isinstance(expr, array_type):
+#         return SmoothOp(op, expr, *args, **kwargs)()
+#     else:
+#         return SmoothOp(op, expr, *args, **kwargs)
