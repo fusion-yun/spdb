@@ -11,7 +11,7 @@
   "black-formatter.args": ["--line-length", "118", "--target-version", "py311"],
   "python.analysis.exclude": ["*/obsolete/*", "*/_obsolete/*", "*/test/*"],
   "python.analysis.importFormat": "absolute",
-  "python.testing.unittestArgs": ["-v", "-s", "./tests", "-p", "test_*.py"],
+  "python.testing.unittestArgs": ["-v", "-s", "./tests/python/", "-p", "test_*.py"],
   "python.testing.unittestEnabled": true,
   "python.envFile": "${workspaceFolder}/.env",
   "pylint.args": ["--rcfile=${workspaceFolder}/.pylintrc"]

@@ -3,7 +3,8 @@ import unittest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 from scipy import constants
-from spdm.core.expression import Expression, Variable, derivative, antiderivative
+from spdm.core.expression import Expression, Variable
+from spdm.numlib.calculus import derivative, antiderivative
 from spdm.core.function import Function
 from spdm.utils.logger import logger
 

@@ -15,6 +15,14 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}/python"
       }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug",
+      "program": "${workspaceFolder}/rust/main",
+      "args": [],
+      "cwd": "${workspaceFolder}"
     }
   ]
 }

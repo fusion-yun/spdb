@@ -7,19 +7,19 @@ import collections.abc
 import numpy as np
 
 from spdm.utils.type_hint import ArrayType
-from ..utils.tags import _not_found_
+from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, NumericType, array_type, as_array, is_scalar, is_array, numeric_type
-from ..utils.logger import logger
-from ..utils.misc import group_dict_by_prefix
-from ..numlib.interpolate import interpolate
+from spdm.utils.logger import logger
+from spdm.utils.misc import group_dict_by_prefix
+from spdm.numlib.interpolate import interpolate
 
-from .functor import Functor
-from .entry import Entry
-from .htree import HTreeNode, HTree, HTreeNode, List
-from .domain import Domain
-from .path import update_tree, Path
-from .functor import Functor, DerivativeOp
-from .expression import Expression
+from spdm.core.functor import Functor
+from spdm.core.entry import Entry
+from spdm.core.htree import HTreeNode, HTree, HTreeNode, List
+from spdm.core.domain import Domain
+from spdm.core.path import update_tree, Path
+from spdm.core.functor import Functor, DerivativeOp
+from spdm.core.expression import Expression
 
 class Piecewise(Expression):
     """PiecewiseFunction

@@ -1,19 +1,22 @@
 """This module defines the `Port`, `Ports`, `InPorts`, `OutPorts`, and `Edge` classes.
 
-The `Port` class represents a connection point in a graph. It contains information about the source node, the fragment path, the type hint, and metadata.
+ The `Port` class represents a connection point in a graph. It contains information about the source node,
+ the fragment path, the type hint, and metadata.
 
 The `Ports` class is a collection of `Port` objects. It provides methods for putting and getting values from the ports.
 
 
 """
 
-
 import typing
+from spdm.utils.tags import _not_found_
 from spdm.core.path import Path, as_path
-from spdm.core.htree import HTreeNode
+from spdm.core.htree import HTreeNode, List
+from spdm.core.sp_tree import SpTree
+from spdm.core.sp_tree import AttributeTree
 
 
-class Port:
+class Port(SpTree):
     """
     Represents a port in a graph edge.
 
@@ -37,65 +40,51 @@ class Port:
 
     """
 
-    def __init__(
-        self,
-        source: HTreeNode = None,
-        fragment: Path | str = None,
-        type_hint: typing.Type = None,
-        **kwargs,
-    ) -> None:
-        self._node = source
-        self._fragment: Path = as_path(fragment)
-        self._type_hint: typing.Type = type_hint
-        self._metadata = kwargs
+    def __init__(self, name, node=None, fragment=None, type_hint=None, **kwargs):
+        super().__init__(
+            {
+                "name": name,
+                "node": node,
+                "fragment": fragment,
+                "type_hint": type_hint,
+                **kwargs,
+            }
+        )
+
+    node: HTreeNode
+
+    type_hint: typing.Type
+
+    name: str
+
+    path: Path
+
+    fragment: Path | set | str
+
+    metadata: AttributeTree
 
     @property
-    def node(self) -> HTreeNode:
-        """
-        Returns the HTreeNode object associated with this edge.
+    def valid(self) -> bool:
+        return self.node is not None and self.node is not _not_found_
 
-        Returns:
-            HTreeNode: The HTreeNode object associated with this edge.
-        """
-        return self._node
-
-    @property
-    def type_hint(self) -> typing.Type:
-        """
-        Returns the type hint for the port.
-
-        Returns:
-            typing.Type: The type hint for the port.
-        """
-        return self._type_hint
-
-    @property
-    def fragment(self) -> Path:
-        """
-        Returns the fragment path of the port.
-
-        Returns:
-            Path: The fragment path of the port.
-        """
-        return self._fragment
-
-    @property
-    def metadata(self) -> typing.Dict:
-        """Returns the additional metadata for the port."""
-        return self._metadata
-
-    def bind(self, node):
+    def connect(self, node):
         """Binds the port to a node."""
-        self._node = node
+        self.node = node
 
-    def fetch(self):
+    def get(self, default_value=_not_found_):
         """Fetches data from the port."""
-        value = self.fragment.get(self._node, None)
-        # TODO: type/value convert
-        return value
+
+        if len(self.fragment) > 0:
+            return Path().find(self.node, self.fragment)
+        else:
+            return self.node
+
+    def put(self, value):
+        """Fetches data from the port."""
+        return self.fragment.put(self.node, value)
 
 
-class Ports:
+class Ports(List[Port]):
     """A collection of ports.
 
     Args:
@@ -103,31 +92,15 @@ class Ports:
     """
 
     def __init__(self, *args, **kwargs) -> None:
-        self._args = list(args)
-        self._kwargs = dict(kwargs)
+        super().__init__(*args, **kwargs)
 
-    def put(self, path, value, *args, **kwargs):
-        return as_path(path).update(self._cache, value, *args, **kwargs)
+    def connect(self, ctx=None, **kwargs):
+        if ctx is not None:
+            for p in self.children():
+                p.connect(p.path.get(ctx, _not_found_))
 
-    def get(self, path, *args, **kwargs) -> Port | None:
-        """
-        Retrieves the port at the specified path.
+        for k, v in kwargs.items():
+            self[k].connect(v)
 
-        Args:
-            path: The path to the port.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            The port at the specified path, or None if not found.
-        """
-        pth = as_path(path)
-        match len(pth):
-            case 0:
-                return Port()
-            case 1:
-                return self._cache.get(pth[0], **kwargs)
-            case _:
-                return pth.get(self._cache, **kwargs)
-
-    def __missing__(self, key: str | int) -> typing.Any:
-        raise KeyError(f"{self.__class__.__name__}.{key} is not assigned! ")
+    def valid(self) -> bool:
+        return all(n.valid for n in self)

@@ -7,12 +7,11 @@ import contextlib
 
 from spdm.utils.logger import logger
 from spdm.utils.envs import SP_DEBUG, SP_LABEL
-from spdm.utils.tags import _not_found_
 
-from spdm.core.htree import HTreeNode
 from spdm.core.time_sequence import TimeSequence, TimeSlice
-from spdm.core.port import Ports, Port
 from spdm.core.path import Path
+from spdm.core.domain import Domain
+from spdm.core.port import Ports
 from spdm.core.entity import Entity
 from spdm.core.generic import Generic
 
@@ -20,27 +19,27 @@ _TSlice = typing.TypeVar("_TSlice", bound=TimeSlice)
 
 
 class Actor(Generic[_TSlice], Entity):
-    """执行体，追踪一个随时间演化的对象，其一个时间点的状态树称为 __时间片__ (time_slice),
-    由时间片的构成的序列，代表状态演化历史。
+    """执行体，追踪一个随时间演化的对象，
+    - 其一个时间点的状态树称为 __时间片__ (time_slice)，由时间片的构成的序列，代表状态演化历史。
+    - Actor 通过 in_ports 和 out_ports 与其他 Actor 交互。
+    - Actor 通过 fetch 获得其在 domain 上的值。
+    - current 返回当前状态，previous 返回历史状态。
+    - refresh 更新当前状态，finalize 完成。
+    - working_dir 进入工作目录
+    - fetch 在 domain 上取值
+    - output_dir 输出目录
+    - context 获取当前 Actor 所在的 Context。
+    
     """
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        inputs = {}
-        tp_hints = typing.get_type_hints(self.__class__.refresh)
-        for name, tp in tp_hints.items():
-            if name == "return":
-                continue
-            elif getattr(tp, "_name", None) == "Optional":  # check typing.Optional
-                t_args = typing.get_args(tp)
-                if len(t_args) == 2 and t_args[1] is type(None):
-                    tp = t_args[0]
+    in_ports: Ports
+    """输入的 Edge，记录对其他 Actor 的依赖。"""
 
-            inputs[name] = Port(None, type_hint=tp)
-
-        self._inports = Ports(inputs, _parent=self)
-        self._outports = Ports(_parent=self)
+    out_ports: Ports
+    """输出的 Edge，可视为对于引用（reference）的记录"""
 
     TimeSlice = _TSlice
 
@@ -48,16 +47,6 @@ class Actor(Generic[_TSlice], Entity):
     """时间片序列，保存 Actor 历史状态。
         @note: TimeSeriesAoS 长度为 n(=3) 循环队列。当压入序列的 TimeSlice 数量超出 n 时，会调用 TimeSeriesAoS.__full__(first_slice)
         """
-
-    @property
-    def inports(self) -> Ports:
-        """输入的 Edge，记录对其他 Actor 的依赖。"""
-        return self._inports
-
-    @property
-    def outports(self) -> Ports:
-        """输出的 Edge，可视为对于引用（reference）的记录"""
-        return self._outports
 
     @property
     def current(self) -> _TSlice:
@@ -70,54 +59,21 @@ class Actor(Generic[_TSlice], Entity):
         yield from self.time_slice.previous
 
     @property
-    def time(self) -> float:
-        """当前时间，"""
-        return self.time_slice.current.time
-
-    @property
-    def iteration(self) -> int:
-        """当前时间片执行 refresh 的次数。对于新创建的 TimeSlice，iteration=0"""
-        return self.time_slice.current.iteration
+    def context(self) -> typing.Self:
+        """获取当前 Actor 所在的 Context。"""
+        return self._parent.context if isinstance(self._parent, Actor) else None
 
     def initialize(self, *args, **kwargs) -> None:
         """初始化 Actor 。"""
-        if self.time_slice.is_initializied:
-            return
-
         self.time_slice.initialize(*args, **kwargs)
+        self.in_ports.connect(self.context)
 
-        ctx = self
-
-        while ctx is not None:
-            if isinstance(ctx, Context):
-                break
-            else:
-                ctx = getattr(ctx, "_parent", None)
-
-        for k, p in self._inports.items():
-            # 查找父节点的输入 ，更新链接 Port
-            if k.isidentifier() and p.node is None:
-                p.update(Path(k).get(ctx, None))
-
-            if p.node is None:
-                logger.warning(f"Input {k} is not provided! context = {ctx}")
-
-    def preprocess(self, *args, **kwargs) -> _TSlice:
+    def preprocess(self, **kwargs) -> _TSlice:
         """Actor 的预处理，若需要，可以在此处更新 Actor 的状态树。"""
+        self.in_ports.connect(**kwargs)
+        return self.time_slice.current
 
-        for k in [*kwargs.keys()]:
-            if isinstance(kwargs[k], HTreeNode):
-                self.inports[k] = kwargs.pop(k)
-
-        # inputs = {k: kwargs.pop(k) for k in [*kwargs.keys()] if isinstance(kwargs[k], HTreeNode)}
-        # self.inports.update(inputs)
-
-        current = self.time_slice.current
-        # current.refresh(*args, **kwargs)
-
-        return current
-
-    def execute(self, current: _TSlice, *args) -> _TSlice:
+    def execute(self, current: _TSlice, previous: typing.Generator[_TSlice, None, None] = None) -> _TSlice:
         """根据 inports 和 前序 time slice 更新当前time slice"""
         return current
 
@@ -131,7 +87,6 @@ class Actor(Generic[_TSlice], Entity):
     def refresh(self, *args, **kwargs) -> _TSlice:
         """更新当前 Actor 的状态。
         更新当前状态树 （time_slice），并执行 self.iteration+=1
-
         """
 
         current = self.preprocess(*args, **kwargs)
@@ -142,24 +97,23 @@ class Actor(Generic[_TSlice], Entity):
 
         return current
 
-    def flush(self) -> None:
-        """保存当前时间片的状态。
-        根据当前 inports 的状态，更新状态并写入 time_slice，
-        默认 do nothing， 返回当前时间片
-        """
-        return self.time_slice.flush()
-
     def finalize(self) -> None:
         """完成。"""
-
-        self.flush()
+        self.time_slice.flush()
         self.time_slice.finalize()
 
-    def fetch(self, *args, **kwargs) -> _TSlice:
-        """根据当前状态，根据参数返回一个时间片描述。
-        例如，根据给定的坐标，对 object 进行插值，构建相应的时间片。
-        """
-        return HTreeNode._do_fetch(self.time_slice.current, *args, **kwargs)
+    def fetch(self, domain: Domain = None, project: dict | set | tuple = None) -> _TSlice:
+        """返回当前在 domain 上的值 _TSlice，默认返回结构为 time_slice.current"""
+
+        if domain is None:
+            t_slice = self.current
+        else:
+            raise NotImplementedError("")
+
+        if project is not None:
+            return Path().get(t_slice, project)
+        else:
+            return t_slice
 
     @contextlib.contextmanager
     def working_dir(self, suffix: str = "", prefix="") -> typing.Generator[pathlib.Path, None, None]:

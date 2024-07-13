@@ -1,19 +1,17 @@
-
-
 import pathlib
 import typing
 
-from ..utils.logger import logger
-from ..utils.tags import _undefined_
-from .collection import Collection, InsertOneResult
-from .document import Document
-from .entry import Entry
+from spdm.utils.logger import logger
+from spdm.utils.tags import _undefined_
+from spdm.core.collection import Collection, InsertOneResult
+from spdm.core.document import Document
+from spdm.core.entry import Entry
 
 
 @Document.register(["directory"])
 class Directory(Document):
-    """ 
-        Default entry for Directory
+    """
+    Default entry for Directory
     """
 
     def __init__(self, *args, mask=0o777, createparents=False, **kwargs):
@@ -32,28 +30,29 @@ class Directory(Document):
         return super().__del__()
 
     @property
-    def path(self) -> pathlib.Path: return self.url.path
+    def path(self) -> pathlib.Path:
+        return self.url.path
 
     @property
     def cwd(self) -> pathlib.Path:
         if self.path.is_dir():
             pass
         elif self.is_writable:
-            self.path.mkdir(mode=self._mask,
-                            parents=self._createparents and self.is_creatable,
-                            exist_ok=self.is_creatable)  # ??? logical correct?
+            self.path.mkdir(
+                mode=self._mask, parents=self._createparents and self.is_creatable, exist_ok=self.is_creatable
+            )  # ??? logical correct?
         else:
             raise NotADirectoryError(self.path)
         return self.path
 
     def cd(self, path) -> Directory:
-        return self.__class__(self.path/path, mask=self._mask, createparents=self._createparents, mode=self.mode)
+        return self.__class__(self.path / path, mask=self._mask, createparents=self._createparents, mode=self.mode)
 
 
 @Collection.register(["localdb", "FileCollection"])
 class LocalFileDB(Collection):
 
-    def __init__(self, *args, glob: str | None = None, ** kwargs):
+    def __init__(self, *args, glob: str | None = None, **kwargs):
         """
         Example:
             file_name="{*}"
@@ -66,14 +65,15 @@ class LocalFileDB(Collection):
         else:
             parts = pathlib.Path(self.url.path).parts
 
-            idx, _ = next(filter(lambda s: '{' in s[1], enumerate(parts)))
+            idx, _ = next(filter(lambda s: "{" in s[1], enumerate(parts)))
 
             self.url.path = pathlib.Path(*list(parts)[:idx])
 
             self._glob = "/".join(parts[idx:])
 
     @property
-    def glob(self) -> str: return self._glob
+    def glob(self) -> str:
+        return self._glob
 
     def guess_id(self, d, auto_inc=True):
         fid = super().guess_id(d, auto_inc=auto_inc)
@@ -84,14 +84,14 @@ class LocalFileDB(Collection):
         return fid
 
     def guess_filepath(self, **kwargs) -> pathlib.Path:
-        return self.path/self._glob.format(**kwargs)
+        return self.path / self._glob.format(**kwargs)
 
     def open_document(self, fid, mode=None) -> Entry:
         fpath = self.guess_filepath({"_id_": fid})
-        logger.debug(f"Open Document: {fpath} mode=\"{ mode or self.mode}\"")
+        logger.debug(f'Open Document: {fpath} mode="{ mode or self.mode}"')
         return Document(fpath, mode=mode if mode is not _undefined_ else self.mode).entry
 
-    def insert_one(self, predicate, *args,  **kwargs) -> InsertOneResult:
+    def insert_one(self, predicate, *args, **kwargs) -> InsertOneResult:
         doc = self.open_document(self.guess_id(predicate or kwargs, auto_inc=True))
         return doc
 
@@ -116,13 +116,13 @@ class LocalFileDB(Collection):
 
         return doc
 
-    def update_one(self, predicate, update,  *args, **kwargs):
+    def update_one(self, predicate, update, *args, **kwargs):
         raise NotImplementedError()
 
-    def delete_one(self, predicate,  *args, **kwargs):
+    def delete_one(self, predicate, *args, **kwargs):
         raise NotImplementedError()
 
-    def count(self, predicate=None,   *args, **kwargs) -> int:
+    def count(self, predicate=None, *args, **kwargs) -> int:
         if predicate is None:
             logger.warning("NOT IMPLEMENTED! count by predicate")
 
@@ -131,16 +131,17 @@ class LocalFileDB(Collection):
 
 class CollectionLocalFile(Collection):
     """
-        Collection of local files.
+    Collection of local files.
     """
 
-    def __init__(self,   *args, file_format=None, mask=None,   **kwargs):
+    def __init__(self, *args, file_format=None, mask=None, **kwargs):
         super().__init__(*args, schema="local", **kwargs)
 
         logger.debug(self.metadata)
 
-        self._path = pathlib.Path(self.metadata.get("authority", "") +
-                                  self.metadata.get("path", ""))  # .replace("*", Collection.ID_TAG)
+        self._path = pathlib.Path(
+            self.metadata.get("authority", "") + self.metadata.get("path", "")
+        )  # .replace("*", Collection.ID_TAG)
 
         self._file_format = file_format
 
@@ -175,8 +176,8 @@ class CollectionLocalFile(Collection):
     def insert_one(self, *args, projection=None, **kwargs):
         return File(self.guess_path(*args, **kwargs), mode="x")
 
-    def update_one(self, predicate, update,  *args, **kwargs):
+    def update_one(self, predicate, update, *args, **kwargs):
         raise NotImplementedError()
 
-    def delete_one(self, predicate,  *args, **kwargs):
+    def delete_one(self, predicate, *args, **kwargs):
         raise NotImplementedError()

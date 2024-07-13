@@ -144,7 +144,7 @@ class HTreeNode:
     @typing.final
     def parent(self) -> typing.Self:
         """父节点"""
-        return self._parent
+        return self if not isinstance(self._parent, HTreeNode) else self._parent.parent
 
     @typing.final
     def ancestors(self) -> typing.Generator[typing.Self, None, None]:
@@ -335,27 +335,6 @@ class HTree(HTreeNode):
         return Path(*args).delete(self, **kwargs)
 
     @typing.final
-    def put(self, *path_and_value):
-        """Put, alias of update"""
-        return self.update(*path_and_value)
-
-    @typing.final
-    def get(self, path, default_value=_not_found_) -> _T:
-        """Get , alias of query"""
-        return self.find(path, default_value=default_value)
-
-    @typing.final
-    def pop(self, path, default_value=_not_found_) -> typing.Any:
-        """Pop , query and delete"""
-        node = self.find(path, default_value=_not_found_)
-
-        if node is not _not_found_:
-            self.delete(path)
-            return node
-
-        return default_value
-
-    @typing.final
     def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """搜索（Search ）符合条件节点或属性。查询是一个幂等操作，它不会改变树的状态。
         - 返回一个迭代器，允许用户在遍历过程中处理每个节点。
@@ -376,6 +355,24 @@ class HTree(HTreeNode):
     def query(self, *args, **kwargs) -> _TR:
         """查询（Query）， args[-1] 为 projection"""
         return Path(*args[:1]).query(self, *args[1:], **kwargs)
+
+    def put(self, *path_and_value):
+        """Put, alias of update"""
+        return self.update(*path_and_value)
+
+    def get(self, path, default_value=_not_found_) -> _T:
+        """Get , alias of query"""
+        return self.find(path, default_value=default_value)
+
+    def pop(self, path, default_value=_not_found_) -> typing.Any:
+        """Pop , query and delete"""
+        node = self.find(path, default_value=_not_found_)
+
+        if node is not _not_found_:
+            self.delete(path)
+            return node
+
+        return default_value
 
     def get_cache(self, key, default_value=_not_found_) -> typing.Any:
         path = as_path(key)
