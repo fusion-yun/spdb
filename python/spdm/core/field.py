@@ -10,33 +10,35 @@ from spdm.core.mesh import Mesh
 from spdm.core.expression import Expression
 
 
-def make_mesh(mesh, *dims):
-    if isinstance(mesh, Mesh):
-        if len(dims) > 0:
-            logger.warning(f"Ignore dims {dims}")
-        return mesh
+# def make_mesh(*dims):
+#     # if isinstance(mesh, Mesh):
+#     #     if len(dims) > 0:
+#     #         logger.warning(f"Ignore dims {dims}")
+#     #     return mesh
+#     # if mesh is _not_found_:
+#     #     mesh = {}
+#     # elif isinstance(mesh, str):
+#     #     mesh = {"type": mesh}
+#     # elif not isinstance(mesh, dict):
+#     #     raise TypeError(f"Illegal mesh type! {mesh}")
 
-    if mesh is _not_found_:
-        mesh = {}
-    elif isinstance(mesh, str):
-        mesh = {"type": mesh}
-    elif not isinstance(mesh, dict):
-        raise TypeError(f"Illegal mesh type! {mesh}")
+#     if len(dims) == 0:
+#         return None
 
-    if len(dims) == 0:
-        pass
-    elif not all(isinstance(d, np.ndarray) for d in dims):
-        raise TypeError(f"Illegal dims! {dims}")
-    elif all(d.ndim == 1 for d in dims):
-        mesh.setdefault("type", "rectilinear")
-        mesh["dims"] = dims
-    elif all(d.shape == dims[0].shape for d in dims[1:]) and len(dims[0].shape) == len(dims):
-        mesh.setdefault("type", "curvilinear")
-        mesh["dims"] = dims
-    else:
-        raise RuntimeError(f"Can not make mesh from {mesh}")
+#     mesh = {}
 
-    return Mesh(mesh)
+#     if not all(isinstance(d, np.ndarray) for d in dims):
+#         raise TypeError(f"Illegal dims! {dims}")
+#     elif all(d.ndim == 1 for d in dims):
+#         mesh.setdefault("type", "rectilinear")
+#         mesh["dims"] = dims
+#     elif all(d.shape == dims[0].shape for d in dims[1:]) and len(dims[0].shape) == len(dims):
+#         mesh.setdefault("type", "curvilinear")
+#         mesh["dims"] = dims
+#     else:
+#         raise RuntimeError(f"Can not make mesh from {mesh}")
+
+#     return Mesh(mesh)
 
 
 class Field(Expression):
@@ -55,7 +57,7 @@ class Field(Expression):
 
     Domain = Mesh
 
-    def __init__(self, *args, mesh=_not_found_, **kwargs):
+    def __init__(self, *args, mesh=None, **kwargs):
         """
         Usage:
             default:
@@ -68,20 +70,33 @@ class Field(Expression):
                 Field(x,y,z,mesh={"type":"curvilinear"},**kwargs) =>  Field(z,mesh={"type":"curvilinear","dims":(x,y)}, **kwargs)
 
         """
-        value = _not_found_ if len(args) == 0 else args[-1]
+        # value = _not_found_ if len(args) == 0 else args[-1]
 
-        if mesh is _not_found_:
-            obj = kwargs.get("_parent", _not_found_)
-            while obj is not _not_found_:
-                if (metadata := getattr(obj, "_metadata", _not_found_)) is not _not_found_:
-                    mesh = metadata.get("domain", _not_found_)
-                    if mesh is not _not_found_:
-                        mesh = getattr(obj, mesh, _not_found_)
-                if mesh is not _not_found_:
-                    break
-                obj = getattr(obj, "_parent", _not_found_)
+        # if mesh is _not_found_:
+        #     obj = kwargs.get("_parent", _not_found_)
+        #     while obj is not _not_found_:
+        #         if (metadata := getattr(obj, "_metadata", _not_found_)) is not _not_found_:
+        #             mesh = metadata.get("domain", _not_found_)
+        #             if mesh is not _not_found_:
+        #                 mesh = getattr(obj, mesh, _not_found_)
+        #         if mesh is not _not_found_:
+        #             break
+        #         obj = getattr(obj, "_parent", _not_found_)
 
-        super().__init__(value, domain=make_mesh(mesh, *args[:-1]), **kwargs)
+        if mesh is None and len(args) > 1:
+            dims = args[:-1]
+            mesh = {}
+
+            if not all(isinstance(d, np.ndarray) for d in dims):
+                raise TypeError(f"Illegal dims! {dims}")
+            elif all(d.ndim == 1 for d in dims):
+                mesh.setdefault("type", "rectilinear")
+                mesh["dims"] = dims
+            elif all(d.shape == dims[0].shape for d in dims[1:]) and len(dims[0].shape) == len(dims):
+                mesh.setdefault("type", "curvilinear")
+                mesh["dims"] = dims
+
+        super().__init__(*args[-1:], domain=mesh, **kwargs)
 
     @property
     def mesh(self) -> Mesh:

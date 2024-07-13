@@ -5,7 +5,7 @@ import numpy.typing as np_tp
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import array_type, ArrayType
-from spdm.core.sp_tree import sp_property
+from spdm.core.sp_tree import sp_property, SpTree, SpProperty
 from spdm.core.sp_object import SpObject
 from spdm.core.geo_object import GeoObjectBase
 from spdm.numlib.interpolate import interpolate
@@ -137,3 +137,11 @@ class DomainPPoly(Domain):
 
     def eval(self, func, *xargs, **kwargs) -> ArrayType:
         return NotImplemented
+
+
+class WithDomain(SpTree):
+    def __init_subclass__(cls, domain: str = None, **kwargs):
+
+        super().__init_subclass__(**kwargs)
+        if domain is not None and getattr(cls, "domain", None) is None:
+            cls.domain = SpProperty(alias=domain, type_hint=Domain)

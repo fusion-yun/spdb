@@ -9,8 +9,9 @@ from spdm.utils.logger import logger
 from spdm.utils.envs import SP_DEBUG, SP_LABEL
 
 from spdm.core.path import Path
-from spdm.core.domain import Domain
+from spdm.core.sp_tree import sp_property
 from spdm.core.generic import Generic
+from spdm.core.domain import Domain
 
 from spdm.model.port import Ports
 from spdm.model.entity import Entity
@@ -48,6 +49,8 @@ class Actor(Generic[_TSlice], Entity):
     """时间片序列，保存 Actor 历史状态。
         @note: TimeSeriesAoS 长度为 n(=3) 循环队列。当压入序列的 TimeSlice 数量超出 n 时，会调用 TimeSeriesAoS.__full__(first_slice)
         """
+
+    time: float = sp_property(alias="time_slice/-1/time", unit="s")
 
     @property
     def current(self) -> _TSlice:

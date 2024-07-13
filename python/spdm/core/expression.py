@@ -102,11 +102,7 @@ class Expression(HTreeNode):
 
         obj = self
         while self._domain is None and obj is not None:
-            if (metadata := getattr(obj, "_metadata", None)) is not None:
-                domain = metadata.get("domain", None)
-                if isinstance(domain, str):
-                    domain = getattr(obj, domain, None)
-            if domain is None:
+            if (domain := getattr(obj, "domain", None)) is None:
                 obj = getattr(obj, "_parent", None)
             else:
                 self._domain = domain
@@ -272,9 +268,7 @@ class Expression(HTreeNode):
                 else:
                     xargs.append(v)
 
-        return  self._op(*xargs)
-
-         
+        return self._op(*xargs)
 
     def __call__(self, *args) -> typing.Self | array_type:
         """重载函数调用运算符，用于计算表达式的值"""
