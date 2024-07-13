@@ -1,8 +1,9 @@
 import typing
 
-from spdm.core.entity import Entity
 from spdm.core.signal import Signal
 from spdm.core.geo_object import GeoObject
+
+from spdm.model.entity import Entity
 
 
 class Component(Entity):

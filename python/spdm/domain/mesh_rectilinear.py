@@ -9,7 +9,7 @@ from spdm.core.function import Function
 
 from spdm.geometry.box import Box
 from spdm.numlib.interpolate import interpolate
-from spdm.mesh.mesh_structured import StructuredMesh
+from spdm.domain.mesh_structured import StructuredMesh
 
 
 class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular", "rect"]):
@@ -45,7 +45,9 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
             else:
                 raise RuntimeError(f"dims not found in {self._cache}")
         assert all(d.ndim == 1 for d in self.dims), f"Illegal dims shape! {self.dims}"
-        assert all(np.all(d[1:] > d[:-1]) for d in self.dims), f"'dims' must be monotonically increasing.! {self.dims}"
+        assert all(
+            np.all(d[1:] > d[:-1]) for d in self.dims
+        ), f"'dims' must be monotonically increasing.! {self.dims}"
 
         self.shape = tuple([d.size for d in self.dims])
 

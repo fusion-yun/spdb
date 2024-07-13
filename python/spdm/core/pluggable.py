@@ -8,8 +8,6 @@ Classes:
 import abc
 import typing
 
-# import inspect
-# import abc  # Abstract Base Classes
 
 from spdm.utils.sp_export import sp_load_module, walk_namespace_modules
 from spdm.utils.logger import logger
@@ -140,7 +138,7 @@ class Pluggable(abc.ABC):
     def __new__(cls, *args, _plugin_name=None, **kwargs) -> typing.Type[typing.Self]:
         """Create a new instance of the class."""
 
-        if "_plugin_prefix" not in cls.__dict__ and _plugin_name is  None:
+        if "_plugin_prefix" not in cls.__dict__ and _plugin_name is None:
             return object.__new__(cls)
 
         if cls is Pluggable:

@@ -4,7 +4,7 @@ import numpy as np
 from spdm.utils.type_hint import ArrayType
 from spdm.core.sp_tree import sp_property
 from spdm.geometry.point import Point
-from spdm.mesh.mesh_structured import StructuredMesh
+from spdm.domain.mesh_structured import StructuredMesh
 
 
 class UniformMesh(StructuredMesh, plugin_name="uniform"):

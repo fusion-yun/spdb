@@ -1,7 +1,7 @@
 import typing
 import inspect
-from spdm.core.actor import Actor
-from spdm.core.time_sequence import TimeSlice
+from spdm.model.actor import Actor
+from spdm.model.time_sequence import TimeSlice
 
 
 class Context(Actor[TimeSlice]):

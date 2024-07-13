@@ -3,13 +3,13 @@
 import abc
 
 from spdm.core.graph import MultiDiGraph
-from spdm.core.event import Event, InputEvent, OutputEvent
-from spdm.core.port import Port, Ports
 from spdm.core.time import Time
 from spdm.core.sp_tree import sp_tree
 
+from spdm.model.event import Event, InputEvent, OutputEvent
+from spdm.model.port import Port, Ports
 
-@sp_tree
+
 class Process(MultiDiGraph[Port | Event], Event):
     """
     Describes a process that represents the change of entity state over time, such as motion, heat transfer, etc.

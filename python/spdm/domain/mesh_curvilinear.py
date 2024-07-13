@@ -10,7 +10,7 @@ from spdm.core.geo_object import GeoObjectBase
 from spdm.geometry.point import Point
 
 
-from spdm.mesh.mesh_rectilinear import RectilinearMesh
+from spdm.domain.mesh_rectilinear import RectilinearMesh
 
 
 class CurvilinearMesh(RectilinearMesh, plugin_name="curvilinear"):

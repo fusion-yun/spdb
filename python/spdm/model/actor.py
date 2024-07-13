@@ -8,12 +8,13 @@ import contextlib
 from spdm.utils.logger import logger
 from spdm.utils.envs import SP_DEBUG, SP_LABEL
 
-from spdm.core.time_sequence import TimeSequence, TimeSlice
 from spdm.core.path import Path
 from spdm.core.domain import Domain
-from spdm.core.port import Ports
-from spdm.core.entity import Entity
 from spdm.core.generic import Generic
+
+from spdm.model.port import Ports
+from spdm.model.entity import Entity
+from spdm.model.time_sequence import TimeSequence, TimeSlice
 
 _TSlice = typing.TypeVar("_TSlice", bound=TimeSlice)
 
@@ -29,7 +30,7 @@ class Actor(Generic[_TSlice], Entity):
     - fetch 在 domain 上取值
     - output_dir 输出目录
     - context 获取当前 Actor 所在的 Context。
-    
+
     """
 
     def __init__(self, *args, **kwargs) -> None:

@@ -86,7 +86,7 @@ class Mesh(Domain):
     """
 
     _plugin_registry = {}
-    _plugin_prefix = "spdm.mesh.mesh_"
+    _plugin_prefix = "spdm.domain.mesh_"
 
     shape: Vector[int]
     """
