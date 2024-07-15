@@ -1,13 +1,13 @@
 
 import os
 
-from spdm.core.aos import AoS
+from spdm._obsolete.aos import AoS
 from spdm.core.expression import Expression, Variable
 from spdm.core.field import Field
 from spdm.core.function import Function, function_like
 from spdm.core.htree import List
 from spdm.core.sp_tree import sp_property
-from spdm.core.time_sequence import TimeSequence
+from spdm.core.time import TimeSequence
 from spdm.geometry.curve import Curve
 from spdm.core.geo_object import GeoObject, GeoObjectSet
 from spdm.geometry.point import Point

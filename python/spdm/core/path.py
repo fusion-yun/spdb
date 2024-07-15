@@ -487,7 +487,6 @@ class Path(list):
     @typing.final
     def find(self, target, *p_args, **p_kwargs) -> typing.Any:
         """返回第一个search结果，若没有则返回 default_value
-
         p_args,p_kwargs: project 参数, p_args[0] 为 project 操作符
         """
         return Path._find(target, self[:], *p_args, **p_kwargs)
@@ -520,14 +519,11 @@ class Path(list):
         return value
 
     @typing.final
-    def query(self, target, *args, **kwargs) -> typing.Any:
+    def query(self, target, *p_args, **p_kwargs) -> typing.Any:
         """alias of find"""
-        return self.find(target, *args, **kwargs)
+        return self.find(target, *p_args, **p_kwargs)
 
-    @typing.final
-    def project(self, target: typing.Any, *args, **kwargs):
-        return Path._project(target, *args, path=self[:], **kwargs)
-
+ 
     ###########################################################
 
     @staticmethod

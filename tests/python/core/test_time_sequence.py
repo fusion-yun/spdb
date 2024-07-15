@@ -1,2 +1,2 @@
-from spdm.core.time_sequence import TimeSequence
-from spdm.core.aos import AoS
+from spdm.core.time import TimeSequence
+from spdm._obsolete.aos import AoS

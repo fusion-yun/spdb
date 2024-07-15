@@ -99,25 +99,30 @@ class Expression(HTreeNode):
         """返回表达式的定义域"""
         if isinstance(self._domain, Domain):
             return self._domain
+        
+        t_domain = self._domain
 
-        obj = self
-        while self._domain is None and obj is not None:
+        obj = self._parent
+                
+        while t_domain is None and obj is not None:
             if (domain := getattr(obj, "domain", None)) is None:
                 obj = getattr(obj, "_parent", None)
             else:
-                self._domain = domain
+                t_domain = domain
                 break
 
-        if self._domain is None and len(self._children) > 0:
+        if t_domain is None and len(self._children) > 0:
             # 从构成表达式的子节点查找 domain
             # TODO: 根据子节点 domain 的交集确定表达式的 domain
             for child in self._children:
-                self._domain = getattr(child, "domain", None)
-                if self._domain is not None:
+                t_domain = getattr(child, "domain", None)
+                if t_domain is not None:
                     break
 
-        if self._domain is not None and not isinstance(self._domain, Domain):
-            self._domain = self.__class__._domain_class(self._domain)
+        if t_domain is not None and not isinstance(t_domain, Domain):
+            t_domain = self.__class__._domain_class(t_domain)
+
+        self._domain = t_domain
 
         return self._domain
 

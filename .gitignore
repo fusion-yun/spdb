@@ -128,3 +128,6 @@ python/spdm/__version__.py
 
 **/obsolete
 **/_obsolete
+
+rust/**/target
+rust/*.lock

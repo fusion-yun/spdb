@@ -76,6 +76,11 @@ class Domain(SpObject):
     def eval(self, func, *xargs, **kwargs) -> ArrayType:
         pass
 
+    def refresh(self, *args, domain=None, **kwargs) -> typing.Self:
+        if domain is not None and domain is not _not_found_:
+            self.__setstate__(domain)
+        return self
+
 
 class DomainExpr(Domain):
     def __init__(self, *args, **kwargs):
@@ -99,12 +104,14 @@ class DomainPPoly(Domain):
 
         if all([isinstance(d, np.ndarray) and d.ndim == ndim for d in args]):
             self._coordinates = args
+            args = []
         elif all([isinstance(d, np.ndarray) and d.ndim == 1 for d in args]):
             self.dims = args
             self._coordinates = None
-        else:
-            raise RuntimeError(f"Invalid points {args}")
-        super().__init__(**kwargs)
+            args = []
+        # else:
+        #     raise RuntimeError(f"Invalid points {args}")
+        super().__init__(*args, **kwargs)
 
     shape: Vector[int]
 
@@ -141,7 +148,13 @@ class DomainPPoly(Domain):
 
 class WithDomain(SpTree):
     def __init_subclass__(cls, domain: str = None, **kwargs):
-
         super().__init_subclass__(**kwargs)
         if domain is not None and getattr(cls, "domain", None) is None:
             cls.domain = SpProperty(alias=domain, type_hint=Domain)
+
+    def fetch(self, *sub_domain, **kwargs) -> typing.Self:
+        """取回在 sub_domain 上的数据集"""
+        if len(sub_domain) + len(kwargs) == 0:
+            return self
+        else:
+            return super().fetch(*sub_domain, **kwargs)

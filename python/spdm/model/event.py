@@ -3,7 +3,6 @@
 import typing
 from enum import Enum, auto, Flag
 
-from spdm.core.time import Time
 from spdm.core.sp_object import SpObject
 
 from spdm.model.port import Ports
@@ -19,7 +18,7 @@ class Event(SpObject):
         outports (OutPorts): The output ports associated with the event.
     """
 
-    timestamp: Time
+    timestamp: float
 
     inports: Ports
 

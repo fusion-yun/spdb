@@ -42,6 +42,7 @@
 import abc
 import inspect
 import typing
+import collections.abc
 from copy import deepcopy
 from _thread import RLock
 
@@ -268,7 +269,7 @@ def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
     return SpProperty(getter=getter, **kwargs)
 
 
-class WithProperty(abc.ABC):
+class WithProperty:
     """自动添加 SpProperty
     ==============================================
     根据 type hint 在创建子类时自动添加 SpProperty"""
@@ -298,23 +299,66 @@ class WithProperty(abc.ABC):
 
         super().__init_subclass__(**kwargs)
 
+        cls.__properties__ = set(
+            [
+                name
+                for name, _ in inspect.getmembers(cls, lambda a: isinstance(a, SpProperty))
+                if not name.startswith("__")
+            ]
+        )
+
     def __getstate__(self) -> dict:
         state = super().__getstate__()
-        for k, prop in inspect.getmembers(self.__class__, lambda o: isinstance(o, SpProperty)):
-            if prop.getter is not None:
+        for k in self.__properties__:
+            if k in state:
                 continue
 
             value = getattr(self, k, _not_found_)
 
             if value is _not_found_:
                 continue
+            elif isinstance(value, HTreeNode):
+                value = value.__getstate__()
 
             state[k] = value
 
         return state
 
+    def fetch(self, *args, **kwargs) -> typing.Dict[str, typing.Any]:
+        if len(args) == 0:
+            projection = None
+        else:
+            projection = args[0]
+        args = args[1:]
 
-class WithMetadata(abc.ABC):
+        if projection is None:
+            names = self.__properties__
+        elif isinstance(projection, dict):
+            names = projection.values()
+        elif isinstance(projection, str):
+            names = [projection]
+        elif isinstance(projection, collections.abc.Sequence):
+            names = projection
+        else:
+            raise TypeError(f"Illegal type! {projection}")
+
+        res = {}
+        for k in names:
+            value = Path(k).get(self, _not_found_)
+            if isinstance(value, WithProperty):
+                value = value.fetch(None, *args, **kwargs)
+            elif callable(value):
+                value = value(*args, **kwargs)
+            res[k] = value
+
+        if isinstance(projection, dict):
+            res = {k: res.get(v, _not_found_) for k, v in projection.items()}
+        elif projection is None:
+            res = self.__class__(res, _parent=self._parent)
+        return res
+
+
+class WithMetadata:
     """元数据
     ===============================================
     在创建子类时候，添加 metadata 作为类变量"""
@@ -328,7 +372,7 @@ class WithMetadata(abc.ABC):
         super().__init_subclass__()
 
 
-class WithAttribute(abc.ABC):
+class WithAttribute:
     """Attribute 绑定
     ===============================================
     属性树，通过 __getattr__ 访问成员，并转换为对应的类型

@@ -3,12 +3,12 @@ import typing
 from spdm.utils.tags import _not_found_
 from spdm.core.path import Path
 from spdm.core.entry import as_entry
-from spdm.core.htree import HTree, HTreeNode
-from spdm.core.sp_tree import WithProperty, WithMetadata
+from spdm.core.htree import HTreeNode
+from spdm.core.sp_tree import SpTree
 from spdm.core.pluggable import Pluggable
 
 
-class SpObject(Pluggable, WithProperty, WithMetadata, HTree):
+class SpObject(Pluggable, SpTree):
     """SpObject 对象的基类
     =================================================
     - 对象工厂，根据输入参数生成对象

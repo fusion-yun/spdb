@@ -374,17 +374,20 @@ class HTree(HTreeNode):
 
         return default_value
 
-    def get_cache(self, key, default_value=_not_found_) -> typing.Any:
-        path = as_path(key)
-        value = path.get(self._cache, _not_found_)
+    def fetch(self, *args, project=None, **kwargs) -> typing.Self:
+        if project is None:
+            return self
+        else:
+            return self.query(project=project)
 
-        if value is _not_found_ and self._entry is not None:
-            value = self._entry.child(path).get()
-
-        if value is _not_found_:
-            value = default_value
-
-        return value
+    # def get_cache(self, key, default_value=_not_found_) -> typing.Any:
+    #     path = as_path(key)
+    #     value = path.get(self._cache, _not_found_)
+    #     if value is _not_found_ and self._entry is not None:
+    #         value = self._entry.child(path).get()
+    #     if value is _not_found_:
+    #         value = default_value
+    #     return value
 
     # -----------------------------------------------------------------------------------
     # Python special methods
@@ -561,9 +564,9 @@ class HTree(HTreeNode):
                 cached_key.append(key)
                 entry = None if self._entry is None else self._entry.child(key)
                 node = self.__as_node__(key, value, entry=entry)
-                yield Path().project(node, *args, **kwargs)
+                yield Path().find(node, *args, **kwargs)
             else:
-                yield Path().project(value, *args, **kwargs)
+                yield Path().find(value, *args, **kwargs)
 
         if self._entry is not None:
             for key, entry in self._entry.search(Query.tags.get_item):
