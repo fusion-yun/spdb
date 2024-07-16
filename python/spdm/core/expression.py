@@ -298,7 +298,7 @@ class Expression(HTreeNode):
     def antiderivative(self, order: int, **kwargs):
         """不定积分/反导数"""
         return Expression(
-            self.__compile__().antiderivative(order), label=f"\\int\\left({self.__label__}\\ritght)", **kwargs
+            self.__compile__().antiderivative(order), label=f"\\int\\left({self.__label__}\\right)", **kwargs
         )
 
     def partial_derivative(self, *order: int, **kwargs):
@@ -404,7 +404,8 @@ EXPR_OP_TAG = {
     "matmul": r"\cdot",
     "divide": "/",
     "power": "^",
-    # "abs": "",
+    "abs": "",
+    "absolute": "abs",
     "positive": "+",
     # "invert": "",
     "bitwise_and": "&",

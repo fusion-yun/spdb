@@ -154,10 +154,8 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             try:
                 obj = obj.__view__(view_point=view_point, **kwargs)
             except RuntimeError as error:
-
                 if SP_DEBUG == "strict":
                     raise RuntimeError(f"ignore unsupported view {obj.__class__.__name__} {obj}! ") from error
-
                 logger.exception(f"ignore unsupported view {obj.__class__.__name__} {obj}! ", exc_info=error)
 
         if obj is None or obj is _not_found_:
@@ -191,6 +189,9 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
                 case _:
                     logger.warning(f"ignore unknown view type {view_type}")
+        elif isinstance(obj, tuple):
+            g, t_styles = obj
+            self._draw(canvas, g, t_styles, *styles, view_point=view_point, **kwargs)
 
         elif isinstance(obj, (str, int, float, bool)):
             pos = g_styles.get("position", None)

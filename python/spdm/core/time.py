@@ -15,16 +15,8 @@ class WithTime(SpTree):
 
     time: float = sp_property(unit="s", default_value=0.0)  # type: ignore
 
-    def __init__(self, *args, time: float = None, _entry: Entry = None, **kwargs):
-        if _entry is None:
-            pass
-        elif time is None:
-            time = _entry.get("time_slice/-1/time", 0.0)
-            _entry = _entry.child(["time_slice", -1])
-        else:
-            _entry = _entry.child(["time_slice"]).find(time=time)
-
-        super().__init__(*args, time=time, _entry=_entry, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._history = []
         self._cache_cursor = 0
         self._cache_depth = 3
@@ -42,7 +34,7 @@ class WithTime(SpTree):
         """将当前状态写入历史记录"""
         self._history[self._cache_cursor] = self.__getstate__()
 
-    def history(self) -> typing.Generator[typing.Self, None, None]:
+    def previous(self) -> typing.Generator[typing.Self, None, None]:
         for shift in range(1, self._cache_depth):
             cache_cursor = (self._cache_cursor - shift + self._cache_depth) % self._cache_depth
             obj = object.__new__(self.__class__)
