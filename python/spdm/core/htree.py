@@ -314,88 +314,60 @@ class HTree(HTreeNode):
 
     # -----------------------------------------------------------------------------------------------------------
     # CRUD API
-    @typing.final
+
     def update(self, *args, **kwargs) -> None:
         """Update 更新元素的value、属性，或者子元素的树状结构"""
         return Path(*args[:-1]).update(self, *args[-1:], **kwargs)
 
-    @typing.final
     def insert(self, *args, **kwargs):
         """插入（Insert） 在树中插入一个子节点。插入操作是非幂等操作"""
         return Path(*args[:-1]).insert(self, *args[-1:], **kwargs)
 
-    @typing.final
-    def create(self, *args, **kwargs):
-        """创建（Create） 通常指的是创建一个新的子节点。由于是在树上创建，与“插入” 同义，alias of insert"""
-        return self.insert(*args, **kwargs)
-
-    @typing.final
     def delete(self, *args, **kwargs) -> bool:
         """删除（delete）节点。"""
         return Path(*args).delete(self, **kwargs)
 
-    @typing.final
     def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """搜索（Search ）符合条件节点或属性。查询是一个幂等操作，它不会改变树的状态。
         - 返回一个迭代器，允许用户在遍历过程中处理每个节点。
         """
         yield from Path(*args[:1]).search(self, *args[1:], **kwargs)
 
-    @typing.final
-    def traversal(self, *args, **kwargs) -> typing.Generator[_T, None, None]:
-        """遍历（Traversal），遍历树中的子节点 。 alias of search"""
-        yield from self.search(*args, **kwargs)
-
-    @typing.final
-    def find(self, *args, **kwargs) -> _T:
+    def find(self, *args, **kwargs):
         """查找（Find)，返回第一个 search 结果"""
         return Path(*args[:1]).find(self, *args[1:], **kwargs)
 
-    @typing.final
-    def query(self, *args, **kwargs) -> _TR:
+    def query(self, *args, **kwargs):
         """查询（Query）， args[-1] 为 projection"""
         return Path(*args[:1]).query(self, *args[1:], **kwargs)
 
-    def put(self, *path_and_value):
-        """Put, alias of update"""
-        return self.update(*path_and_value)
+    # -----------------------------------------------------------------------------------
+    # alias
 
-    def get(self, path, default_value=_not_found_) -> _T:
+    def put(self, *args, **kwargs) -> None:
+        """Put, alias of update"""
+        return self.update(*args, **kwargs)
+
+    def get(self, path, default_value=_not_found_) -> typing.Any:
         """Get , alias of query"""
         return self.find(path, default_value=default_value)
 
     def pop(self, path, default_value=_not_found_) -> typing.Any:
         """Pop , query and delete"""
         node = self.find(path, default_value=_not_found_)
-
         if node is not _not_found_:
             self.delete(path)
             return node
-
-        return default_value
-
-    def fetch(self, *args, project=None, **kwargs) -> typing.Self:
-        if project is None:
-            return self
         else:
-            return self.query(project=project)
-
-    # def get_cache(self, key, default_value=_not_found_) -> typing.Any:
-    #     path = as_path(key)
-    #     value = path.get(self._cache, _not_found_)
-    #     if value is _not_found_ and self._entry is not None:
-    #         value = self._entry.child(path).get()
-    #     if value is _not_found_:
-    #         value = default_value
-    #     return value
+            return default_value
 
     # -----------------------------------------------------------------------------------
     # Python special methods
 
-    def __getitem__(self, key: PathLike) -> _T:
+    def __getitem__(self, key: PathLike) -> typing.Any:
         """Get item from tree by path. 当找不到时，调用 __missing__ 方法"""
-        node = self.get(key, default_value=_not_found_)
-        return node if node is not _not_found_ else self.__missing__(key)
+        value = self.find(key, default_value=_not_found_)
+        return value if value is not _not_found_ else self.__missing__(key)
 
     def __setitem__(self, key: PathLike, value) -> None:
         """Set item to tree by path. alias of update"""
@@ -407,8 +379,6 @@ class HTree(HTreeNode):
 
     def __missing__(self, key: PathLike) -> typing.Any:
         """fallback 当 __getitem__ 没有找到元素时被调用"""
-        # raise KeyError(f"{self.__class__.__name__}.{key} is not assigned! ")
-        # logger.verbose(f"{self.__class__.__name__}[{key}] is not assigned! ")
         return _not_found_
 
     def __contains__(self, key: PathLike) -> bool:
@@ -573,7 +543,7 @@ class HTree(HTreeNode):
                 if not isinstance(key, (str, int)) or key in cached_key:
                     continue
                 node = self.__as_node__(key, _not_found_, entry=entry)
-                yield Path().project(node, *args, **kwargs)
+                yield Path().find(node, *args, **kwargs)
 
 
 class Dict(Generic[_T], HTree):

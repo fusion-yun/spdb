@@ -11,7 +11,6 @@ from spdm.utils.tags import _not_found_
 from spdm.core.htree import HTreeNode, Dict
 from spdm.core.template import Template
 from spdm.core.sp_object import SpObject
-from spdm.model.event import SpState
 
 SpGraphLightTheme = Dict(
     {

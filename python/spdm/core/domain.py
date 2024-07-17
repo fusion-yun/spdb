@@ -146,15 +146,49 @@ class DomainPPoly(Domain):
         return NotImplemented
 
 
-class WithDomain(SpTree):
+_T = typing.TypeVar("_T")
+
+
+class WithDomain(abc.ABC):
     def __init_subclass__(cls, domain: str = None, **kwargs):
         super().__init_subclass__(**kwargs)
         if domain is not None and getattr(cls, "domain", None) is None:
             cls.domain = SpProperty(alias=domain, type_hint=Domain)
 
-    def fetch(self, *sub_domain, **kwargs) -> typing.Self:
-        """取回在 sub_domain 上的数据集"""
-        if len(sub_domain) + len(kwargs) == 0:
-            return self
+    @classmethod
+    def _get_by_domain(cls, obj: _T, *domain) -> _T:
+        if isinstance(obj, dict):
+            return {k: cls._get_by_domain(v, *domain) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [cls._get_by_domain(v, *domain) for v in obj]
+        elif callable(obj):
+            return obj(*domain)
         else:
-            return super().fetch(*sub_domain, **kwargs)
+            return obj
+
+    @classmethod
+    def _set_by_domain(cls, obj: _T, domain, value) -> _T:
+        obj[domain] = value
+
+    def find(self, *args, domain: Domain = None, **kwargs) -> typing.Self:
+        """取回在 sub_domain 上的数据集"""
+        res = super().find(*args, **kwargs)
+
+        if domain is None or domain is self.domain:
+            return res
+        else:
+            return self._get_by_domain(res, domain)
+
+    def update(self, *args, domain: Domain = None, **kwargs):
+        """更新在 domain 上的数据集"""
+        if domain is None:
+            return super().update(*args, **kwargs)
+        else:
+            return self._set_by_domain(domain, *args, **kwargs)
+
+    def insert(self, *args, domain: Domain = None, **kwargs):
+        """更新在 domain 上的数据集"""
+        if domain is None:
+            return super().insert(*args, **kwargs)
+        else:
+            return self._set_by_domain(domain, *args, **kwargs)

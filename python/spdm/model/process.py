@@ -1,51 +1,24 @@
-"""Defines the Process class that represents a change of entity state over time."""
+"""
+Processor: 处理或转换数据的组件。
+"""
 
-import abc
-
-from spdm.core.graph import MultiDiGraph
-from spdm.core.time import Time
-from spdm.core.sp_tree import sp_tree
-
-from spdm.model.event import Event, InputEvent, OutputEvent
-from spdm.model.port import Port, Ports
+from spdm.model.port import Ports
+from spdm.model.entity import Entity
 
 
-class Process(MultiDiGraph[Port | Event], Event):
+class Process(Entity):
+    """Processor: 处理或转换数据的组件。
+    - 一个 Processor 可以有多个输入端口和多个输出端口。
+    - Processor 是无状态的，即不会保存任何状态信息。
+    - Processor 可以是同步的，也可以是异步的。
+    - Processor 可以是有向无环图（DAG）的节点。
+    - Processor 可以是一个单元操作，也可以是一个复合操作。
+    - Processor 可以是一个数据处理流程的一部分。
+
     """
-    Describes a process that represents the change of entity state over time, such as motion, heat transfer, etc.
-    A process describes a continuous sequence of activities that result in changes to the entity's state.
-    Processes are typically composed of a series of events.
-    """
 
-    def __init__(self, *args, **kwargs) -> None:
-        MultiDiGraph[Port | Event].__init__(*args, **kwargs)
-        Event.__init__(self)
+    in_ports: Ports
+    out_ports: Ports
 
-    input: InputEvent
-    output: OutputEvent
-
-    def inports(self) -> Ports:
-        """
-        Returns the input ports of the process.
-
-        Returns:
-            Dict[str, Port]: The input ports of the process.
-        """
-        return self.inputs.inports
-
-    def outports(self) -> Ports:
-        """
-        Returns the output ports of the process.
-
-        Returns:
-            Dict[str, Port]: The output ports of the process.
-        """
-        return self.outputs.outports
-
-    @abc.abstractmethod
-    def apply(self, time: Time = None):
-        """Applies the event.
-
-        Args:
-            time (Time, optional): The time at which the event is applied. Defaults to None.
-        """
+    def execute(self):
+        pass

@@ -237,7 +237,7 @@ class SpProperty:
             # 当调用 getter(cls, <name>) 时执行
             return self
         elif not isinstance(instance, HTree):
-            raise TypeError(f"Class '{instance.__class__.__name__}' must be a subclass of 'SpTree'.")
+            raise TypeError(f"Class '{instance.__class__.__name__}' must be a subclass of 'HTree'.")
 
         with self.lock:
             value = _not_found_
@@ -423,6 +423,7 @@ class SpTree(WithProperty, WithMetadata, HTree):
     """SpTree 根据 class 的 typhint 自动绑定转换类型
     ===============================================
     """
+
 
 
 def _make_sptree(cls, **metdata) -> typing.Type[SpTree]:

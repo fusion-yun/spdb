@@ -523,7 +523,6 @@ class Path(list):
         """alias of find"""
         return self.find(target, *p_args, **p_kwargs)
 
- 
     ###########################################################
 
     @staticmethod

@@ -21,6 +21,17 @@ class Component(Entity):
         """返回当前时间点的状态树"""
         raise NotImplementedError("TODO: time_slice ")
 
-    @property
     def geometry(self) -> GeoObject:
         return {}
+
+    def _repr_svg_(self):
+        from spdm.view import sp_view as sp_view
+
+        return sp_view.display(self.__view__(), output="svg")
+
+    def __view__(self, **styles) -> dict:
+        geo = self.geometry()
+        if isinstance(geo, GeoObject):
+            return geo.__view__(**styles)
+        else:
+            return styles

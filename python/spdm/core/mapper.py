@@ -57,18 +57,18 @@ class Mapper(Entry):
                     res = entry.find(req.get("_text"))
         elif isinstance(req, list) and any(isinstance(i, dict) for i in req):
             res = [self._do_map(i) for i in req]
+        elif isinstance(req, tuple):
+            k, req = req
+            res = (k, self._do_map(req))
         else:
             res = req
         return res
 
     def _map(self, *args) -> Entry:
         value = self._mapper.child(self._path).find(*args, default_value=_not_found_)
-
         value = self._do_map(value)
-
         if value is _not_found_:
             value = self._handler["*"].child(self._path).get(*args, default_value=_not_found_)
-
         return Entry(value)
 
     def insert(self, *args, **kwargs) -> typing.Self:
@@ -85,7 +85,11 @@ class Mapper(Entry):
 
     def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """Return a generator of the results."""
-        yield from self._map(*args[:1]).search(*args[1:], **kwargs)
+        for value in self._mapper.child(self._path).search(*args[:1], default_value=_not_found_):
+            if value is _not_found_:
+                continue
+
+            yield from Entry(value).search(*args[1:], **kwargs)
 
     @classmethod
     def _get_mapper(cls, schema, uri, namespace=None) -> typing.Tuple[Entry, typing.Dict[str, Entry]]:

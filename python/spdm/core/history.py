@@ -1,3 +1,4 @@
+import abc
 import typing
 import numpy as np
 
@@ -10,39 +11,98 @@ from spdm.core.path import Path
 from spdm.core.sp_tree import SpTree, sp_property
 
 
-class WithTime(SpTree):
-    """循环记录记录状态树的历史改变"""
+class WithHistory(abc.ABC):
+    """循环记录状态树的历史改变"""
 
-    time: float = sp_property(unit="s", default_value=0.0)  # type: ignore
+    _DEFALUT_CACHE_DEEPTH = 4
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, time=0.0, history=None, cache_cursor=0, **kwargs):
         super().__init__(*args, **kwargs)
-        self._history = []
-        self._cache_cursor = 0
-        self._cache_depth = 3
-
-    def advance(self, time: float) -> typing.Self:
-        """推进到下一个时间片"""
-        assert time > self.time, f"{time} <= {self.time}"
-
-        self.flush()
+        self._history = [] * WithHistory._DEFALUT_CACHE_DEEPTH if history is None else history
+        self._cache_cursor = cache_cursor
+        if self._cache is _not_found_:
+            super().__setstate__(self._history[self._cache_cursor])
         self.time = time
-        self._cache_cursor = (self._cache_cursor + 1) % self._cache_depth
-        return self
 
     def flush(self):
         """将当前状态写入历史记录"""
-        self._history[self._cache_cursor] = self.__getstate__()
+        self._history[self._cache_cursor] = super().__getstate__()
 
     def previous(self) -> typing.Generator[typing.Self, None, None]:
-        for shift in range(1, self._cache_depth):
-            cache_cursor = (self._cache_cursor - shift + self._cache_depth) % self._cache_depth
+        depth = len(self._history)
+        for shift in range(1, depth):
+            cache_cursor = (self._cache_cursor - shift + depth) % depth
             obj = object.__new__(self.__class__)
             obj.__setstate__(self._history[cache_cursor])
+            if self._entry is not None:
+                parent = self._entry.parent
+                obj._entry = parent.child(self._entry._path[-1] - shift)
+
             yield obj
 
+    def history(self, time: float, create_if_need=False) -> typing.Self:
+        if time is None or np.isclose(time, self.time):
+            return self
+        elif time > self.time:
+            raise RuntimeError(f"Can not get future slice at time={time}. ")
 
-_TSlice = typing.TypeVar("_TSlice", bound=WithTime)
+        depth = len(self._history)
+        for shift in range(depth):
+            cache_cursor = (self._cache_cursor - shift + depth) % depth
+            cache_time = Path([cache_cursor, "time"]).get(self._history, _not_found_)
+            if cache_time is _not_found_:
+                continue
+            elif time > cache_time:
+                break
+        else:
+            new_obj = object.__new__(self.__class__)
+            new_obj.__setstate__(self._history[cache_cursor])
+            new_obj._history = self._history
+            new_obj._cache_cursor = cache_cursor
+            new_obj.time = time
+
+        return new_obj
+
+    def advance(self, dt: float) -> typing.Self:
+        """移动到指定时间片"""
+        if dt < 0:
+            raise RuntimeError(f"Can not change history at {dt}")
+        self.flush()
+        self._cache_cursor = (self._cache_cursor + 1) % len(self._history)
+        super().__setstate__(_not_found_)
+        self.time += dt
+        return self
+
+    def find(self, *args, time=None, **kwargs):
+        if time is None or np.isclose(time, self.time):
+            return super().find(*args, **kwargs)
+        else:
+            return self.history(time).find(*args, **kwargs)
+
+    def update(self, *args, time=None, **kwargs):
+        if time is None or np.isclose(time, self.time):
+            return super().update(*args, **kwargs)
+        else:
+            return self.advance(time - self.time).update(*args, **kwargs)
+
+    def insert(self, *args, time=None, **kwargs):
+        if time is None or np.isclose(time, self.time):
+            return super().insert(*args, **kwargs)
+        else:
+            return self.advance(time - self.time).update(*args, **kwargs)
+
+    def delete(self, *args, time=None, **kwargs):
+        if time is None or np.isclose(time, self.time):
+            return super().delete(*args, **kwargs)
+        elif len(args) + len(kwargs) > 0:
+            return self.history(time).delete(*args, **kwargs)
+        else:
+            idx = self._find_by_time(time)
+            if idx is not _not_found_:
+                self._history[idx] = _not_found_
+
+
+_TSlice = typing.TypeVar("_TSlice", bound=WithHistory)
 
 
 class TimeSequence(List[_TSlice]):
@@ -159,7 +219,7 @@ class TimeSequence(List[_TSlice]):
 
         if entry is not None:
             pass
-        elif not (value is _not_found_ or isinstance(value, WithTime)):
+        elif not (value is _not_found_ or isinstance(value, WithHistory)):
             if isinstance(self._entry, Entry) and self._entry_cursor is not None:
                 # FIXME: 这里 entry_cursor 计算的不对
                 entry_cursor = self._entry_cursor + idx

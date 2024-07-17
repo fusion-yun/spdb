@@ -231,6 +231,12 @@ class FileXML(File, plugin_name="xml"):
                 case Query.tags.get_value:
                     res = self._dump(obj, path=path, envs=envs, **kwargs)
 
+                case Query.tags.get_item:
+                    res = "/".join(path), self._dump(obj, path=path, envs=envs, **kwargs)
+
+                case Query.tags.get_key:
+                    res = "/".join(path)
+
                 case _:
                     target = self._dump(obj, path=path, envs=envs, **kwargs)
                     res = Path._project(target, op, *args, default_value=default_value, **kwargs)

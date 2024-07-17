@@ -11,8 +11,8 @@ The `Ports` class is a collection of `Port` objects. It provides methods for put
 import typing
 from spdm.utils.tags import _not_found_
 from spdm.core.path import Path, as_path
-from spdm.core.htree import HTreeNode, List
-from spdm.core.sp_tree import SpTree
+from spdm.core.htree import HTreeNode, List, Dict
+from spdm.core.sp_tree import SpTree, WithProperty
 from spdm.core.sp_tree import AttributeTree
 
 
@@ -84,20 +84,19 @@ class Port(SpTree):
         return self.fragment.put(self.node, value)
 
 
-class Ports(List[Port]):
+class Ports(WithProperty, Dict[Port]):
     """A collection of ports.
 
     Args:
         typing (_type_): _description_
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
     def connect(self, ctx=None, **kwargs):
-        if ctx is not None:
-            for p in self.children():
-                p.connect(p.path.get(ctx, _not_found_))
+        if ctx is None:
+            ctx = self._parent.context
+
+        for p in ctx.entities():
+            p.connect(p.path.get(ctx, _not_found_))
 
         for k, v in kwargs.items():
             self[k].connect(v)

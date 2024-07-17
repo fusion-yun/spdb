@@ -19,7 +19,10 @@ class Query:
         check_type = auto()  # check type
         get_key = auto()  # 返回键
         get_value = auto()  # 返回值
+        set_value = auto()  # 返回值
         get_item = auto()  # 返回键和值
+        set_item = auto()  # 返回键和值
+
         first_valid = auto()  # 返回第一个有效值，若无则返回 _not_found_
         last_valid = auto()  # 返回最后一个有效值，若无则返回 _not_found_
         search = auto()  # search by query return idx
@@ -290,7 +293,7 @@ class Query:
 QueryLike = dict | str | Query.tags | None
 
 
-def as_query(query = None, **kwargs) -> Query | slice:
+def as_query(query=None, **kwargs) -> Query | slice:
     if isinstance(query, slice):
         return query
     elif isinstance(query, Query):
