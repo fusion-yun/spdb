@@ -374,11 +374,6 @@ def _as_entry(uri, *args, **kwargs):
     return open_entry(uri, **kwargs)
 
 
-@as_entry.register(tuple)
-def _as_entry(uri, **kwargs):
-    return EntryChain(uri, **kwargs)
-
-
 def _as_entrychain(uris, **kwargs):
     entries = []
     for uri in uris:

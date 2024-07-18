@@ -5,6 +5,7 @@ import numpy.typing as np_tp
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import array_type, ArrayType
+from spdm.core.htree import HTree, List
 from spdm.core.sp_tree import sp_property, SpTree, SpProperty
 from spdm.core.sp_object import SpObject
 from spdm.core.geo_object import GeoObjectBase
@@ -192,3 +193,7 @@ class WithDomain(abc.ABC):
             return super().insert(*args, **kwargs)
         else:
             return self._set_by_domain(domain, *args, **kwargs)
+
+
+class MultiDomains(Domain, plugin_name="multiblock"):
+    sub_domains: List[Domain] = sp_property()

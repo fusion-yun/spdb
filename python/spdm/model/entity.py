@@ -17,3 +17,6 @@ class Entity(SpObject):
     def context(self) -> typing.Self:
         """获取当前 Actor 所在的 Context。"""
         return getattr(self._parent, "context", None)
+
+    def __view__(self, *args, **kwargs) -> dict:
+        return {}

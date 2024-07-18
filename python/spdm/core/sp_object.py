@@ -45,7 +45,7 @@ class SpObject(Pluggable, SpTree):
 
         cache = Path().update(cache, kwargs)
 
-        super().__init__(cache, _entry=as_entry(tuple(entries)), _parent=_parent)
+        super().__init__(cache, _entry=as_entry(entries), _parent=_parent)
 
     # def __copy__(self) -> typing.Self:
     #     return SpTree.__copy__(self)

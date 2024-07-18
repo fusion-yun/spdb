@@ -2,6 +2,8 @@
 Processor: 处理或转换数据的组件。
 """
 
+from spdm.core.sp_tree import AttributeTree
+
 from spdm.model.port import Ports
 from spdm.model.entity import Entity
 
@@ -20,5 +22,13 @@ class Process(Entity):
     in_ports: Ports
     out_ports: Ports
 
-    def execute(self):
-        pass
+    def initialize(self, *args, **kwargs):
+        self.in_ports.connect(self.context)
+        self.out_ports.connect(self.context)
+        super().__setstate__(*args, **kwargs)
+
+    def refresh(self, *args, **kwargs):
+        self.out_ports.push(self.execute(*args, **kwargs))
+
+    def execute(self, *args, **kwargs) -> dict:
+        return {}

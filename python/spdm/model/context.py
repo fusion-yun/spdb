@@ -30,18 +30,14 @@ class Context(Actor):
                 for i, a in enumerate(entity):
                     yield f"{k}_{i}", a
 
-    def initialize(self, *args, **kwargs):
-        for k, a in self.entities(Actor):
-            logger.verbose(f"Initialize {k}")
-            a.initialize(*args, **kwargs)
-
-    def advance(self, *args, **kwargs):
-        for _, a in self.entities(Actor):
-            a.initialize(*args, **kwargs)
-
-    def refresh(self, *args, **kwargs):
-        for _, actor in self.entities(Actor):
-            actor.refresh(*args, **kwargs)
+    def initialize(self):
+        """初始化 Context
+        - 初始化 Actor 和 Process
+        - 构建 DAG 执行图
+        """
+        # for k, a in self.entities(Actor):
+        #     logger.verbose(f"Initialize {k}")
+        #     a.initialize()
 
     def flush(self):
         for _, a in self.entities(Actor):
@@ -55,24 +51,13 @@ class Context(Actor):
             attr = getattr(self, k, _not_found_)
             if isinstance(attr, HTree):
                 attr.__setstate__(v)
+            else:
+                setattr(self, k, v)
 
     def __view__(self, **styles) -> dict:
         geo = {"$styles": styles}
 
-        # o_list = [
-        #     "wall",
-        #     "pf_active",
-        #     "magnetics",
-        #     "interferometer",
-        #     "tf",
-        #     "equilibrium",
-        #     # "ec_launchers",
-        #     # "ic_antennas",
-        #     # "lh_antennas",
-        #     # "nbi",
-        #     # "pellets",
-        # ]
-        for k, g in self.entities((Component, Actor)):
+        for k, g in self.entities():
             try:
                 g_view = g.__view__(**styles)
             except RuntimeError as e:

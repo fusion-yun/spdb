@@ -14,17 +14,6 @@ from spdm.core.path import Path, Query, PathLike, as_path
 from spdm.core.generic import Generic
 
 
-def get_state(obj: typing.Any) -> dict:
-    if hasattr(obj.__class__, "__getstate__"):
-        return obj.__getstate__()
-    elif isinstance(obj, collections.abc.Mapping):
-        return {k: get_state(v) for k, v in obj.items()}
-    elif isinstance(obj, collections.abc.Sequence) and not isinstance(obj, str):
-        return [get_state(v) for v in obj]
-    else:
-        return obj
-
-
 class HTreeNode:
     """Hierarchical Tree Structured Data: HTreeNode is a node in the hierarchical tree."""
 
@@ -57,8 +46,38 @@ class HTreeNode:
         """只读属性，返回节点是否为Mapping"""
         return False
 
+    @classmethod
+    def _getstate(cls, obj: typing.Any) -> dict:
+        if isinstance(obj, dict):
+            return {k: cls._getstate(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [cls._getstate(v) for v in obj]
+        elif hasattr(obj.__class__, "__getstate__"):
+            return obj.__getstate__()
+        else:
+            return obj
+
+    @classmethod
+    def _setstate(cls, target, state: dict):
+        if state is _not_found_:
+            pass
+        elif target is _not_found_:
+            target = state
+        elif isinstance(target, dict) and isinstance(state, dict):
+            for k, v in state.items():
+                target[k] = cls._setstate(target.get(k, _not_found_), v)
+        elif hasattr(target.__class__, "__setstate__"):
+            target.__setstate__(state)
+        else:
+            target = state
+
+        return target
+
     def __getstate__(self) -> dict:
-        state: dict = super().__getstate__()
+        state: dict = self._getstate(self._cache)
+        if not isinstance(state, dict):
+            state = {"$value": state}
+
         state.update(
             {
                 "$type": f"{self.__class__.__module__}.{self.__class__.__name__}",
@@ -68,28 +87,18 @@ class HTreeNode:
             }
         )
 
-        if isinstance(self._cache, collections.abc.Mapping):
-            state.update(get_state(self._cache))
-        else:
-            state["$data"] = get_state(self._cache)
-
         return state
 
-    def __setstate__(self, state: dict) -> dict | None:
+    def __setstate__(self, *args, **kwargs) -> None:
+        self._entry = _not_found_
+        self._cache = _not_found_
+        for state in [*args, kwargs]:
+            if isinstance(state, dict):
+                self._entry = as_entry(
+                    [state.pop("_entry", _not_found_), state.pop("$entry", _not_found_), self._entry]
+                )
 
-        self._entry = as_entry(state.pop("$entry", None))
-
-        logger.verbose(f"Load {self.__class__.__name__} from state: {state.pop('$type',None)}")
-
-        self._cache = state.pop("$data", _not_found_)
-
-        if self._cache is _not_found_:
-            self._cache = state
-            state = {}
-        # elif len(state) > 0:
-        #     logger.warning(f"Ignore property {list(state.keys())}")
-
-        return super().__setstate__(state)
+            self._cache = self._setstate(self._cache, state)
 
     @property
     def __label__(self) -> str:

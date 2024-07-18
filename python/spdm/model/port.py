@@ -14,9 +14,12 @@ from spdm.core.path import Path, as_path
 from spdm.core.htree import HTreeNode, List, Dict
 from spdm.core.sp_tree import SpTree, WithProperty
 from spdm.core.sp_tree import AttributeTree
+from spdm.core.generic import Generic
+
+_T = typing.TypeVar("T")
 
 
-class Port(SpTree):
+class Port(Generic[_T], SpTree):
     """
     Represents a port in a graph edge.
 
@@ -71,7 +74,7 @@ class Port(SpTree):
         """Binds the port to a node."""
         self.node = node
 
-    def get(self, default_value=_not_found_):
+    def get(self, default_value=_not_found_) -> _T:
         """Fetches data from the port."""
 
         if len(self.fragment) > 0:
@@ -95,11 +98,18 @@ class Ports(WithProperty, Dict[Port]):
         if ctx is None:
             ctx = self._parent.context
 
-        for p in ctx.entities():
-            p.connect(p.path.get(ctx, _not_found_))
+        if ctx is not None:
+            for p in ctx.entities():
+                p.connect(p.path.get(ctx, _not_found_))
 
         for k, v in kwargs.items():
             self[k].connect(v)
 
     def valid(self) -> bool:
         return all(n.valid for n in self)
+
+    def push(self, state: dict) -> None:
+        pass
+
+    def pull(self) -> dict:
+        pass

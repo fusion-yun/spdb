@@ -14,17 +14,22 @@ class Actor(Entity):
     in_ports: Ports
     """输入的 Edge，记录对其他 Actor 的依赖。"""
 
+    @property
+    def out_port(self) -> typing.Self:
+        return self
+
     def initialize(self, *args, **kwargs) -> None:
         """初始化 Actor 。"""
+        super().__setstate__(*args, **kwargs)
         self.in_ports.connect(self.context)
 
-    def advance(self, *args, **kwargs) -> typing.Self:
-        """推进到下一个时间片，时间为 time"""
-        # return super().advance(*args, **kwargs)
+    def refresh(self, *args, **kwargs):
+        self.__setstate__(self.execute(*args, **kwargs))
 
-    def refresh(self, *args, **kwargs) -> typing.Self:
+    def execute(self, *args, **kwargs) -> dict:
         """更新当前时间片 （time_slice）"""
-        # return super().refresh(*args, **kwargs)
+        return {}
 
-    def fetch(self, *args, **kwargs) -> typing.Any:
-        return None
+    def finialize(self):
+        """结束 Actor 的执行。"""
+        pass
