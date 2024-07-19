@@ -15,17 +15,17 @@ class SpObject(Pluggable, SpTree):
 
     """
 
-    def __new__(cls, *args, _entry=None, **kwargs):
+    def __new__(cls, *args, plugin_name=None, _entry=None, **kwargs):
+        if plugin_name is None:
+            plugin_name = kwargs.pop("kind", None) or kwargs.pop("type", None)
 
-        plugin_name = kwargs.pop("kind", None) or kwargs.pop("type", None)
+            if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
+                plugin_name = args[0].get("type", None)
 
-        if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
-            plugin_name = args[0].get("type", None)
+            if plugin_name is None and _entry is not None:
+                plugin_name = _entry.get("type", None)
 
-        if plugin_name is None and _entry is not None:
-            plugin_name = _entry.get("type", None)
-
-        return super().__new__(cls, _plugin_name=plugin_name)
+        return super().__new__(cls, *args, _plugin_name=plugin_name, **kwargs)
 
     def __init__(self, *args, _entry=None, _parent=None, **kwargs) -> None:
 

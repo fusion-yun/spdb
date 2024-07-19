@@ -13,7 +13,7 @@ from spdm.utils.sp_export import sp_load_module, walk_namespace_modules
 from spdm.utils.logger import logger
 
 
-class Pluggable:
+class Pluggable(abc.ABC):
     """
     Factory class to create objects from a registry.
 

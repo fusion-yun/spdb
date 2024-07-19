@@ -3,7 +3,7 @@ import inspect
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 
-from spdm.core.htree import HTree, List
+from spdm.core.htree import HTree, List, Set
 
 from spdm.model.entity import Entity
 from spdm.model.actor import Actor
@@ -26,9 +26,10 @@ class Context(Actor):
             entity = getattr(self, k, _not_found_)
             if isinstance(entity, type_hint):
                 yield k, entity
-            elif isinstance(entity, List) and isinstance(entity[0], type_hint):
+            elif isinstance(entity, (List, Set)):
                 for i, a in enumerate(entity):
-                    yield f"{k}_{i}", a
+                    if type_hint is None or isinstance(a, type_hint):
+                        yield f"{k}_{i}", a
 
     def initialize(self):
         """初始化 Context

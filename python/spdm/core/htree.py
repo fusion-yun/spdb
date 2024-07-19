@@ -666,7 +666,6 @@ class List(Generic[_T], HTree):
         for idx in range(len(self)):
             yield self.__get_node__(idx)
 
-    @typing.final
     def __iter__(self) -> typing.Generator[_T, None, None]:
         """遍历，sequence 返回子节点的值，mapping 返回子节点的键"""
         yield from self.search()
@@ -699,25 +698,33 @@ class Set(Generic[_T], HTree):
                 self.insert(v)
         elif cache is not _not_found_:
             raise TypeError(f"Invalid args {cache}")
+        return
 
     def find(self, key, *args, **kwargs) -> _T:
-        if not isinstance(key, query):
+        if not isinstance(key, int):
             return super().find(hash(key), *args, **kwargs)
         else:
             return super().find(key, *args, **kwargs)
 
     def update(self, key, *args, **kwargs) -> None:
-        return super().update(hash(key), *args, **kwargs)
+        self._cache = Path([hash(key)]).update(self._cache, *args, **kwargs)
 
     def insert(self, value, *args, **kwargs) -> None:
         node = super().__as_node__(None, value, *args, **kwargs)
-        return super().insert(hash(node), node, *args, **kwargs)
+        self._cache = Path([hash(node)]).update(self._cache, node, *args, **kwargs)
 
     def delete(self, key, *args, **kwargs) -> None:
-        return super().delete(hash(key), value, *args, **kwargs)
+        return super().delete(hash(key), *args, **kwargs)
 
     def __getitem__(self, key) -> _T:
         return super().__getitem__(key)
+
+    def __iter__(self) -> typing.Generator[HTreeNode, None, None]:
+        yield from self._cache.values()
+
+    def __search__(self, *args, **kwargs) -> typing.Generator[_T, None, None]:
+        for value in self.__iter__():
+            yield Path().find(value, *args, **kwargs)
 
 
 collections.abc.Set.register(Set)
