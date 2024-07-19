@@ -11,7 +11,12 @@ from spdm.model.entity import Entity
 class Actor(Entity):
     """执行体，具有状态历史和空间区域的实体。"""
 
-    in_ports: Ports
+    class InPorts(Ports):
+        """输入端口集合。"""
+
+        pass
+
+    in_ports: InPorts
     """输入的 Edge，记录对其他 Actor 的依赖。"""
 
     @property

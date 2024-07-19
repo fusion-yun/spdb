@@ -581,7 +581,7 @@ class Path(list):
             elif isinstance(target, collections.abc.MutableMapping):
                 if key is Path.tags.append:
                     target = [target, value]
-                elif isinstance(key, str):
+                elif isinstance(key, (str,int)):
                     obj = target.get(key, _not_found_)
                     target[key] = Path._update(obj, [], value)
                 elif key is None:
@@ -623,7 +623,7 @@ class Path(list):
             res = target.__get_node__(key, *args, **kwargs)
             args = tuple()
             kwargs = {}
-        elif isinstance(target, collections.abc.Mapping) and isinstance(key, str):
+        elif isinstance(target, collections.abc.Mapping):
             res = target.get(key, _not_found_)
         elif isinstance(target, collections.abc.Sequence) and isinstance(key, int):
             if key >= len(target):

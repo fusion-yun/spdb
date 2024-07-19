@@ -572,11 +572,6 @@ class Dict(Generic[_T], HTree):
 
         super().__init__(cache, **kwargs)
 
-    @property
-    def is_mapping(self) -> bool:
-        """只读属性，返回节点是否为Mapping"""
-        return True
-
     def keys(self) -> typing.Generator[str, None, None]:
         """遍历 key"""
         if isinstance(self._cache, collections.abc.Mapping):
@@ -692,3 +687,37 @@ class List(Generic[_T], HTree):
 
 
 collections.abc.MutableSequence.register(List)
+
+
+class Set(Generic[_T], HTree):
+    """hashable 对象的容器"""
+
+    def __init__(self, cache: dict = _not_found_, /, **kwargs):
+        super().__init__({}, **kwargs)
+        if isinstance(cache, collections.abc.Iterable):
+            for v in cache:
+                self.insert(v)
+        elif cache is not _not_found_:
+            raise TypeError(f"Invalid args {cache}")
+
+    def find(self, key, *args, **kwargs) -> _T:
+        if not isinstance(key, query):
+            return super().find(hash(key), *args, **kwargs)
+        else:
+            return super().find(key, *args, **kwargs)
+
+    def update(self, key, *args, **kwargs) -> None:
+        return super().update(hash(key), *args, **kwargs)
+
+    def insert(self, value, *args, **kwargs) -> None:
+        node = super().__as_node__(None, value, *args, **kwargs)
+        return super().insert(hash(node), node, *args, **kwargs)
+
+    def delete(self, key, *args, **kwargs) -> None:
+        return super().delete(hash(key), value, *args, **kwargs)
+
+    def __getitem__(self, key) -> _T:
+        return super().__getitem__(key)
+
+
+collections.abc.Set.register(Set)
