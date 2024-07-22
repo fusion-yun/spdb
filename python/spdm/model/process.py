@@ -2,6 +2,7 @@
 Processor: 处理或转换数据的组件。
 """
 
+import collections
 from spdm.model.port import Ports
 from spdm.model.entity import Entity
 
@@ -31,8 +32,19 @@ class Process(Entity):
         self.out_ports.connect(self.context)
         super().__setstate__(*args, **kwargs)
 
-    def execute(self) -> dict:
-        return {}
+    def execute(self, *args, **kwargs) -> dict:
+        raise NotImplementedError()
+
+    def refresh(self, *args, **kwargs):
+        self.out_ports.push(
+            self.execute(
+                *args,
+                **collections.ChainMap(
+                    kwargs,
+                    self.in_ports.pull(),
+                ),
+            )
+        )
 
     def finialize(self):
         self.in_ports.disconnect()

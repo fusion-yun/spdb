@@ -149,7 +149,6 @@ class HTreeNode:
         if self._entry is not None:
             self._entry.update(self._cache)
 
-   
     @typing.final
     def parent(self) -> typing.Self:
         """父节点"""
@@ -440,6 +439,10 @@ class HTree(HTreeNode):
             type_hint = type_hint[-1]
 
         orig_tp = typing.get_origin(type_hint) or type_hint
+
+        if isinstance(default_value, dict):
+            value = Path().update(value, default_value)
+            default_value = _not_found_
 
         if inspect.isclass(orig_tp) and issubclass(orig_tp, HTreeNode):
             if not (value is _not_found_ and entry is None):

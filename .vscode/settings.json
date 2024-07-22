@@ -14,5 +14,7 @@
   "python.testing.unittestArgs": ["-v", "-s", "./tests/python/", "-p", "test_*.py"],
   "python.testing.unittestEnabled": true,
   "python.envFile": "${workspaceFolder}/python/.env",
-  "pylint.args": ["--rcfile=${workspaceFolder}/python/.pylintrc"]
+  "pylint.args": [
+    "--rcfile=${workspaceFolder}/python/.pylintrc"
+  ]
 }
