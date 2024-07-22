@@ -100,7 +100,7 @@ class Pluggable(abc.ABC):
             plugin_name = getattr(cls, "_plugin_default", None)
 
         if plugin_name is None:
-            return None
+            return cls
 
         # Check if the plugin path is provided
         plugin_path = cls._complete_path(plugin_name)
@@ -119,6 +119,9 @@ class Pluggable(abc.ABC):
 
             # Recheck
             n_cls = cls._plugin_registry.get(plugin_path, None)
+
+        if n_cls is None:
+            raise RuntimeError(f"Can not find module '{plugin_name}' as subclass of '{cls.__name__}'! ")
 
         return n_cls
 
@@ -151,9 +154,6 @@ class Pluggable(abc.ABC):
 
         n_cls = cls._get_plugin(_plugin_name)
 
-        if n_cls is None:
-            # raise RuntimeError(f"Can not find module '{_plugin_name}' as subclass of '{cls.__name__}'! ")
-            n_cls = cls
         # Return the plugin class
         return object.__new__(n_cls)
 

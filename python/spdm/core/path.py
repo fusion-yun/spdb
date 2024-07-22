@@ -478,7 +478,7 @@ class Path(list):
         return Path._update(target, self[:], *args, **kwargs)
 
     @typing.final
-    def delete(self, target: typing.Any) -> bool:
+    def delete(self, target: typing.Any) -> None:
         """根据路径（self）删除 target 中的元素。
         成功返回 True，否则为 False
         """
@@ -581,7 +581,7 @@ class Path(list):
             elif isinstance(target, collections.abc.MutableMapping):
                 if key is Path.tags.append:
                     target = [target, value]
-                elif isinstance(key, (str,int)):
+                elif isinstance(key, (str, int)):
                     obj = target.get(key, _not_found_)
                     target[key] = Path._update(obj, [], value)
                 elif key is None:
@@ -710,7 +710,7 @@ class Path(list):
         return target
 
     @staticmethod
-    def _delete(target: typing.Any, path: typing.List[PathItemLike], *args, **kwargs) -> bool:
+    def _delete(target: typing.Any, path: typing.List[PathItemLike], *args, **kwargs) -> None:
         if len(args) + len(kwargs) > 0:
             raise NotImplementedError((args, kwargs))
 
@@ -720,21 +720,17 @@ class Path(list):
         parent = Path._find(target, path[:-1])
         key = path[-1]
         if parent is _not_found_:
-            return False
+            pass
         elif hasattr(parent.__class__, "__del_node__"):
-            return parent.__del_node__(key)
+            parent.__del_node__(key)
         elif isinstance(parent, collections.abc.Mapping) and isinstance(key, str):
             if key in parent:
                 del parent[key]
-                return True
-            else:
-                return False
+
         elif isinstance(parent, collections.abc.MutableSequence) and isinstance(key, int):
             if key < len(parent):
                 del parent[key]
-                return True
-            else:
-                return False
+
         else:
             raise KeyError(f"{key}")
 

@@ -144,12 +144,12 @@ class HTreeNode:
             self._cache = Path().update(self._cache, self._entry.dump)
         return self
 
-    def flush(self):
+    def flush(self) -> None:
         """flush data from cache to entry"""
         if self._entry is not None:
             self._entry.update(self._cache)
-        return self
 
+   
     @typing.final
     def parent(self) -> typing.Self:
         """父节点"""
@@ -332,7 +332,7 @@ class HTree(HTreeNode):
         """插入（Insert） 在树中插入一个子节点。插入操作是非幂等操作"""
         return Path(*args[:-1]).insert(self, *args[-1:], **kwargs)
 
-    def delete(self, *args, **kwargs) -> bool:
+    def delete(self, *args, **kwargs) -> None:
         """删除（delete）节点。"""
         return Path(*args).delete(self, **kwargs)
 

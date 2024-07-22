@@ -12,7 +12,7 @@ from spdm.model.component import Component
 
 
 class Context(Actor):
-    """管理一组相互关联的 Actors，具有共同的时间 time 和 空间 Domain"""
+    """管理一组相互关联的 Entities"""
 
     @property
     def context(self) -> typing.Self:
@@ -29,7 +29,7 @@ class Context(Actor):
             elif isinstance(entity, (List, Set)):
                 for i, a in enumerate(entity):
                     if type_hint is None or isinstance(a, type_hint):
-                        yield f"{k}_{i}", a
+                        yield f"{k}[{i}]", a
 
     def initialize(self):
         """初始化 Context

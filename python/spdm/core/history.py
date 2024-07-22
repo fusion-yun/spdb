@@ -1,12 +1,11 @@
 import abc
 import typing
+from copy import deepcopy
 import numpy as np
 
-from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 
 from spdm.core.path import Path
-from spdm.core.sp_tree import SpTree, sp_property
 
 
 class WithHistory(abc.ABC):
@@ -21,6 +20,12 @@ class WithHistory(abc.ABC):
         if self._cache is _not_found_:
             super().__setstate__(self._history[self._cache_cursor])
         self.time = time
+
+    def __setsate__(self, state: dict):
+        new_time = state.get("time", _not_found_)
+        if new_time is not _not_found_ and new_time != self.time:
+            self._history[self._cache_cursor] = deepcopy(state)
+        super().__setstate__(state)
 
     def flush(self):
         """将当前状态写入历史记录"""
@@ -89,11 +94,11 @@ class WithHistory(abc.ABC):
         else:
             return self.advance(time - self.time).update(*args, **kwargs)
 
-    def delete(self, *args, time=None, **kwargs):
+    def delete(self, *args, time=None, **kwargs) -> None:
         if time is None or np.isclose(time, self.time):
-            return super().delete(*args, **kwargs)
+            super().delete(*args, **kwargs)
         elif len(args) + len(kwargs) > 0:
-            return self.history(time).delete(*args, **kwargs)
+            self.history(time).delete(*args, **kwargs)
         else:
             idx = self._find_by_time(time)
             if idx is not _not_found_:

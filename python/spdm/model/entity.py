@@ -18,5 +18,5 @@ class Entity(SpObject):
         """获取当前 Actor 所在的 Context。"""
         return getattr(self._parent, "context", None)
 
-    def __view__(self, *args, **kwargs) -> dict:
-        return {}
+    def __view__(self, **kwargs) -> dict:
+        return {"$styles": kwargs}

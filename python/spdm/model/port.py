@@ -105,6 +105,9 @@ class Ports(WithProperty, Dict[Port]):
         for k, v in kwargs.items():
             self[k].connect(v)
 
+    def disconnect(self):
+        pass
+
     def valid(self) -> bool:
         return all(n.valid for n in self)
 

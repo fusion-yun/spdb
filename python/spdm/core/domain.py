@@ -103,16 +103,20 @@ class DomainPPoly(Domain):
             args = args[0]
         ndim = len(args)
 
+        coordinates = None
+        dims = None
+
         if all([isinstance(d, np.ndarray) and d.ndim == ndim for d in args]):
-            self._coordinates = args
+            coordinates = args
             args = []
         elif all([isinstance(d, np.ndarray) and d.ndim == 1 for d in args]):
-            self.dims = args
-            self._coordinates = None
+            dims = args
             args = []
-        # else:
+
         #     raise RuntimeError(f"Invalid points {args}")
         super().__init__(*args, **kwargs)
+        self._coordinates = coordinates
+        self.dims = dims
 
     shape: Vector[int]
 

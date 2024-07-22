@@ -243,8 +243,10 @@ class SpProperty:
             value = _not_found_
             if self.alias is not None:
                 value = self.alias.get(instance, _not_found_)
+                if value is _not_found_:
+                    logger.debug("Missing alias %s", self.alias)
 
-            if value is _not_found_:
+            else:
                 value = instance.__get_node__(
                     self.property_name,
                     type_hint=self.type_hint,
@@ -274,8 +276,12 @@ class WithProperty:
     ==============================================
     根据 type hint 在创建子类时自动添加 SpProperty"""
 
-    def __init_subclass__(cls, default_value=_not_found_, **kwargs) -> None:
+    def __init_subclass__(cls, default_value=_not_found_, final=True, **kwargs) -> None:
         """根据 cls 的 type hint，为 cls 属性"""
+
+        if not final:
+            return super().__init_subclass__(**kwargs)
+
         if default_value is _not_found_:
             default_value = {}
 
@@ -423,7 +429,6 @@ class SpTree(WithProperty, WithMetadata, HTree):
     """SpTree 根据 class 的 typhint 自动绑定转换类型
     ===============================================
     """
-
 
 
 def _make_sptree(cls, **metdata) -> typing.Type[SpTree]:
