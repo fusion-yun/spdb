@@ -38,11 +38,11 @@ class SpView(SpObject):
 
 
 def display(*args, plugin=SP_VIEW, **kwargs):
-    return SpView(type=plugin).draw(*args, **kwargs)
+    return SpView(kind=plugin).draw(*args, **kwargs)
 
 
 def plot(*args, plugin=SP_VIEW, **kwargs):
-    return SpView(type=plugin).plot(*args, **kwargs)
+    return SpView(kind=plugin).plot(*args, **kwargs)
 
 
 from spdm.view.render import Render

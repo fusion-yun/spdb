@@ -59,7 +59,9 @@ class HTreeNode:
 
     @classmethod
     def _setstate(cls, target, state: dict):
-        if state is _not_found_:
+        if isinstance(state, HTree):
+            target = cls._setstate(target, state._cache)
+        elif state is _not_found_:
             pass
         elif target is _not_found_:
             target = state
@@ -609,7 +611,12 @@ class Dict(Generic[_T], HTree):
 
     def __len__(self) -> int:
         """返回子节点的数量"""
-        return len(self.keys())
+        if self._entry is not None:
+            return len([*self.keys()])
+        elif self._cache is not _not_found_:
+            return len(self._cache)
+        else:
+            return 0
 
 
 collections.abc.MutableMapping.register(Dict)

@@ -115,4 +115,4 @@ class Ports(WithProperty, Dict[Port]):
         pass
 
     def pull(self) -> dict:
-        pass
+        return {}

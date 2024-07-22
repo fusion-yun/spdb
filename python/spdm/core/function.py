@@ -50,8 +50,10 @@ class Function(Expression):
             if callable(self._op):
                 self._ppoly = self.domain.interpolate(self._op)
             else:
-                if self._cache is _not_found_:
+                if self._cache is _not_found_ and self._entry is not None:
                     self._cache = self._entry.get()
+                if self._cache is _not_found_:
+                    raise RuntimeError(f"Invalid cache! {self}")
                 self._ppoly = self.domain.interpolate(self._cache)
 
         return self._ppoly

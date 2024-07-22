@@ -277,6 +277,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
     def plot(
         self,
+        x_value,
         *args,
         x_axis: Expression | np.ndarray | str = None,
         x_label=None,
@@ -289,11 +290,14 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         fontsize = styles.get("fontsize", 16)
 
-        if len(args) > 1 and isinstance(args[0], array_type):
-            x_value = args[0]
-            args = args[1:]
-        else:
-            x_value = None
+        # if len(args) > 1:
+        #     x_value = args[0]
+        #     args = args[1:]
+        # else:
+        #     x_value = None
+
+        if isinstance(x_value, tuple):
+            x_value, x_label = x_value
 
         nprofiles = len(args)
 

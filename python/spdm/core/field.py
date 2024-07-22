@@ -114,6 +114,9 @@ class Field(Expression):
         插值函数相对原始表达式的优势是速度快，缺点是精度低。
         """
         if not callable(self._ppoly):
+            if self._cache is _not_found_ and self._entry is not None:
+                self._cache = self._entry.get()
+
             if self._cache is not _not_found_:
                 self._ppoly = self.domain.interpolate(self._cache)
             elif callable(self._op):
