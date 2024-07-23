@@ -33,17 +33,7 @@ complex_type = (
 )
 
 ScalarType = (
-    bool
-    | int
-    | float
-    | complex
-    | np.float64
-    | np.complex64
-    | np.complex128
-    | np.integer
-    | np.floating
-    | np.bool_
-    | None
+    bool | int | float | complex | np.float64 | np.complex64 | np.complex128 | np.integer | np.floating | np.bool_
 )
 
 scalar_type = (*boolean_type, *integral_type, *real_type, *complex_type)

@@ -22,7 +22,7 @@ class HTreeNode:
 
         self._cache = cache
         self._entry = as_entry(_entry)
-        self._parent = _parent
+        self._parent: HTreeNode = _parent
         super().__init__()
 
     def __copy__(self) -> typing.Self:
@@ -729,7 +729,7 @@ class Set(Generic[_T], HTree):
     def __getitem__(self, key) -> _T:
         return super().__getitem__(key)
 
-    def __iter__(self) -> typing.Generator[HTreeNode, None, None]:
+    def __iter__(self) -> typing.Generator[_T, None, None]:
         yield from self._cache.values()
 
     def __search__(self, *args, **kwargs) -> typing.Generator[_T, None, None]:

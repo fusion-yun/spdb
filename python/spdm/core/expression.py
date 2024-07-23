@@ -278,7 +278,7 @@ class Expression(HTreeNode):
 
         return self._op(*xargs)
 
-    def __call__(self, *args) -> typing.Self | array_type:
+    def __call__(self, *args) -> typing.Self:
         """重载函数调用运算符，用于计算表达式的值"""
 
         if len(args) == 0:  # 空调用，返回自身
@@ -293,6 +293,22 @@ class Expression(HTreeNode):
 
         else:
             return self._eval(*args)
+
+    # @typing.overload
+    # def __call__(self, x: array_type, *args) -> array_type:
+    #     pass
+
+    # @typing.overload
+    # def __call__(self, x: float, *args) -> float:
+    #     pass
+
+    # @typing.overload
+    # def __call__(self, x: typing.Self, *args) -> typing.Self:
+    #     pass
+
+    # @typing.overload
+    # def __call__(self) -> typing.Self:
+    #     pass
 
     def derivative(self, order: int, **kwargs):
         """导数"""
