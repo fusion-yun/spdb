@@ -15,7 +15,7 @@ class SpObject(Pluggable, SpTree):
 
     """
 
-    def __new__(cls, *args, plugin_name=None, _entry=None, **kwargs):
+    def __new__(cls, *args, plugin_name=None, _entry=None, **kwargs) -> typing.Self:
         if plugin_name is None:
             plugin_name = kwargs.pop("kind", None) or kwargs.pop("type", None)
 
@@ -27,7 +27,7 @@ class SpObject(Pluggable, SpTree):
 
         return super().__new__(cls, *args, _plugin_name=plugin_name, **kwargs)
 
-    def __init__(self, *args, _entry=None, _parent=None, **kwargs) -> None:
+    def __init__(self, *args, _entry=None, _parent=None, **kwargs):
 
         entries = []
         cache = {}

@@ -504,12 +504,12 @@ class Path(list):
         return self.update(target, value, **kwargs)
 
     @typing.final
-    def get(self, target: typing.Any, default_value=_not_found_):
+    def get(self, target: typing.Any, default_value: typing.Any = _not_found_):
         """get value from source, alias of find"""
         return self.find(target, default_value=default_value)
 
     @typing.final
-    def pop(self, target, default_value=_not_found_):
+    def pop(self, target, default_value: typing.Any = _not_found_):
         """get and delete value from target"""
         value = self.get(target, default_value=_not_found_)
         if value is _not_found_:

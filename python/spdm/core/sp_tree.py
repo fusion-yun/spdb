@@ -215,6 +215,7 @@ class SpProperty:
                 self.doc += prop.doc
 
                 self.metadata = Path().update(deepcopy(prop.metadata), self.metadata)
+        # owner_cls.__annotations__[name] = self.type_hint
 
         self.metadata["name"] = name
 
@@ -243,8 +244,17 @@ class SpProperty:
             value = _not_found_
             if self.alias is not None:
                 value = self.alias.get(instance, _not_found_)
-                if value is _not_found_:
-                    logger.debug("Missing alias %s", self.alias)
+
+                if inspect.isclass(self.type_hint) and isinstance(value, self.type_hint):
+                    pass
+                else:
+                    value = instance.__as_node__(
+                        self.property_name,
+                        value,
+                        type_hint=self.type_hint,
+                        default_value=self.default_value,
+                        metadata=self.metadata,
+                    )
 
             else:
                 value = instance.__get_node__(
@@ -309,7 +319,7 @@ class WithProperty:
             [
                 name
                 for name, _ in inspect.getmembers(cls, lambda a: isinstance(a, SpProperty))
-                if not name.startswith("__")
+                if not name.startswith("_")
             ]
         )
 

@@ -1,10 +1,9 @@
 import typing
-import numpy as np
 from spdm.utils.logger import logger
 from spdm.utils.type_hint import array_type
 from spdm.utils.tags import _not_found_
 from spdm.core.expression import Expression
-from spdm.core.domain import DomainPPoly
+from spdm.core.domain import DomainPPoly, Domain
 
 
 class Function(Expression):
@@ -20,7 +19,7 @@ class Function(Expression):
 
     _domain_class = DomainPPoly
 
-    def __init__(self, *args, domain=None, **kwargs):
+    def __init__(self, *args, domain: Domain = None, **kwargs):
 
         if len(args) > 1:
             if domain is not None:
@@ -53,7 +52,7 @@ class Function(Expression):
                 if self._cache is _not_found_ and self._entry is not None:
                     self._cache = self._entry.get()
                 if self._cache is _not_found_:
-                    raise RuntimeError(f"Invalid cache! {self}")
+                    raise RuntimeError(f"Invalid cache! {self._cache}")
                 self._ppoly = self.domain.interpolate(self._cache)
 
         return self._ppoly

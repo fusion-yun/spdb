@@ -6,6 +6,7 @@ from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, NumericType, array_type, is_scalar, PrimaryType
 
 from spdm.core.path import Path
+from spdm.core.entry import Entry
 from spdm.core.htree import HTreeNode, HTree
 from spdm.core.domain import Domain
 from spdm.core.functor import Functor
@@ -55,8 +56,8 @@ class Expression(HTreeNode):
         op_or_value,
         *children: typing.Self,
         domain: Domain = None,
-        _entry=None,
-        _parent=None,
+        _entry: Entry = None,
+        _parent: HTreeNode = None,
         **metadata,
     ) -> None:
         """初始化表达式
@@ -99,11 +100,11 @@ class Expression(HTreeNode):
         """返回表达式的定义域"""
         if isinstance(self._domain, Domain):
             return self._domain
-        
+
         t_domain = self._domain
 
         obj = self._parent
-                
+
         while t_domain is None and obj is not None:
             if (domain := getattr(obj, "domain", None)) is None:
                 obj = getattr(obj, "_parent", None)
@@ -154,7 +155,8 @@ class Expression(HTreeNode):
                 else:
                     res = f"{expr.dtype}[{expr.shape}]"
             elif isinstance(expr, Variable):
-                res = f"{expr.__label__}"
+                res = expr.__label__
+
             elif isinstance(expr, Expression):
                 res = expr._render_latex_()
             elif isinstance(expr, np.ufunc):
@@ -195,7 +197,8 @@ class Expression(HTreeNode):
 
     def _repr_latex_(self) -> str:
         """for jupyter notebook display"""
-        return f"$${self._render_latex_()}$$"
+        msg = self._render_latex_().strip("$")
+        return f"$${msg}$$"
 
     @property
     def dtype(self):
@@ -492,6 +495,11 @@ class Variable(Expression):
 
     def __repr__(self) -> str:
         return self.__label__
+
+
+_x = Variable(0, "x")
+_y = Variable(1, "y")
+_z = Variable(2, "z")
 
 
 class Scalar(Expression):

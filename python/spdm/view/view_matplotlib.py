@@ -278,9 +278,9 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
     def plot(
         self,
         x_value,
-        *args,
-        x_axis: Expression | np.ndarray | str = None,
-        x_label=None,
+        *profiles,
+        x_axis: np.ndarray = None,
+        x_label: str = None,
         styles=_not_found_,
         width=10,
         height=8,
@@ -299,7 +299,17 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         if isinstance(x_value, tuple):
             x_value, x_label = x_value
 
-        nprofiles = len(args)
+        if isinstance(x_value, Expression):
+            if x_label is None:
+                units = x_value._metadata.get("units", "-")
+                x_label = f"{ x_value.__label__} [{units}]"
+            if isinstance(x_axis, array_type):
+                x_value = x_value(x_axis)
+            else:
+                x_value = as_array(x_value)
+                x_axis = None
+
+        nprofiles = len(profiles)
 
         height = max(2, height / nprofiles) * nprofiles
 
@@ -308,25 +318,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         if nprofiles == 1:
             canvas = [canvas]
 
-        if isinstance(x_axis, Expression):
-            if x_label is None:
-                units = x_axis._metadata.get("units", "-")
-                x_label = f"{ x_value.__label__} [{units}]"
-            if isinstance(x_value, array_type):
-                x_axis = x_axis(x_value)
-            elif x_value is None:
-                x_value = as_array(x_axis)
-                x_axis = None
-        elif isinstance(x_axis, str):
-            x_label = x_axis
-            x_axis = None
-        elif isinstance(x_axis, array_type):
-            if x_value is None:
-                x_value = x_axis
-            elif x_value.size != x_value.size:
-                raise RuntimeError(f"size mismatch {x_value.size} != {x_axis.size}")
-
-        for idx, profiles in enumerate(args):
+        for idx, profiles in enumerate(profiles):
             if isinstance(profiles, tuple):
                 profiles, sub_styles = profiles
             else:
@@ -360,7 +352,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
                 p_styles = collections.ChainMap(p_styles, sub_styles)
 
                 try:
-                    t_label, t_y_label = self._plot(canvas[idx], x_value, p, x_axis=x_axis, styles=p_styles)
+                    t_label, t_y_label = self._plot(canvas[idx], x_value, p, styles=p_styles)
 
                     labels.append(t_label)
                     if y_label is None:
@@ -392,7 +384,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         return self._figure_post(fig, styles=styles, **kwargs)
 
-    def _plot(self, canvas, x_value, expr, x_axis=None, styles=None, **kwargs) -> str:
+    def _plot(self, canvas, x_value, expr, styles=None, **kwargs) -> str:
         if expr is None or expr is _not_found_:
             return None, None
 
@@ -440,15 +432,12 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         elif not isinstance(x_value, array_type):
             raise RuntimeError(f"ignore unsupported profiles label={label} {(y_value)}")
 
-        if x_axis is None:
-            x_axis = x_value
-
         if label is False:
             label = None
         elif not isinstance(label, str) or ("$" not in label and any(c in label for c in r"\{")):
             label = f"${label}$"
 
-        canvas.plot(x_axis, y_value, **s_styles, label=label)
+        canvas.plot(x_value, y_value, **s_styles, label=label)
 
         units = getattr(expr, "_metadata", {}).get("units", "-")
 

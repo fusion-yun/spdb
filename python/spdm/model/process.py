@@ -34,7 +34,7 @@ class Process(Entity):
         super().__setstate__(*args, **kwargs)
 
     def execute(self, *args, **kwargs) -> dict:
-        return {}
+        return kwargs
 
     def refresh(self, *args, **kwargs):
         res = self.execute(

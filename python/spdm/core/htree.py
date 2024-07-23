@@ -92,7 +92,7 @@ class HTreeNode:
         return state
 
     def __setstate__(self, *args, **kwargs) -> None:
-        self._entry = _not_found_
+        self._entry = None
         self._cache = _not_found_
         for state in [*args, kwargs]:
             if isinstance(state, dict):
