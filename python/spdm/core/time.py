@@ -28,18 +28,27 @@ class WithTime(abc.ABC):
         """复制当前状态，并写入历史记录"""
         self._history.append(deepcopy(super().__getstate__()))
 
-    def previous(self) -> typing.Generator[typing.Self, None, None]:
-        depth = len(self._history)
-        for shift in range(depth):
-            yield self.__as_node__(-shift, _entry=self._history.child([depth - 1 - shift]))
+    @property
+    def previous(self) -> typing.Self:
+        if self._history.count == 0:
+            return None
+        else:
+            self._parent.__as_node__(None, type_hint=self.__class__, _entry=self._history.child([-1]))
 
-    def history(self, time: float) -> typing.Self:
+    def history(self) -> typing.Generator[typing.Self, None, None]:
+
+        for idx in range(self._history.count - 1, -1, -1):
+            yield self._parent.__as_node__(None, type_hint=self.__class__, _entry=self._history.child([idx]))
+
+    def at(self, time: float) -> typing.Self:
         if np.isclose(time, self.time):
             return self
         elif time > self.time:
-            raise RuntimeError(f"Can not get future state time={time}. ")
+            raise KeyError(f"Can not get future state time={time}. ")
         else:
-            return self.__class__(_entry=self._history.child({"time": time}), _parent=self._parent)
+            return self._parent.__as_node__(
+                None, type_hint=self.__class__, _entry=self._history.child({"time": time})
+            )
 
     def advance(self, *args, dt: float = _not_found_, time: float = _not_found_, **kwargs) -> typing.Self:
         """移动到指定时间片"""
@@ -65,7 +74,7 @@ class WithTime(abc.ABC):
         if time is _not_found_ or np.isclose(time, self.time):
             return super().find(*args, **kwargs)
         else:
-            return self.history(time).find(*args, **kwargs)
+            return self.at(time).find(*args, **kwargs)
 
     def update(self, *args, time: float = _not_found_, **kwargs):
         if time is _not_found_ or time >= self.time:
@@ -91,9 +100,9 @@ class WithTime(abc.ABC):
 
     def __as_node__(self, key, *args, **kwargs) -> typing.Self:
         node = super().__as_node__(key, *args, **kwargs)
-        if isinstance(node, WithTime) and node._entry.empty:
+        if isinstance(node, WithTime) and (node._entry is None or node._entry.empty):
             node._history = self._history.child([key])
-        return node
+        return node  # type:ignore
 
     def _find_by_time(self, time: float) -> int:
         # TODO: 时间片插值

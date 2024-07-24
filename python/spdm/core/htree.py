@@ -93,9 +93,13 @@ class HTreeNode:
 
         return state
 
-    def __setstate__(self, *args, **kwargs) -> None:
-        self._entry = None
+    def __delstate__(self, *args, **kwargs) -> None:
+        # self._entry = None
         self._cache = _not_found_
+
+    def __setstate__(self, *args, **kwargs) -> None:
+        # self._entry = None
+        # self._cache = _not_found_
         for state in [*args, kwargs]:
             if isinstance(state, dict):
                 self._entry = as_entry(
@@ -104,10 +108,14 @@ class HTreeNode:
 
             self._cache = self._setstate(self._cache, state)
 
+    @typing.final
+    def clear(self):
+        return self.__delstate__()
+
     @property
     def __label__(self) -> str:
-        return self.__class__.__name__
-        # return self._metadata.get("label", None) or ".".join(self.__path__)
+        # return self.__class__.__name__
+        return Path("_metadata/label").get(self, ".".join(self.__path__))
 
     # @property
     # def __name__(self) -> str:
@@ -266,7 +274,7 @@ class HTree(HTreeNode):
         """Update 更新元素的value、属性，或者子元素的树状结构"""
         Path(*args[:-1]).update(self, *args[-1:], **kwargs)
 
-    def insert(self, *args, **kwargs)->None:
+    def insert(self, *args, **kwargs) -> None:
         """插入（Insert） 在树中插入一个子节点。插入操作是非幂等操作"""
         Path(*args[:-1]).insert(self, *args[-1:], **kwargs)
 
@@ -339,7 +347,7 @@ class HTree(HTreeNode):
         """遍历子节点"""
         yield from self.children()
 
-    def children(self) -> typing.Generator[HTreeNode  , None, None]:
+    def children(self) -> typing.Generator[HTreeNode, None, None]:
         """遍历子节点 (for HTree)"""
         yield from self.search(["*"])
 

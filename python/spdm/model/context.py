@@ -66,11 +66,10 @@ class Context(Actor):
         - 初始化 Actor 和 Process
         - 构建 DAG 执行图
         """
-        super().__setsate__(*args, **kwargs)
+        super().__setstate__(*args, **kwargs)
         for k, process in self.processes():
             logger.verbose(f"Initialize {k}")  # type:ignore
             process.in_ports.connect(self)
-            process.out_ports.connect(self)
 
         self.in_ports.connect(self)
 

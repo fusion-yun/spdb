@@ -33,7 +33,7 @@ class Process(Entity):
         self.out_ports.connect(self.context, **kwargs)
         super().__setstate__(*args)
 
-    def refresh(self, *args, **kwargs) -> typing.Self | Ports:
+    def refresh(self, *args, **kwargs) -> typing.Self | OutPorts:
         self.in_ports.push(*args, **kwargs)
         return self.out_ports
 
@@ -59,7 +59,7 @@ class ProcessBundle(Set[_T], Process):
         for process in self:
             process.initialize(self.in_ports)
 
-    def refresh(self, *args, **kwargs) -> typing.Self | Ports:
+    def refresh(self, *args, **kwargs) -> typing.Self | OutPorts:
         res = super().refresh(getattr(self._parent, "in_ports", _not_found_), *args, **kwargs)
         for process in self:
             process.refresh(self.in_ports)
