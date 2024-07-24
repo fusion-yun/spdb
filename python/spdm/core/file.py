@@ -1,3 +1,4 @@
+import typing
 from spdm.utils.uri_utils import uri_split
 
 from spdm.core.document import Document
@@ -11,7 +12,7 @@ class File(Document):
 
     _plugin_prefix = Document._plugin_prefix + "file_"
 
-    def __new__(cls, uri, *args, kind=None, **kwargs):
+    def __new__(cls, uri, *args, kind=None, **kwargs)->typing.Self:
         if isinstance(kind, str) and kind.startswith("file+"):
             kind = kind[5:]
         if kind == "file":

@@ -95,7 +95,7 @@ class Mesh(Domain):
         非结构化网格 shape 如 [<number of vertices>]
     """
 
-    # def __new__(cls, *args, **kwargs):
+    # def __new__(cls, *args, **kwargs)->typing.Self:
     #     if cls is not Mesh:
     #         return super().__new__(cls)
     #     else:

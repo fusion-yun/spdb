@@ -6,7 +6,7 @@ class Service(Document, plugin_name="service"):
 
     _plugin_prefix = Document._plugin_prefix + "service_"
 
-    def __new__(cls, uri, *args, _plugin_name=None, **kwargs):
+    def __new__(cls, uri, *args, _plugin_name=None, **kwargs)->typing.Self:
         if cls is not Service:
             return super().__new__(cls)
 

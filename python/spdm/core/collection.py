@@ -33,7 +33,7 @@ class Collection(Document):
 
         return [f"spdm.plugins.data.Plugin{n_cls_name}#{n_cls_name}Collection"]
 
-    def __new__(cls,  *args, **kwargs):
+    def __new__(cls,  *args, **kwargs)->typing.Self:
         if cls is not Collection:
             return object.__new__(cls)
         else:

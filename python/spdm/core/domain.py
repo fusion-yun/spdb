@@ -22,7 +22,7 @@ class Domain(SpObject):
 
     """
 
-    def __new__(cls, *args, kind=None, **kwargs):
+    def __new__(cls, *args, kind=None, **kwargs)->typing.Self:
         if cls is Domain and kind is None and all(isinstance(d, np.ndarray) for d in args):
             return super().__new__(DomainPPoly)
         return super().__new__(cls, *args, kind=kind, **kwargs)

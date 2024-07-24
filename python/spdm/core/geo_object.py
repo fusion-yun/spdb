@@ -162,7 +162,7 @@ class GeoObjectBase(Pluggable, WithMetadata):
     _ndim = 3
     _rank = 0
 
-    def __new__(cls, *args, _entry=None, **kwargs):
+    def __new__(cls, *args, _entry=None, **kwargs)->typing.Self:
         if cls is not GeoObject:
             return super().__new__(cls, *args, _entry=_entry, **kwargs)
 

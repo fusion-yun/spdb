@@ -59,7 +59,7 @@ class ProcessBundle(Set[_T], Process):
         for process in self:
             process.initialize(self.in_ports)
 
-    def refresh(self, *args, **kwargs) -> typing.Self | OutPorts:
+    def refresh(self, *args, **kwargs) -> typing.Self:
         res = super().refresh(getattr(self._parent, "in_ports", _not_found_), *args, **kwargs)
         for process in self:
             process.refresh(self.in_ports)
