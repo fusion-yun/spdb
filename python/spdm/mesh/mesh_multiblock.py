@@ -2,7 +2,6 @@ import typing
 
 from numpy.typing import ArrayLike, NDArray
 
-from spdm.core.container import Container
 from spdm.core.function import Function
 from spdm.core.mesh import Mesh
 

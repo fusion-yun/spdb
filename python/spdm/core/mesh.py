@@ -77,7 +77,7 @@ def guess_mesh(holder, prefix="mesh", **kwargs):
     #     self._domain = update_tree_recursive(self._domain, {"dims": dims})
 
 
-class Mesh(Domain):
+class Mesh(Domain, plugin_prefix="spdm.mesh.mesh_"):
     """Mesh  网格
 
     @NOTE: In general, a mesh provides more flexibility in representing complex geometries and
@@ -86,7 +86,10 @@ class Mesh(Domain):
     """
 
     _plugin_registry = {}
-    _plugin_prefix = "spdm.domain.mesh_"
+
+    @property
+    def axis_label(self) -> typing.Tuple[str, ...]:
+        return self._metadata.get("axis_label", ["[-]"] * self.ndim)
 
     shape: Vector[int]
     """
@@ -95,36 +98,21 @@ class Mesh(Domain):
         非结构化网格 shape 如 [<number of vertices>]
     """
 
-    # def __new__(cls, *args, **kwargs)->typing.Self:
-    #     if cls is not Mesh:
-    #         return super().__new__(cls)
-    #     else:
-    #         return super().__new__(cls, *args, **kwargs)
-
     @property
     @abc.abstractmethod
     def points(self) -> array_type:
         """网格点的 _空间坐标_  形状为 [...shape,ndim]"""
 
     @property
-    def axis_label(self) -> typing.Tuple[str, ...]:
-        return self._metadata.get("axis_label", ["[-]"] * self.ndim)
-
-    @property
     def coordinates(self) -> typing.Tuple[ArrayType, ...]:
         return tuple([self.points[..., i] for i in range(self.ndim)])
-
-    @property
-    def vertices(self) -> ArrayType:
-        """网格点的 _空间坐标_"""
-        return np.stack(self.points, axis=-1)
 
     @property
     def cells(self) -> typing.Any:
         """refer to the individual units that make up the mesh"""
         raise NotImplementedError(f"{self.__class__.__name__}.cells")
 
-    def interpolate(self, func: typing.Callable | ArrayType) -> typing.Callable[..., ArrayType]:
+    def interpolate(self, func: typing.Callable | ArrayType, *args, **kwargs) -> typing.Callable[..., ArrayType]:
         xargs = self.coordinates
         if callable(func):
             value = func(*xargs)
@@ -218,7 +206,7 @@ class Mesh(Domain):
 
         match view_point.lower():
             case "rz":
-                geo["$data"] = (*self.points, np.asarray(obj))
+                geo["$data"] = (*self.coordinates, np.asarray(obj))
                 geo["$styles"] = {
                     "label": label,
                     "axis_label": self.axis_label,

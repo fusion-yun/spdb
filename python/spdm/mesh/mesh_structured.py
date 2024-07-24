@@ -1,3 +1,5 @@
+""" 结构化网格 """
+
 import typing
 import numpy as np
 
@@ -8,21 +10,21 @@ from spdm.geometry.vector import Vector
 
 class StructuredMesh(Mesh, plugin_name="structured"):
     """StructureMesh
-    结构化网格上的点可以表示为长度为n=rank的归一化ntuple，记作 uv，uv_r \\in [0,1]
+    结构化网格, 由坐标轴上的点组成的网格
     """
 
     periods: Vector[bool]
     """Periodic boundary condition  周期性网格,  标识每个维度周期长度"""
 
-    def coordinates(self, *uvw) -> ArrayType:
-        if len(uvw) == 1:
-            uvw = uvw[0]
-        return np.stack([((uvw[i]) * self.scale[i] + self.origin[i]) for i in range(self.rank)])
+    @property
+    def points(self) -> ArrayType:
+        return np.stack(self.coordinates, axis=-1)
 
-    def parametric_coordinates(self, *xyz) -> ArrayType:
-        if len(uvw) == 1:
-            uvw = uvw[0]
-        return np.stack([((xyz[i] - self.origin[i]) / self.scale[i]) for i in range(self.rank)])
+    @property
+    def coordinates(self) -> typing.Tuple[ArrayType, ...]:
+        xmin, xmax = self.geometry.bbox
+        dims = [np.linspace(xmin[i], xmax[i], self.shape[i], endpoint=self.periods[i]) for i in range(self.ndim)]
+        return tuple(np.meshgrid(*dims, indexing="ij"))
 
     def interpolator(self, *args, **kwargs) -> typing.Callable:
         """Interpolator of the Mesh

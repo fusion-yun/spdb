@@ -1,20 +1,16 @@
-import collections.abc
 import typing
-from copy import copy
 
 import numpy as np
+
 from scipy.interpolate import (
     InterpolatedUnivariateSpline,
     RectBivariateSpline,
     RegularGridInterpolator,
-    UnivariateSpline,
-    interp1d,
-    interp2d,
 )
 
 from spdm.core.functor import Functor
 from spdm.utils.logger import logger
-from spdm.utils.type_hint import array_type
+from spdm.utils.type_hint import array_type, ArrayType
 
 
 class RectInterpolateOp(Functor):
@@ -129,7 +125,7 @@ class RectInterpolateOp(Functor):
         return Functor(self.ppoly.antiderivative(*d), **self._opts)
 
 
-def interpolate(*args, kind="rectlinear", **kwargs) -> Functor:
+def interpolate(*args, kind="rectlinear", **kwargs) -> typing.Callable[..., ArrayType]:
     match kind:
         case "rectlinear":
             res = RectInterpolateOp(*args, **kwargs)

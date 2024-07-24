@@ -1,3 +1,5 @@
+""" rectilinear Mesh """
+
 import typing
 import functools
 
@@ -9,14 +11,14 @@ from spdm.core.function import Function
 
 from spdm.geometry.box import Box
 from spdm.numlib.interpolate import interpolate
-from spdm.domain.mesh_structured import StructuredMesh
+from spdm.mesh.mesh_structured import StructuredMesh
 
 
 class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular", "rect"]):
-    """A `rectilinear Mesh` is a tessellation by rectangles or rectangular cuboids (also known as rectangular parallelepipeds)
-    that are not, in general, all congruent to each other. The cells may still be indexed by integers as above, but the
-    mapping from indexes to vertex coordinates is less uniform than in a regular Mesh. An example of a rectilinear Mesh
-    that is not regular appears on logarithmic scale graph paper.
+    """A `rectilinear Mesh` is a tessellation by rectangles or rectangular cuboids (also known as rectangular
+     parallelepipeds)    that are not, in general, all congruent to each other. The cells may still be indexed by
+     integers as above, but the mapping from indexes to vertex coordinates is less uniform than in a regular Mesh.
+     An example of a rectilinear Mesh that is not regular appears on logarithmic scale graph paper.
     -- [https://en.wikipedia.org/wiki/Regular_Mesh]
 
     RectlinearMesh
@@ -61,25 +63,16 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
     def dx(self) -> ArrayType:
         return np.asarray([(d[-1] - d[0]) / len(d) for d in self.dims])
 
-    def coordinates(self, *uvw) -> ArrayType:
-        """网格点的 _空间坐标_
-        @return: _数组_ 形状为 [geometry.dimension,<shape of uvw ...>]
-        """
-        if len(uvw) == 1 and self.rank != 1:
-            uvw = uvw[0]
-        return np.stack([self.dims[i](uvw[i]) for i in range(self.rank)], axis=-1)
-
-    @functools.cached_property
-    def points(self) -> typing.Tuple[ArrayType]:
-        """网格点的 _空间坐标_"""
-        return np.meshgrid(*self.dims, indexing="ij")
+    @property
+    def coordinates(self) -> typing.Tuple[ArrayType, ...]:
+        return tuple(np.meshgrid(*self.dims, indexing="ij"))
 
     def interpolate(self, func: ArrayType | typing.Callable[..., array_type], **kwargs):
         """生成插值器
         method: "linear",   "nearest", "slinear", "cubic", "quintic" and "pchip"
         """
         if callable(func):
-            value = func(*self.points)
+            value = func(*self.coordinates)
         elif not isinstance(func, np.ndarray):
             value = getattr(func, "_cache", None)
         else:

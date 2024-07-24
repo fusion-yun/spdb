@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 from scipy.interpolate import CubicSpline, PPoly
-from spdm.domain.mesh_rectilinear import RectilinearMesh
+from spdm.mesh.mesh_rectilinear import RectilinearMesh
 
 
 class PPolyMesh(RectilinearMesh, plugin_name="ppoly"):

@@ -10,7 +10,7 @@ from spdm.core.geo_object import GeoObjectBase
 from spdm.geometry.point import Point
 
 
-from spdm.domain.mesh_rectilinear import RectilinearMesh
+from spdm.mesh.mesh_rectilinear import RectilinearMesh
 
 
 class CurvilinearMesh(RectilinearMesh, plugin_name="curvilinear"):
@@ -40,7 +40,7 @@ class CurvilinearMesh(RectilinearMesh, plugin_name="curvilinear"):
         return self._uv
 
     @property
-    def points(self) -> typing.List[ArrayType]:
+    def points(self) -> ArrayType:
         if not isinstance(self.geometry, GeoObjectBase):
             raise RuntimeError(f"Unknown type {type(self.geometry)}")
         return self.geometry.points
