@@ -478,11 +478,11 @@ class Path(list):
         return Path._update(target, self[:], *args, **kwargs)
 
     @typing.final
-    def delete(self, target: typing.Any) -> None:
+    def delete(self, target: typing.Any, *args, **kwargs) -> None:
         """根据路径（self）删除 target 中的元素。
         成功返回 True，否则为 False
         """
-        return Path._delete(target, self[:])
+        return Path._delete(target, self[:], *args, **kwargs)
 
     @typing.final
     def find(self, target, *p_args, **p_kwargs) -> typing.Any:
@@ -715,7 +715,7 @@ class Path(list):
             raise NotImplementedError((args, kwargs))
 
         if target is _not_found_ or len(path) == 0:
-            return False
+            return
 
         parent = Path._find(target, path[:-1])
         key = path[-1]

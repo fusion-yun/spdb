@@ -61,19 +61,15 @@ class Domain(SpObject):
     def is_null(self) -> bool:
         return all(d == 0 for d in self.shape)
 
-    @abc.abstractmethod
     def interpolate(self, func: typing.Callable | ArrayType) -> typing.Callable[..., ArrayType]:
         pass
 
-    @abc.abstractmethod
     def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
         pass
 
-    @abc.abstractmethod
     def check(self, *x) -> bool | np_tp.NDArray[np.bool_]:
         pass
 
-    @abc.abstractmethod
     def eval(self, func, *xargs, **kwargs) -> ArrayType:
         pass
 

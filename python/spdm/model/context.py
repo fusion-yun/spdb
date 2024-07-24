@@ -5,7 +5,7 @@ import typing
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 
-from spdm.core.htree import HTree, List, Set
+from spdm.core.htree import List, Set
 
 from spdm.model.entity import Entity
 from spdm.model.actor import Actor

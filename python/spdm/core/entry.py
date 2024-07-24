@@ -108,9 +108,9 @@ class Entry:  # pylint: disable=R0904
         """更新 entry 所指定位置的数据。 TODO: 返回修改处的entry"""
         self._cache = self._path.update(self._cache, *args, **kwargs)
 
-    def delete(self):
+    def delete(self, *args, **kwargs):
         """删除 entry 所指定位置的数据"""
-        self._path.delete(self._cache)
+        self._path.delete(self._cache, *args, **kwargs)
 
     def find(self, *p_args, **p_kwargs) -> typing.Any:
         """返回 entry 所指定位置的数据"""
@@ -173,6 +173,10 @@ class Entry:  # pylint: disable=R0904
         return self.child(*args[:-1]).update(*args[-1:], **kwargs)
 
     @property
+    def empty(self) -> bool:
+        return self._cache is _not_found_ or len(self._cache) == 0
+
+    @property
     def is_leaf(self) -> bool:
         return self.query(Query.is_leaf)
 
@@ -229,6 +233,10 @@ class EntryChain(Entry):
 
     def __str__(self) -> str:
         return ",".join([str(e) for e in self._entries if e._cache is None])
+
+    @property
+    def empty(self) -> bool:
+        return len(self._entries) == 0
 
     def find(self, *args, default_value=_not_found_, **kwargs):
         res = super().find(*args, default_value=_not_found_, **kwargs)

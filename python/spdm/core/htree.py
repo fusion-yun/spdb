@@ -264,15 +264,15 @@ class HTree(HTreeNode):
 
     def update(self, *args, **kwargs) -> None:
         """Update 更新元素的value、属性，或者子元素的树状结构"""
-        return Path(*args[:-1]).update(self, *args[-1:], **kwargs)
+        Path(*args[:-1]).update(self, *args[-1:], **kwargs)
 
     def insert(self, *args, **kwargs)->None:
         """插入（Insert） 在树中插入一个子节点。插入操作是非幂等操作"""
-        return Path(*args[:-1]).insert(self, *args[-1:], **kwargs)
+        Path(*args[:-1]).insert(self, *args[-1:], **kwargs)
 
     def delete(self, *args, **kwargs) -> None:
         """删除（delete）节点。"""
-        return Path(*args).delete(self, **kwargs)
+        Path(*args).delete(self, **kwargs)
 
     def search(self, *args, **kwargs) -> typing.Generator[typing.Any, None, None]:
         """搜索（Search ）符合条件节点或属性。查询是一个幂等操作，它不会改变树的状态。
@@ -335,11 +335,11 @@ class HTree(HTreeNode):
     def __equal__(self, other) -> bool:
         return self.query({Query.tags.equal: other})
 
-    def __iter__(self) -> typing.Generator[_T, None, None]:
+    def __iter__(self) -> typing.Generator[HTreeNode, None, None]:
         """遍历子节点"""
         yield from self.children()
 
-    def children(self) -> typing.Generator[HTreeNode | PrimaryType, None, None]:
+    def children(self) -> typing.Generator[HTreeNode  , None, None]:
         """遍历子节点 (for HTree)"""
         yield from self.search(["*"])
 
