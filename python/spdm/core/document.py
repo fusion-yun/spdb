@@ -9,19 +9,10 @@ from spdm.core.pluggable import Pluggable
 from spdm.core.entry import Entry as EntryBase
 
 
-class Document(Pluggable):
-    """
-    Connection like object
-    """
+class Document(Pluggable, plugin_prefix="spdm/plugins/data/"):
+    """Connection like object"""
 
-    _plugin_prefix = "spdm.plugins.data."
-
-    def __new__(cls, *args, _plugin_name=None, **kwargs) -> None:
-        return super().__new__(cls, _plugin_name=_plugin_name)
-
-    def __init_subclass__(cls, *args, plugin_name=None, **kwargs) -> None:
-        # EntryBase.register(plugin_name, cls.Entry)
-        return super().__init_subclass__(*args, plugin_name=plugin_name, **kwargs)
+    _plugin_registry = {}
 
     class Mode(Flag):
         """

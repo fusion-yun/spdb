@@ -1,3 +1,6 @@
+""" MatplotlibView class definition
+"""
+
 import collections.abc
 import typing
 from io import BytesIO
@@ -8,8 +11,6 @@ import numpy as np
 from spdm.core.path import update_tree, merge_tree
 from spdm.core.expression import Expression
 from spdm.core.signal import Signal
-from spdm.core.field import Field
-from spdm.core.function import Function
 from spdm.core.htree import List
 
 from spdm.geometry.circle import Circle
@@ -22,27 +23,30 @@ from spdm.geometry.polygon import Polygon, Rectangle
 from spdm.geometry.polyline import Polyline
 
 from spdm.utils.envs import SP_DEBUG
-from spdm.utils.logger import SP_DEBUG, logger
+from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.utils.type_hint import array_type, as_array, is_array, is_scalar
+from spdm.utils.type_hint import array_type, as_array, is_scalar
 
-from .sp_view import SpView
+from spdm.view.sp_view import SpView
 
 
 class MatplotlibView(SpView, plugin_name="matplotlib"):
+    """MatplotlibView class definition"""
 
     def _figure_post(
         self,
-        fig: plt.Figure,
+        fig,
         title="",
         output=None,
-        styles={},
+        styles=None,
         transparent=True,
         signature=None,
         width=1.0,
         height=1.0,
         **kwargs,
     ) -> typing.Any:
+        if styles is None:
+            styles = {}
         fontsize = styles.get("fontsize", 16)
 
         fig.suptitle(title, fontsize=fontsize)
@@ -59,7 +63,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             if H > 4:
                 fig.text(
                     width,
-                    0.0,  # 5 * height,
+                    0.05,  # 5 * height,
                     signature,
                     verticalalignment="bottom",
                     horizontalalignment="left",
@@ -70,7 +74,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             else:
                 fig.text(
                     width,
-                    0.0,
+                    0.05,
                     signature,
                     verticalalignment="bottom",
                     horizontalalignment="right",
@@ -88,7 +92,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             fig = fig_html
 
         elif output is not None:
-            logger.debug(f"Write figure to  {output}")
+            logger.verbose("Write figure to %s", output)
             kwargs.setdefault("format", "svg")
             fig.savefig(output, transparent=transparent, **kwargs)
             plt.close(fig)
@@ -96,7 +100,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         return fig
 
-    def draw(self, geo, *styles, view_point="rz", title=None, scaled=False, **kwargs) -> typing.Any:
+    def draw(self, geo, *styles, view_point="rz", title=None, **kwargs) -> typing.Any:
         fig, canvas = plt.subplots()
 
         geo = self._draw(canvas, geo, *styles, view_point=view_point)
@@ -277,8 +281,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
     def plot(
         self,
-        x_value,
-        *profiles,
+        *args,
         x_axis: np.ndarray = None,
         x_label: str = None,
         styles=_not_found_,
@@ -286,6 +289,18 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         height=8,
         **kwargs,
     ) -> typing.Any:
+        if len(args) == 1:
+            if isinstance(args[0], (list, tuple)):
+                profiles = args[0]
+                x_value = None
+            else:
+                profiles = [args[0]]
+                x_value = None
+
+        elif len(args) > 1:
+            x_value = args[0]
+            profiles = args[1:]
+
         styles = update_tree({}, styles, kwargs)
 
         fontsize = styles.get("fontsize", 16)
@@ -311,7 +326,8 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         nprofiles = len(profiles)
 
-        height = max(2, height / nprofiles) * nprofiles
+        if nprofiles > 0:
+            height = max(2, height / nprofiles) * nprofiles
 
         fig, canvas = plt.subplots(ncols=1, nrows=nprofiles, sharex=True, figsize=(width, height))
 

@@ -1,3 +1,5 @@
+""" WithHistory 类的定义"""
+
 import abc
 import typing
 from copy import deepcopy
@@ -6,6 +8,7 @@ import numpy as np
 from spdm.utils.tags import _not_found_
 
 from spdm.core.path import Path
+from spdm.core.entry import Entry, as_entry
 
 
 class WithHistory(abc.ABC):
@@ -13,33 +16,25 @@ class WithHistory(abc.ABC):
 
     _DEFALUT_CACHE_DEEPTH = 4
 
-    def __init__(self, *args, time=0.0, history=None, cache_cursor=0, **kwargs):
+    def __init__(self, *args, history: list | Entry = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self._history = [] * WithHistory._DEFALUT_CACHE_DEEPTH if history is None else history
-        self._cache_cursor = cache_cursor
-        if self._cache is _not_found_:
-            super().__setstate__(self._history[self._cache_cursor])
-        self.time = time
+        self._history: Entry = as_entry(history)
 
-    def __setsate__(self, state: dict):
-        new_time = state.get("time", _not_found_)
-        if new_time is not _not_found_ and new_time != self.time:
-            self._history[self._cache_cursor] = deepcopy(state)
-        super().__setstate__(state)
+    time: float = 0.0
 
     def flush(self):
-        """将当前状态写入历史记录"""
-        self._history[self._cache_cursor] = super().__getstate__()
+        """复制当前状态，并写入历史记录"""
+        self._history.append(deepcopy(super().__getstate__()))
 
     def previous(self) -> typing.Generator[typing.Self, None, None]:
         depth = len(self._history)
         for shift in range(1, depth):
-            cache_cursor = (self._cache_cursor - shift + depth) % depth
+            cache_cursor = (self._history_cursor - shift + depth) % depth
             obj = object.__new__(self.__class__)
             obj.__setstate__(self._history[cache_cursor])
-            if self._entry is not None:
-                parent = self._entry.parent
-                obj._entry = parent.child(self._entry._path[-1] - shift)
+            if (entry := getattr(self, "_entry", None)) is not None:
+                parent = entry.parent
+                obj._entry = parent.child(entry._path[-1] - shift)
 
             yield obj
 
@@ -51,29 +46,44 @@ class WithHistory(abc.ABC):
 
         depth = len(self._history)
         for shift in range(depth):
-            cache_cursor = (self._cache_cursor - shift + depth) % depth
-            cache_time = Path([cache_cursor, "time"]).get(self._history, _not_found_)
+            history_cursor = (self._history_cursor - shift + depth) % depth
+            cache_time = Path([history_cursor, "time"]).get(self._history, _not_found_)
             if cache_time is _not_found_:
                 continue
             elif time > cache_time:
-                break
+                raise RuntimeError(f"Can not get past slice at time={time}. ")
         else:
+            history_cursor = (self._history_cursor + depth) % depth
             new_obj = object.__new__(self.__class__)
-            new_obj.__setstate__(self._history[cache_cursor])
+            new_obj.__setstate__(self._history[history_cursor])
             new_obj._history = self._history
-            new_obj._cache_cursor = cache_cursor
+            new_obj._history_cursor = history_cursor
             new_obj.time = time
 
         return new_obj
 
-    def advance(self, dt: float, new_state: dict = _not_found_) -> typing.Self:
+    def advance(self, dt: float = None, time: float = None, new_state: dict = None) -> typing.Self:
         """移动到指定时间片"""
-        if dt < 0:
-            raise RuntimeError(f"Can not change history at {dt}")
+
         self.flush()
-        self._cache_cursor = (self._cache_cursor + 1) % len(self._history)
+        if time is not None:
+            pass
+        elif dt is not None:
+            time = self.time + dt
+        elif isinstance(new_state, dict):
+            time = new_state.get("time", None)
+
+        if time is None:
+            raise RuntimeError("Time is not specified. ")
+        elif time < self.time:
+            raise RuntimeError(f"Can not move to past time. {time}<{self.time}")
+
+        self._history_cursor = (self._history_cursor + 1) % len(self._history)
+
         super().__setstate__(new_state)
-        self.time += dt
+
+        self.time = time
+
         return self
 
     def find(self, *args, time=None, **kwargs):
@@ -101,10 +111,10 @@ class WithHistory(abc.ABC):
             self.history(time).delete(*args, **kwargs)
         else:
             idx = self._find_by_time(time)
-            if idx is not _not_found_:
+            if idx is not None:
                 self._history[idx] = _not_found_
 
-    def _find_by_time(self, time: float):
+    def _find_by_time(self, time: float) -> int:
         # TODO: 时间片插值
 
         if time is not None:
@@ -149,4 +159,4 @@ class WithHistory(abc.ABC):
                 else:
                     pos = pos + 1
 
-        return self.__get_node__(pos) if pos is not None else _not_found_
+        return pos

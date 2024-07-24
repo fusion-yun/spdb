@@ -10,11 +10,13 @@ The `Ports` class is a collection of `Port` objects. It provides methods for put
 
 import typing
 from spdm.utils.tags import _not_found_
-from spdm.core.path import Path, as_path
-from spdm.core.htree import HTreeNode, List, Dict
-from spdm.core.sp_tree import SpTree, WithProperty
+from spdm.core.path import Path
+from spdm.core.htree import HTreeNode
+from spdm.core.sp_tree import SpTree
 from spdm.core.sp_tree import AttributeTree
 from spdm.core.generic import Generic
+
+from spdm.model.entity import Entity
 
 _T = typing.TypeVar("T")
 
@@ -87,32 +89,31 @@ class Port(Generic[_T], SpTree):
         return self.fragment.put(self.node, value)
 
 
-class Ports(WithProperty, Dict[Port]):
+class Ports(SpTree):
     """A collection of ports.
 
     Args:
         typing (_type_): _description_
     """
 
-    def connect(self, ctx=None, **kwargs):
-        if ctx is None:
-            ctx = self._parent.context
-
+    def push(self, *args, **kwargs):
+        for a in (*args, kwargs):
+            self._cache = Path().update(self._cache, a)
+        ctx = getattr(self._parent, "context", None)
         if ctx is not None:
-            for p in ctx.entities():
-                p.connect(p.path.get(ctx, _not_found_))
-
-        for k, v in kwargs.items():
-            self[k].connect(v)
-
-    def disconnect(self):
-        pass
-
-    def valid(self) -> bool:
-        return all(n.valid for n in self)
-
-    def push(self, state: dict) -> None:
-        pass
+            for k in self.__properties__:
+                if self._cache.get(k, _not_found_) is not _not_found_:
+                    self._cache[k] = getattr(ctx, k, _not_found_)
 
     def pull(self) -> dict:
-        return {}
+        return {k: self._cache[k] for k in self.__properties__ if k in self._cache}
+
+    def connect(self, *args, **kwargs):
+        self.push(*args, **kwargs)
+
+    def disconnect(self):
+        if self._cache is _not_found_:
+            return
+
+        for k in self.__properties__:
+            del self._cache[k]

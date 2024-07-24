@@ -17,7 +17,9 @@ from spdm.core.generic import Generic
 class HTreeNode:
     """Hierarchical Tree Structured Data: HTreeNode is a node in the hierarchical tree."""
 
-    def __init__(self, cache=_not_found_, /, _entry: Entry = None, _parent: typing.Self = None):
+    def __init__(
+        self, cache=_not_found_, /, _entry: Entry = None, _parent: typing.Self = None
+    ):  # pylint: disable=C0103
         """Initialize a HTreeNode object."""
 
         self._cache = cache
@@ -83,8 +85,8 @@ class HTreeNode:
         state.update(
             {
                 "$type": f"{self.__class__.__module__}.{self.__class__.__name__}",
-                "$path": ".".join(self.__path__),
-                "$name": self.__name__,
+                # "$path": ".".join(self.__path__),
+                # "$name": self.__name__,
                 "$entry": self._entry.__getstate__(),
             }
         )
@@ -164,7 +166,7 @@ class HTreeNode:
             yield obj
             obj = getattr(obj, "_parent", None)
 
-    def children(self) -> typing.Generator[typing.Self | PrimaryType, None, None]:
+    def children(self) -> typing.Generator[typing.Self, None, None]:
         """遍历子节点 (for HTree)"""
 
     @typing.final
@@ -223,73 +225,8 @@ class HTreeNode:
         """比较节点的值是否相等"""
         return self.query(Query.tags.equal, other if not isinstance(other, HTreeNode) else other.__value__)
 
-    # @classmethod
-    # def do_serialize(cls, source: typing.Any, dumper: Entry | typing.Callable[..., typing.Any] | bool) -> _T:
-    #     if source is _not_found_:
-    #         return source if not isinstance(dumper, Entry) else dumper
-    #     elif hasattr(source.__class__, "__serialize__"):
-    #         return source.__serialize__(dumper)
-    #     elif isinstance(source, dict):
-    #         if isinstance(dumper, Entry):
-    #             for k, v in source.items():
-    #                 cls.do_serialize(v, dumper.child(k))
-    #             res = dumper
-    #         else:
-    #             res = {k: cls.do_serialize(v, dumper) for k, v in source.items()}
-    #     elif isinstance(source, list):
-    #         if isinstance(dumper, Entry):
-    #             for k, v in enumerate(source):
-    #                 cls.do_serialize(v, dumper.child(k))
-    #             res = dumper
-    #         else:
-    #             res = [cls.do_serialize(v, dumper) for v in source]
-    #     elif isinstance(dumper, Entry):
-    #         dumper.insert(source)
-    #         res = dumper
-    #     elif callable(dumper):
-    #         res = dumper(source)
-    #     elif dumper is True:
-    #         res = deepcopy(source)
-    #     else:
-    #         res = source
-    #     return res
-    # def __serialize__(self, dumper: Entry | typing.Callable[..., typing.Any] | bool = True) -> Entry | typing.Any:
-    #     """若 dumper 为 Entry，将数据写入 Entry
-    #        若 dumper 为 callable，将数据传入 callable 并返回结果
-    #        若 dumper 为 True，返回数据的拷贝
-    #        否则返回序列化后的数据
-    #     Args:
-    #         target (Entry, optional): 目标入口. Defaults to None.
-    #         copier (typing.Callable[[typing.Any], typing.Any] | bool, optional): copier 拷贝器，当 target 为 None 有效。若为 True 则通过 copy 函数返回数据的拷贝. Defaults to None.
-    #     Returns:
-    #         typing.Any: 若 target is None，返回原始数据，否则返回 target
-    #     """
-    #     if self._cache is _not_found_:
-    #         if self._entry is not None:
-    #             return self._entry.dump(dumper)
-    #         else:
-    #             return self.do_serialize(self.__value__, dumper)
-    #     else:
-    #         return self.do_serialize(self._cache, dumper)
-    # @classmethod
-    # def __deserialize__(cls, *args, **kwargs) -> typing.Type[HTree]:
-    #     return cls(*args, **kwargs)
-    # def __duplicate__(self, *args, _parent=_not_found_, **kwargs):
-    #     if _parent is _not_found_:
-    #         _parent = self._parent
-    #     cls = get_type(self)
-    #     if len(args) == 0:
-    #         args = [deepcopy(self._cache)]
-    #     return cls(
-    #         *args,
-    #         _parent=_parent,
-    #         _entry=self._entry,
-    #         **collections.ChainMap(kwargs, deepcopy(self._metadata)),
-    #     )
-
 
 _T = typing.TypeVar("_T")
-_TR = typing.TypeVar("_TR")  # return value type
 
 
 class HTree(HTreeNode):
@@ -309,7 +246,7 @@ class HTree(HTreeNode):
       - path 指向
     """
 
-    def __init__(self, cache=..., /, _entry=None, _parent=None, **kwargs):
+    def __init__(self, cache: typing.Any = ..., /, _entry: Entry = None, _parent: HTreeNode = None, **kwargs):
         """Initialize a HTree object."""
         if not (isinstance(cache, (dict, list)) or cache is _not_found_):
             raise TypeError(f"Invalid cache type, cache must be a dict or _not_found_ not {cache}!")
@@ -329,7 +266,7 @@ class HTree(HTreeNode):
         """Update 更新元素的value、属性，或者子元素的树状结构"""
         return Path(*args[:-1]).update(self, *args[-1:], **kwargs)
 
-    def insert(self, *args, **kwargs):
+    def insert(self, *args, **kwargs)->None:
         """插入（Insert） 在树中插入一个子节点。插入操作是非幂等操作"""
         return Path(*args[:-1]).insert(self, *args[-1:], **kwargs)
 

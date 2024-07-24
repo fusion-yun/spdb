@@ -1,7 +1,9 @@
+""" Entry class to manage data."""
+
 import pathlib
 import typing
 from copy import copy
-import os
+
 from functools import singledispatch
 
 from spdm.utils.tags import _not_found_, _undefined_
@@ -98,18 +100,17 @@ class Entry:  # pylint: disable=R0904
     ###########################################################
     # API: CRUD  operation
 
-    def insert(self, value=_not_found_, **kwargs) -> typing.Self:
+    def insert(self, *args, **kwargs):
         """插入数据到 entry 所指定位置。 TODO: 返回修改处的entry"""
-        return self.child(Path.tags.append).update(value if value is not _not_found_ else kwargs)
+        self.child(Path.tags.append).update(*args, **kwargs)
 
-    def update(self, value=_not_found_, **kwargs) -> typing.Self:
+    def update(self, *args, **kwargs):
         """更新 entry 所指定位置的数据。 TODO: 返回修改处的entry"""
-        self._cache = self._path.update(self._cache, value if value is not _not_found_ else kwargs)
-        return self
+        self._cache = self._path.update(self._cache, *args, **kwargs)
 
-    def delete(self) -> bool:
+    def delete(self):
         """删除 entry 所指定位置的数据"""
-        return self._path.delete(self._cache)
+        self._path.delete(self._cache)
 
     def find(self, *p_args, **p_kwargs) -> typing.Any:
         """返回 entry 所指定位置的数据"""
@@ -140,16 +141,20 @@ class Entry:  # pylint: disable=R0904
 
     @typing.final
     def keys(self) -> typing.Generator[str, None, None]:
-        yield from self.search(None, Query.tags.get_key)
+        yield from self.search(None, Query.tags.get_key)  # type:ingore
 
     @typing.final
     def values(self) -> typing.Generator[str, None, None]:
-        yield from self.search(None, Query.tags.get_value)
+        yield from self.search(None, Query.tags.get_value)  # type:ingore
 
     @typing.final
     def for_each(self) -> typing.Generator[typing.Self, None, None]:
         """alis of search"""
         yield from self.search()
+
+    @typing.final
+    def append(self, value) -> None:
+        self.insert(value)
 
     @typing.final
     def __setitem__(self, key, value) -> None:
@@ -201,7 +206,7 @@ class Entry:  # pylint: disable=R0904
 
     @property
     def children(self) -> typing.Generator[typing.Self, None, None]:
-        yield self.search()
+        yield from self.search()
 
 
 class EntryChain(Entry):

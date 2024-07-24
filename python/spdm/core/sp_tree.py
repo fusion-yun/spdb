@@ -167,7 +167,7 @@ class SpProperty:
         self.strict = strict
         self.metadata = kwargs
 
-    def __call__(self, func: typing.Callable[..., _TR]) -> _TR:
+    def __call__(self, func: typing.Callable[..., _TR]):
         """用于定义属性的getter操作，与@property.getter类似
         例如：
         @sp_property
@@ -233,7 +233,7 @@ class SpProperty:
             else:
                 logger.error("Can not use sp_property instance without calling __set_name__ on it.")
 
-    def __get__(self, instance: HTree, owner_cls=None) -> _T:
+    def __get__(self, instance: HTree, owner_cls=None):
         if instance is None:
             # 当调用 getter(cls, <name>) 时执行
             return self
@@ -277,7 +277,7 @@ class SpProperty:
             instance.__del_node__(self.property_name, deleter=self.deleter)
 
 
-def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
+def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs):
     return SpProperty(getter=getter, **kwargs)
 
 
@@ -286,7 +286,7 @@ class WithProperty:
     ==============================================
     根据 type hint 在创建子类时自动添加 SpProperty"""
 
-    def __init_subclass__(cls, default_value=_not_found_, final=True, **kwargs) -> None:
+    def __init_subclass__(cls, default_value: typing.Any = _not_found_, final: bool = True, **kwargs) -> None:
         """根据 cls 的 type hint，为 cls 属性"""
 
         if not final:
@@ -340,38 +340,38 @@ class WithProperty:
 
         return state
 
-    def fetch(self, *args, **kwargs) -> typing.Dict[str, typing.Any]:
-        if len(args) == 0:
-            projection = None
-        else:
-            projection = args[0]
-        args = args[1:]
+    # def fetch(self, *args, **kwargs) -> typing.Dict[str, typing.Any]:
+    #     if len(args) == 0:
+    #         projection = None
+    #     else:
+    #         projection = args[0]
+    #     args = args[1:]
 
-        if projection is None:
-            names = self.__properties__
-        elif isinstance(projection, dict):
-            names = projection.values()
-        elif isinstance(projection, str):
-            names = [projection]
-        elif isinstance(projection, collections.abc.Sequence):
-            names = projection
-        else:
-            raise TypeError(f"Illegal type! {projection}")
+    #     if projection is None:
+    #         names = self.__properties__
+    #     elif isinstance(projection, dict):
+    #         names = projection.values()
+    #     elif isinstance(projection, str):
+    #         names = [projection]
+    #     elif isinstance(projection, collections.abc.Sequence):
+    #         names = projection
+    #     else:
+    #         raise TypeError(f"Illegal type! {projection}")
 
-        res = {}
-        for k in names:
-            value = Path(k).get(self, _not_found_)
-            if isinstance(value, WithProperty):
-                value = value.fetch(None, *args, **kwargs)
-            elif callable(value):
-                value = value(*args, **kwargs)
-            res[k] = value
+    #     res = {}
+    #     for k in names:
+    #         value = Path(k).get(self, _not_found_)
+    #         if isinstance(value, WithProperty):
+    #             value = value.fetch(None, *args, **kwargs)
+    #         elif callable(value):
+    #             value = value(*args, **kwargs)
+    #         res[k] = value
 
-        if isinstance(projection, dict):
-            res = {k: res.get(v, _not_found_) for k, v in projection.items()}
-        elif projection is None:
-            res = self.__class__(res, _parent=self._parent)
-        return res
+    #     if isinstance(projection, dict):
+    #         res = {k: res.get(v, _not_found_) for k, v in projection.items()}
+    #     elif projection is None:
+    #         res = self.__class__(res, _parent=self._parent)
+    #     return res
 
 
 class WithMetadata:
@@ -417,22 +417,22 @@ class WithAttribute:
     def __getattr__(self, key: str) -> typing.Self | List[typing.Self]:
         if key.startswith("_"):
             return super().__getattribute__(key)
-        return self.__get_node__(key, default_value=_not_found_)
+        return self.__get_node__(key, default_value=_not_found_)  # type:ignore
 
     def __setattr__(self, key: str, value: typing.Any):
         if key.startswith("_"):
             return super().__setattr__(key, value)
 
-        return self.__set_node__(key, value)
+        return self.__set_node__(key, value)  # type:ignore
 
 
 class AttributeTree(WithAttribute, WithProperty, HTree):
     pass
 
 
-def annotation(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
+def annotation(getter: typing.Callable[..., _T] | None = None, **kwargs):
     """alias of sp_property"""
-    return SpProperty(getter=getter, **kwargs)
+    return SpProperty(getter, **kwargs)
 
 
 class SpTree(WithProperty, WithMetadata, HTree):

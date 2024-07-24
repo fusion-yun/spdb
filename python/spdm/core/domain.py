@@ -161,7 +161,7 @@ class WithDomain(abc.ABC):
             cls.domain = SpProperty(alias=domain, type_hint=Domain)
 
     @classmethod
-    def _get_by_domain(cls, obj: _T, *domain) -> _T:
+    def _get_by_domain(cls, obj: _T, *domain):
         if isinstance(obj, dict):
             return {k: cls._get_by_domain(v, *domain) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -187,16 +187,16 @@ class WithDomain(abc.ABC):
     def update(self, *args, domain: Domain = None, **kwargs):
         """更新在 domain 上的数据集"""
         if domain is None:
-            return super().update(*args, **kwargs)
+            super().update(*args, **kwargs)
         else:
-            return self._set_by_domain(domain, *args, **kwargs)
+            self._set_by_domain(domain, *args, **kwargs)
 
     def insert(self, *args, domain: Domain = None, **kwargs):
         """更新在 domain 上的数据集"""
         if domain is None:
-            return super().insert(*args, **kwargs)
+            super().insert(*args, **kwargs)
         else:
-            return self._set_by_domain(domain, *args, **kwargs)
+            self._set_by_domain(domain, *args, **kwargs)
 
 
 class MultiDomains(Domain, plugin_name="multiblock"):

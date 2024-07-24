@@ -129,7 +129,11 @@ disable=R,
         wrong-import-order,
         xrange-builtin,
         zip-builtin-not-iterating,
-        missing-class-docstring
+        missing-class-docstring,
+
+        protected-access,
+        unused-argument ,
+        C0303
 
 
 [REPORTS]
