@@ -5,8 +5,8 @@ import numpy.typing as np_tp
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import array_type, ArrayType
-from spdm.core.htree import HTree, List
-from spdm.core.sp_tree import sp_property, SpTree, SpProperty
+from spdm.core.htree import  List
+from spdm.core.sp_tree import annotation, sp_property, SpTree
 from spdm.core.sp_object import SpObject
 from spdm.core.geo_object import GeoObjectBase
 from spdm.numlib.interpolate import interpolate
@@ -22,17 +22,17 @@ class Domain(SpObject):
 
     """
 
-    def __new__(cls, *args, kind=None, **kwargs)->typing.Self:
+    def __new__(cls, *args, kind=None, **kwargs) -> typing.Self:
         if cls is Domain and kind is None and all(isinstance(d, np.ndarray) for d in args):
             return super().__new__(DomainPPoly)
         return super().__new__(cls, *args, kind=kind, **kwargs)
 
     geometry: GeoObjectBase
 
-    ndim: int = sp_property(alias="geometry/ndim")
+    ndim: int = annotation(alias="geometry/ndim")
     """所在的空间维度"""
 
-    rank: int = sp_property(alias="geometry/rank")
+    rank: int = annotation(alias="geometry/rank")
     """所在流形的维度，0:点， 1:线， 2:面， 3:体"""
 
     @property
@@ -154,7 +154,7 @@ class WithDomain(abc.ABC):
     def __init_subclass__(cls, domain: str = None, **kwargs):
         super().__init_subclass__(**kwargs)
         if domain is not None and getattr(cls, "domain", None) is None:
-            cls.domain = SpProperty(alias=domain, type_hint=Domain)
+            cls.domain = annotation(alias=domain, type_hint=Domain)
 
     @classmethod
     def _get_by_domain(cls, obj: _T, *domain):
@@ -196,4 +196,4 @@ class WithDomain(abc.ABC):
 
 
 class MultiDomains(Domain, plugin_name="multiblock"):
-    sub_domains: List[Domain] = sp_property()
+    sub_domains: List[Domain] = annotation()

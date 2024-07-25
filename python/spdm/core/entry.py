@@ -141,11 +141,11 @@ class Entry:  # pylint: disable=R0904
 
     @typing.final
     def keys(self) -> typing.Generator[str, None, None]:
-        yield from self.search(None, Query.tags.get_key)  # type:ingore
+        yield from self.search(None, Query.tags.get_key)  # type:ignore
 
     @typing.final
-    def values(self) -> typing.Generator[str, None, None]:
-        yield from self.search(None, Query.tags.get_value)  # type:ingore
+    def values(self) -> typing.Generator[typing.Any, None, None]:
+        yield from self.search(None, Query.tags.get_value)  # type:ignore
 
     @typing.final
     def for_each(self) -> typing.Generator[typing.Self, None, None]:

@@ -167,7 +167,7 @@ class SpProperty:
         self.strict = strict
         self.metadata = kwargs
 
-    def __call__(self, func: typing.Callable[..., _TR]):
+    def __call__(self, func: typing.Callable[..., _TR]) -> _TR:
         """用于定义属性的getter操作，与@property.getter类似
         例如：
         @sp_property
@@ -277,8 +277,20 @@ class SpProperty:
             instance.__del_node__(self.property_name, deleter=self.deleter)
 
 
-def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs):
-    return SpProperty(getter=getter, **kwargs)
+def sp_property(getter: typing.Callable[..., _T] | None = None, **kwargs) -> _T:
+    if getter is None:
+
+        def wrapper(func: typing.Callable[..., _TR]) -> _TR:
+            return SpProperty(getter=func, **kwargs)
+
+        return typing.cast(_TR, wrapper)
+    else:
+        return typing.cast(_T, SpProperty(getter=getter, **kwargs))
+
+
+def annotation(**kwargs):
+    """alias of sp_property"""
+    return SpProperty(**kwargs)
 
 
 class WithProperty:
@@ -428,11 +440,6 @@ class WithAttribute:
 
 class AttributeTree(WithAttribute, WithProperty, HTree):
     pass
-
-
-def annotation(getter: typing.Callable[..., _T] | None = None, **kwargs):
-    """alias of sp_property"""
-    return SpProperty(getter, **kwargs)
 
 
 class SpTree(WithProperty, WithMetadata, HTree):

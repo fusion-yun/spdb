@@ -1,6 +1,6 @@
 from spdm.utils.type_hint import array_type
 from spdm.core.function import Function
-from spdm.core.sp_tree import sp_tree, sp_property
+from spdm.core.sp_tree import sp_tree, annotation
 
 
 @sp_tree
@@ -17,7 +17,7 @@ class Signal:
 
     data: array_type
 
-    time: array_type = sp_property(units="s")
+    time: array_type = annotation(units="s")
 
     def __call__(self, t: float) -> float:
         if self._func is None:

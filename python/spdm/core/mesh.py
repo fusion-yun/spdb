@@ -14,7 +14,7 @@ from spdm.utils.misc import group_dict_by_prefix
 
 from spdm.core.domain import Domain
 from spdm.core.path import Path
-from spdm.core.sp_tree import sp_property
+from spdm.core.sp_tree import annotation
 
 from spdm.geometry.vector import Vector
 

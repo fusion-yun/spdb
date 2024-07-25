@@ -1,6 +1,6 @@
 import typing
 
-from spdm.core.sp_tree import sp_property
+from spdm.core.sp_tree import annotation
 from spdm.core.geo_object import GeoObject
 from spdm.geometry.line import Segment
 from spdm.geometry.point import Point
@@ -70,7 +70,7 @@ class RegularPolygon(Polygon, plugin_name="regular_polygon"):
     def length(self) -> float:
         return self._impl.length
 
-    center: Point = sp_property(alias="points/0")
+    center: Point = annotation(alias="points/0")
 
     @property
     def radius(self) -> float:

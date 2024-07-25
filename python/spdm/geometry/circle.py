@@ -1,7 +1,7 @@
 import typing
 import numpy as np
 from spdm.core.geo_object import GeoObject, BBox
-from spdm.core.sp_tree import sp_property
+from spdm.core.sp_tree import annotation, sp_property
 from spdm.geometry.line import Line
 from spdm.geometry.plane import Plane
 from spdm.geometry.point import Point
@@ -20,7 +20,7 @@ class Circle(GeoObject, plugin_name="circle", rank=1):
         r = self.radius
         return BBox(o - r, [2.0 * r, 2.0 * r])
 
-    origin: Point = sp_property(alias="points/0")
+    origin: Point = annotation(alias="points/0")
 
     @sp_property
     def radius(self) -> float:

@@ -10,7 +10,7 @@ from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 
 from spdm.core.htree import List, HTree
-from spdm.core.sp_tree import sp_property, WithProperty, WithMetadata
+from spdm.core.sp_tree import annotation, sp_property, WithProperty, WithMetadata
 from spdm.core.pluggable import Pluggable
 
 
@@ -162,7 +162,7 @@ class GeoObjectBase(Pluggable, WithMetadata):
     _ndim = 3
     _rank = 0
 
-    def __new__(cls, *args, _entry=None, **kwargs)->typing.Self:
+    def __new__(cls, *args, _entry=None, **kwargs) -> typing.Self:
         if cls is not GeoObject:
             return super().__new__(cls, *args, _entry=_entry, **kwargs)
 
@@ -248,7 +248,7 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
             n_cls_name += ("".join(coordinate_name)).upper()
 
             cls_attrs.update(
-                {k.lower(): sp_property(alias=["points", (..., idx)]) for idx, k in enumerate(coordinate_name)}
+                {k.lower(): annotation(alias=["points", (..., idx)]) for idx, k in enumerate(coordinate_name)}
             )
             ndim = len(coordinate_name)
 

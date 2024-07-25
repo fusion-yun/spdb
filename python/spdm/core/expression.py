@@ -3,7 +3,7 @@ from copy import copy
 import numpy as np
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.utils.type_hint import ArrayType, NumericType, array_type, is_scalar, PrimaryType
+from spdm.utils.type_hint import ArrayType, NumericType, array_type, is_scalar
 
 from spdm.core.path import Path
 from spdm.core.entry import Entry
