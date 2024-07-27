@@ -422,9 +422,9 @@ class HTree(HTreeNode):
             else:
                 node = type_convert(type_hint, value)
 
-        # if isinstance(node, HTreeNode):
-        # if node._parent is None:
-        #     node._parent = self
+        if isinstance(node, HTreeNode):
+            if node._parent is None:
+                node._parent = self
         # if metadata is not None and len(metadata) > 0:
         #     node._metadata = Path().update(deepcopy(getattr(node, "_metadata", {})), metadata)
 
@@ -443,7 +443,7 @@ class HTree(HTreeNode):
         parent=None,
         default_value=_not_found_,
         metadata=None,
-    ) -> _T:
+    ) -> HTreeNode:
         if key is None:
             return self
 
