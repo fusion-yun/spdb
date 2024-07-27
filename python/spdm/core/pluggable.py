@@ -227,7 +227,6 @@ class Pluggable(abc.ABC):
             cls._plugin_name = plugin_name
             cls.register(plugin_name, cls)
 
-        super().__init_subclass__(**kwargs)
+        cls._metadata = kwargs
 
-    def __init__(self, *args, _plugin_name=None, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init_subclass__()

@@ -16,6 +16,8 @@ class PointSet(GeoObject):
         n_cls = super().__class_getitem__(args)
         if isinstance(args, str):
             n_cls.Point = Point[args]
+        elif isisntance(args, tuple):
+            n_cls.Point = Point[*args]
         return n_cls
 
     # def __init__(self, *args, **kwargs) -> None:
@@ -58,7 +60,7 @@ class PointSet(GeoObject):
         if self.is_closed:
             return None
         elif self.ndim == 2:
-            return PointSet((self.points[0], self.points[-1]))
+            return self.__class__((self.points[0], self.points[-1]))
         else:
             raise NotImplementedError(f"{self.__class__.__name__}.boundary")
 
@@ -72,5 +74,4 @@ class PointSet(GeoObject):
 
 
 PointSetRZ = PointSet["RZ"]
-PointSetXY = PointSet["RZ"]
-PointSetXYZ = PointSet["XYZ"]
+PointSetXY = PointSet["XY"]

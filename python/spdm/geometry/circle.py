@@ -42,12 +42,18 @@ class Circle(GeoObject, plugin_name="circle", rank=1):
         return NotImplemented
 
 
+Circle2D = Circle["XY", 2]
+
+
 class Ellipse(GeoObject, plugin_name="ellipse"):
     """Ellipse
     椭圆，具有一个固定圆心和两个固定半径
     """
 
     pass
+
+
+Ellipse2D = Ellipse["XY", 2]
 
 
 class Disc(Plane, plugin_name="disc"):

@@ -11,6 +11,10 @@ class Rectangle(GeoObject, plugin_name="rectangle"):
     pass
 
 
+RectangleRZ = Rectangle["RZ"]
+RectangleXY= Rectangle["XY"]
+
+
 class Polygon(GeoObject, plugin_name="polygon", rank=2):
     """Polygon 多边形"""
 

@@ -10,7 +10,7 @@ from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 
 from spdm.core.htree import List, HTree
-from spdm.core.sp_tree import annotation, sp_property, WithProperty, WithMetadata
+from spdm.core.sp_tree import annotation, sp_property, WithProperty
 from spdm.core.pluggable import Pluggable
 
 
@@ -146,7 +146,7 @@ class BBox:
         raise NotImplementedError(f"translate")
 
 
-class GeoObjectBase(Pluggable, WithMetadata, plugin_prefix="spdm.geometry."):
+class GeoObjectBase(Pluggable, plugin_prefix="spdm.geometry."):
     """Geometry object base class
     ===============================
     几何对象基类，两个子类
@@ -154,10 +154,30 @@ class GeoObjectBase(Pluggable, WithMetadata, plugin_prefix="spdm.geometry."):
     - GeoObjectSet: 几何对象集合，包括多个几何体
     """
 
-    _plugin_registry = {}   
+    _plugin_registry = {}
 
-    _ndim = 3
-    _rank = 0
+    ndim = 3
+    """几何体所处的空间维度， = 0，1，2，3 ,...
+        The dimension of a geometric object, on the other hand, refers to the minimum number of
+        coordinates needed to specify any point within it. In general, the rank and dimension of
+        a geometric object are the same. However, there are some cases where they can differ.
+        For example, a curve that is embedded in three-dimensional space has rank 1 because
+        it extends in only one independent direction, but it has dimension 3 because three
+        coordinates are needed to specify any point on the curve.
+        """
+
+    rank = 0
+    """几何体（流形）维度  rank <=ndims
+
+            0: point
+            1: curve
+            2: surface
+            3: volume
+            >=4: not defined
+        The rank of a geometric object refers to the number of independent directions
+        in which it extends. For example, a point has rank 0, a line has rank 1,
+        a plane has rank 2, and a volume has rank 3.
+        """
 
     def __new__(cls, *args, _entry=None, **kwargs) -> typing.Self:
         if cls is not GeoObject:
@@ -175,41 +195,13 @@ class GeoObjectBase(Pluggable, WithMetadata, plugin_prefix="spdm.geometry."):
 
     def __init_subclass__(cls, rank: int = None, ndim: int = None, **kwargs) -> None:
         if ndim is not None:
-            cls._ndim = ndim
+            cls.ndim = ndim
         if rank is not None:
-            cls._rank = rank
+            cls.rank = rank
         super().__init_subclass__(**kwargs)
 
-    @property
-    def name(self) -> str:
-        return self._metadata.get("name", self.__class__.__name__)
-
-    @property
-    def rank(self) -> int:
-        """几何体（流形）维度  rank <=ndims
-
-            0: point
-            1: curve
-            2: surface
-            3: volume
-            >=4: not defined
-        The rank of a geometric object refers to the number of independent directions
-        in which it extends. For example, a point has rank 0, a line has rank 1,
-        a plane has rank 2, and a volume has rank 3.
-        """
-        return self._rank
-
-    @property
-    def ndim(self) -> int:
-        """几何体所处的空间维度， = 0，1，2，3 ,...
-        The dimension of a geometric object, on the other hand, refers to the minimum number of
-        coordinates needed to specify any point within it. In general, the rank and dimension of
-        a geometric object are the same. However, there are some cases where they can differ.
-        For example, a curve that is embedded in three-dimensional space has rank 1 because
-        it extends in only one independent direction, but it has dimension 3 because three
-        coordinates are needed to specify any point on the curve.
-        """
-        return self._ndim
+    def __init__(self, styles=None, **others) -> None:
+        self.styles = styles if styles is not None else {}
 
     def _repr_svg_(self) -> str:
         """Jupyter 通过调用 _repr_html_ 显示对象"""
@@ -251,10 +243,10 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
 
         if ndim is not None:
             n_cls_name += f"{ndim}D"
-            cls_attrs["_ndim"] = ndim
+            cls_attrs["ndim"] = ndim
 
         if rank is not None:
-            cls_attrs["_rank"] = rank
+            cls_attrs["rank"] = rank
 
         if len(cls_attrs) == 0:
             n_cls = cls
@@ -284,7 +276,7 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
         cls.__make_class__(coordinate_name, create_new_class=False)
         super().__init_subclass__(**kwargs)
 
-    def __init__(self, *args, points=None, _entry=None, _parent=None, **metadata) -> None:
+    def __init__(self, *args, points=None, _entry=None, _parent=None, **styles) -> None:
         if points is not None:
             pass
         elif len(args) == 1 and isinstance(args[0], dict):
@@ -299,24 +291,25 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
             points = np.stack(args, axis=-1)
             args = ()
 
-        if len(points.shape) == 0:
-            raise RuntimeError(f"{self.__class__.__name__} has no points")
+        if not isinstance(points, np.ndarray) or len(points.shape) == 0 or points.shape[-1] != self.__class__.ndim:
+            raise RuntimeError(f"Illegal points! {points} ndim={self.__class__.ndim} {self.__class__}")
 
-        ndim = self.__class__._ndim
-        if points.shape[-1] != self.__class__._ndim:
-            ndim = points.shape[-1]
+        # ndim = self.__class__.ndim
+        # if points.shape[-1] != self.__class__.ndim:
+        #     ndim = points.shape[-1]
 
         cache = {"points": points}
 
-        super().__init__(cache, _entry=_entry, _parent=_parent, **metadata)
-
-        self._ndim = ndim
+        HTree.__init__(self, cache, _entry=_entry, _parent=_parent)
+        GeoObjectBase.__init__(self, **styles)
 
     def __str__(self) -> str:
         return f"<{self.__class__.__name__}> {self.points}</{self.__class__.__name__}>"
 
     def __equal__(self, other: typing.Self) -> bool:
         return (other.__class__ is self.__class__) and np.all(self.points == other.points)
+
+    name: str
 
     points: array_type
     """几何体控制点的坐标 例如 (x0,y0),(x1,y1)， 
@@ -442,8 +435,8 @@ class GeoObjectSet(List[_TGeo], GeoObjectBase):
 
         g_cls = n_cls.__args__[0]
         if issubclass(g_cls, GeoObjectBase):
-            n_cls._rank = g_cls._rank
-            n_cls._ndim = g_cls._ndim
+            n_cls.rank = g_cls.rank
+            n_cls.ndim = g_cls.ndim
 
         return n_cls
 

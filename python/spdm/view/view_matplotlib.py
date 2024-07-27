@@ -217,38 +217,44 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             )
 
         elif isinstance(obj, Polygon):
-            canvas.add_patch(plt.Polygon(obj.points, fill=False, **s_styles))
+            canvas.add_patch(plt.Polygon(obj.points, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))))
 
         elif isinstance(obj, Polyline):
-            canvas.add_patch(plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **s_styles))
+            canvas.add_patch(
+                plt.Polygon(
+                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$matplotlib", {}))
+                )
+            )
 
         elif isinstance(obj, Line):
-            canvas.add_artist(plt.Line2D([obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **s_styles))
+            canvas.add_artist(plt.Line2D([obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **(s_styles | obj.styles.get("$matplotlib", {}))))
 
         elif isinstance(obj, Curve):
-            canvas.add_patch(plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **s_styles))
+            canvas.add_patch(plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$matplotlib", {}))))
 
         elif isinstance(obj, Rectangle):
             p0 = obj.points[0]
             p1 = obj.points[1]
             w = p1[0] - p0[0]
             h = p1[1] - p0[1]
-            canvas.add_patch(plt.Rectangle((p0[0], p0[1]), w, h, fill=False, **s_styles))
+            canvas.add_patch(plt.Rectangle((p0[0], p0[1]), w, h, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))))
 
         elif isinstance(obj, Circle):
-            canvas.add_patch(plt.Circle((obj.origin[0], obj.origin[1]), obj.radius, fill=False, **s_styles))
+            canvas.add_patch(
+                plt.Circle((obj.origin[0], obj.origin[1]), obj.radius, fill=False, **(s_styles | obj.styles.get("$matplotlib", {})))
+            )
 
         elif isinstance(obj, Point):
-            canvas.scatter(obj[0], obj[1], **s_styles)
+            canvas.scatter(obj[0], obj[1], **(s_styles | obj.styles.get("$matplotlib", {})))
 
         elif isinstance(obj, PointSet):
-            canvas.scatter(*obj.points, **s_styles)
+            canvas.scatter(*obj.points, **(s_styles | obj.styles.get("$matplotlib", {})))
 
         elif isinstance(obj, GeoObject):
             self._draw(canvas, obj.bbox, *styles)
 
         elif isinstance(obj, BBox):
-            canvas.add_patch(plt.Rectangle(obj.origin, *obj.dimensions, fill=False, **s_styles))
+            canvas.add_patch(plt.Rectangle(obj.origin, *obj.dimensions, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))))
 
         else:
             # raise RuntimeError(f"Unsupport type {(obj)} {obj}")

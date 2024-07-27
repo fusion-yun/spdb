@@ -9,7 +9,7 @@ from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, array_type
 from spdm.core.function import Function
 
-from spdm.geometry.box import Box
+from spdm.geometry.box import Box, Box2D
 from spdm.numlib.interpolate import interpolate
 from spdm.mesh.mesh_structured import StructuredMesh
 
@@ -53,7 +53,10 @@ class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular",
 
         self.shape = tuple([d.size for d in self.dims])
 
-        self.geometry = Box([min(d) for d in self.dims], [max(d) for d in self.dims])
+        if len(self.dims) == 2:
+            self.geometry = Box2D([min(d) for d in self.dims], [max(d) for d in self.dims])
+        else:
+            self.geometry = Box([min(d) for d in self.dims], [max(d) for d in self.dims])
 
         self._aixs = [Function(d, np.linspace(0, 1.0, len(d))) for i, d in enumerate(self.dims)]
 

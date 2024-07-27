@@ -86,6 +86,6 @@ class Curve(GeoObject, plugin_name="curve", rank=1):
         return other
 
 
-CurveRZ = Curve["RZ"]
-CurveXY = Curve["XY"]
+CurveRZ = Curve["RZ", 2]
+CurveXY = Curve["XY", 2]
 CurveXYZ = Curve["XYZ"]
