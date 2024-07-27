@@ -58,7 +58,7 @@ class Expression(HTreeNode):
         domain: Domain = None,
         _entry: Entry = None,
         _parent: HTreeNode = None,
-        **metadata,
+        **kwargs,
     ) -> None:
         """初始化表达式
 
@@ -79,7 +79,7 @@ class Expression(HTreeNode):
         self._children = children  # 构成表达式的子节点
         self._domain = domain  # 定义域
         self._ppoly = None  # 表达式的近似多项式，缓存
-        self._metadata = metadata
+        self._kwargs = kwargs
 
     def __copy__(self) -> typing.Self:
         """复制一个新的 Expression 对象"""
@@ -88,12 +88,17 @@ class Expression(HTreeNode):
         other._children = self._children
         other._domain = self._domain
         other._ppoly = self._ppoly
+        other._kwargs = self._kwargs
 
         return other
 
     @property
+    def name(self) -> str:
+        return self._kwargs.get("name", "unnamed")
+
+    @property
     def __label__(self) -> str:
-        return self._metadata.get("label", None) or self._metadata.get("name", None) or self.__class__.__name__
+        return self._kwargs.get("label", None) or self._kwargs.get("name", None) or self.__class__.__name__
 
     @property
     def domain(self) -> Domain:
@@ -179,7 +184,7 @@ class Expression(HTreeNode):
             else:
                 raise RuntimeError("Tri-op is not defined!")
 
-        elif (op_tag := self._metadata.get("label", None) or self._metadata.get("name", None)) is not None:
+        elif (op_tag := self._kwargs.get("label", None) or self._kwargs.get("name", None)) is not None:
             if len(vargs) == 0:
                 res = op_tag
             else:

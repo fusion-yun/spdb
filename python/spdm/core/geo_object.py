@@ -146,7 +146,7 @@ class BBox:
         raise NotImplementedError(f"translate")
 
 
-class GeoObjectBase(Pluggable, WithMetadata):
+class GeoObjectBase(Pluggable, WithMetadata, plugin_prefix="spdm.geometry."):
     """Geometry object base class
     ===============================
     几何对象基类，两个子类
@@ -154,10 +154,7 @@ class GeoObjectBase(Pluggable, WithMetadata):
     - GeoObjectSet: 几何对象集合，包括多个几何体
     """
 
-    _plugin_prefix = "spdm.geometry."
-    _plugin_registry = {}
-
-    _metadata = {}
+    _plugin_registry = {}   
 
     _ndim = 3
     _rank = 0

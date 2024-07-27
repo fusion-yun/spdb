@@ -447,6 +447,9 @@ class SpTree(WithProperty, WithMetadata, HTree):
     ===============================================
     """
 
+    # def name(self) -> str:
+    #     return self._metadata.get("name", self.__class__.__name__)
+
 
 def _make_sptree(cls, **metdata) -> typing.Type[SpTree]:
     if not inspect.isclass(cls):

@@ -86,7 +86,7 @@ class SmoothOp(Expression):
         if len(args) + len(kwargs) > 0:
             logger.warning(f"Ignore {args} {kwargs}")
 
-        return self._op(y, **self._metadata.get("options", {}))
+        return self._op(y, **self._kwargs.get("options", {}))
 
     def __call__(self, *args, **kwargs):
         if len(args) + len(kwargs) > 0:

@@ -316,7 +316,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         if isinstance(x_value, Expression):
             if x_label is None:
-                units = x_value._metadata.get("units", "-")
+                units = x_value._kwargs.get("units", "-")
                 x_label = f"{ x_value.__label__} [{units}]"
             if isinstance(x_axis, array_type):
                 x_value = x_value(x_axis)

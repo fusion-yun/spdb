@@ -1,9 +1,11 @@
 """ Process module"""
 
 import typing
-
+import abc
 from spdm.utils.tags import _not_found_
+from spdm.utils.misc import try_hash
 from spdm.core.htree import Set
+from spdm.core.sp_tree import sp_property, annotation
 from spdm.model.port import Ports
 from spdm.model.entity import Entity
 
@@ -19,6 +21,10 @@ class Process(Entity):
 
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._inputs_hash = 0
+
     class InPorts(Ports, final=False):
         """输入端口集合。"""
 
@@ -26,27 +32,32 @@ class Process(Entity):
         """输出端口集合。"""
 
     in_ports: InPorts
+
     out_ports: OutPorts
 
-    def initialize(self, *args, **kwargs):
-        self.in_ports.connect(self.context, **kwargs)
-        self.out_ports.connect(self.context, **kwargs)
-        super().__setstate__(*args)
+    def __hash__(self) -> int:
+        return hash(tuple([super().__hash__(), self._inputs_hash]))
 
-    def refresh(self, *args, **kwargs) -> typing.Self | OutPorts:
-        self.in_ports.push(*args, **kwargs)
-        return self.out_ports
+    def check_inputs(self, *args, **kwargs):
+        if len(kwargs) == 0:
+            kwargs = self.in_ports.pull()
+        elif self.in_ports is not _not_found_ and len(self.in_ports) > 0:
+            kwargs = self.in_ports.pull() | kwargs
 
-    def finialize(self):
-        self.in_ports.clear()
-        self.out_ports.clear()
+        return args, kwargs, hash(tuple([try_hash(args), try_hash(kwargs)]))
 
-    def __call__(self, *args, **kwargs) -> typing.Self | dict:
-        res = self.refresh(*args, **kwargs)
-        if isinstance(res, Ports):
-            return res.pull()
-        else:
-            return res
+    def refresh(self, *args, **kwargs) -> None:
+        """刷新 Processor 的状态，将执行结果更新的out_ports"""
+        args, kwargs, input_hash = self.check_inputs(*args, **kwargs)
+        if input_hash != self._inputs_hash:
+            # 只有在 input hash 改变时才执行 execute。
+            self._inputs_hash = input_hash
+            self.out_ports.push(self.execute(*args, **kwargs))
+
+    @abc.abstractmethod
+    def execute(self, *args, **kwargs) -> dict | list:
+        """执行 Processor 的操作，返回结果"""
+        pass
 
 
 _T = typing.TypeVar("_T", bound=Process)
@@ -54,17 +65,24 @@ _T = typing.TypeVar("_T", bound=Process)
 
 class ProcessBundle(Set[_T], Process):
 
-    def initialize(self, *args, **kwargs):
-        super().initialize(getattr(self._parent, "in_ports", _not_found_), *args, **kwargs)
-        for process in self:
-            process.initialize(self.in_ports)
+    def __init__(self, cache: list | tuple | set = None, **kwargs):
+        Set.__init__(self, cache)
+        Process.__init__(self, **kwargs)
 
-    def refresh(self, *args, **kwargs) -> typing.Self:
-        res = super().refresh(getattr(self._parent, "in_ports", _not_found_), *args, **kwargs)
-        for process in self:
-            process.refresh(self.in_ports)
-        return res
+        #
+        # TODO:
+        # - 汇总输出
 
-    def finialize(self):
-        for process in self:
-            process.finialize()
+        self.out_ports = self
+
+    in_ports: Process.InPorts = annotation(alias=".../in_ports")
+
+    def execute(self, *args, **kwargs) -> typing.List[typing.Any]:
+        return [process.execute(*args, **kwargs) for process in self]
+
+    @sp_property
+    def name(self) -> str:
+        return "[" + " , ".join(p.name for p in self) + "]"
+
+    def __str__(self) -> str:
+        return "[" + " , ".join(p.name for p in self) + "]"

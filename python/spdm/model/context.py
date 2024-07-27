@@ -13,7 +13,7 @@ from spdm.model.process import Process
 from spdm.model.component import Component
 
 
-class Context(Actor):
+class Context(Process):
     """管理一组相互关联的 Entities
 
     Attributes:
@@ -73,10 +73,14 @@ class Context(Actor):
 
         self.in_ports.connect(self)
 
-    def flush(self):
-        """刷新 Context 中的所有 Actor 实例。"""
-        for _, a in self.entities(Actor):
-            a.flush()
+    def execute(self, *args, **kwargs) -> dict:
+        """执行 Context
+        - 执行 Actor 和 Process
+        """
+        res = super().execute(*args, **kwargs)
+        for _, entity in self.processes():
+            entity.refresh(*args, **kwargs)
+        return res
 
     def __view__(self, **styles) -> dict:
         """生成 Context 的视图。
@@ -107,17 +111,3 @@ class Context(Actor):
         styles.setdefault("title", getattr(self, "title", None) or self._metadata.get("title", ""))
 
         return geo
-
-    def __str__(self) -> str:
-        """返回 Context 的字符串表示形式。
-
-        Returns:
-            str: Context 的字符串表示形式。
-        """
-        processor_summary = "\n".join(f"{k:>19s} : {e} " for k, e in self.processes())
-        component_summary = ",".join(k for k, e in self.entities(Component))
-        return f"""- Context           : {self.code}
-- Actors/Processors        :
-{processor_summary}
-- Components        : {component_summary}
-"""

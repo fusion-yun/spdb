@@ -27,7 +27,7 @@ class Derivative(Expression):
 
     @property
     def order(self) -> int:
-        return self._metadata.get("order", 1)
+        return self._kwargs.get("order", 1)
 
     def _render_latex_(self) -> str:
         expr: Expression = self._children[0]

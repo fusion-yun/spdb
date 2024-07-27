@@ -47,5 +47,10 @@ class SpObject(Pluggable, SpTree):
 
         super().__init__(cache, _entry=as_entry(entries), _parent=_parent)
 
+    name: str
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
     # def __copy__(self) -> typing.Self:
     #     return SpTree.__copy__(self)
