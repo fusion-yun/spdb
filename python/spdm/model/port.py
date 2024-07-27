@@ -11,6 +11,7 @@ The `Ports` class is a collection of `Port` objects. It provides methods for put
 import typing
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
+from spdm.core.path import Path
 from spdm.core.htree import HTreeNode
 from spdm.core.sp_tree import SpTree
 
@@ -24,13 +25,13 @@ class Ports(SpTree):
         elif state is not None:
             logger.debug(f"Ignore {state}")
 
-        for k, v in kwargs:
+        for k, v in kwargs.items():
             if k in self.__properties__:
-                obj = self._cache.get(k, _not_found_)
+                obj = Path([k]).get(self._cache, _not_found_)
                 if isinstance(obj, HTreeNode) and not isinstance(v, HTreeNode):
                     obj.__setstate__(v)
                 else:
-                    self._cache[k] = v
+                    self._cache = Path([k]).update(k, v)
 
     def pull(self) -> dict:
         return {k: self.get(k, _not_found_) for k in self.__properties__}

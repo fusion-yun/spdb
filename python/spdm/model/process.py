@@ -5,7 +5,7 @@ import abc
 from spdm.utils.tags import _not_found_
 from spdm.utils.misc import try_hash
 from spdm.core.htree import Set
-from spdm.core.sp_tree import sp_property, annotation
+from spdm.core.sp_tree import annotation
 from spdm.model.port import Ports
 from spdm.model.entity import Entity
 
@@ -55,9 +55,9 @@ class Process(Entity):
             self.out_ports.push(self.execute(*args, **kwargs))
 
     @abc.abstractmethod
-    def execute(self, *args, **kwargs) -> dict | list:
+    def execute(self, *args, **kwargs) -> typing.Any:
         """执行 Processor 的操作，返回结果"""
-        pass
+        return {}
 
 
 _T = typing.TypeVar("_T", bound=Process)
@@ -65,24 +65,24 @@ _T = typing.TypeVar("_T", bound=Process)
 
 class ProcessBundle(Set[_T], Process):
 
-    def __init__(self, cache: list | tuple | set = None, **kwargs):
-        Set.__init__(self, cache)
-        Process.__init__(self, **kwargs)
-
-        #
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # TODO:
         # - 汇总输出
-
-        self.out_ports = self
+        # self.out_ports = self
 
     in_ports: Process.InPorts = annotation(alias=".../in_ports")
+    # out_ports: typing.Self = annotation(alias="..")
 
-    def execute(self, *args, **kwargs) -> typing.List[typing.Any]:
+    def execute(self, *args, **kwargs):
         return [process.execute(*args, **kwargs) for process in self]
 
-    @sp_property
-    def name(self) -> str:
-        return "[" + " , ".join(p.name for p in self) + "]"
+    # @sp_property
+    # def name(self) -> str:
+    #     return "[" + " , ".join(p.name for p in self) + "]"
 
     def __str__(self) -> str:
-        return "[" + " , ".join(p.name for p in self) + "]"
+        return "[" + " , ".join(str(p) for p in self if isinstance(p, Process)) + "]"
+
+    def __view__(self, *args, **kwargs) -> dict:
+        return {}

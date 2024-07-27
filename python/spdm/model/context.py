@@ -8,7 +8,6 @@ from spdm.utils.tags import _not_found_
 from spdm.core.htree import List, Set
 
 from spdm.model.entity import Entity
-from spdm.model.actor import Actor
 from spdm.model.process import Process
 from spdm.model.component import Component
 
@@ -61,26 +60,12 @@ class Context(Process):
         """
         yield from self.entities(Component)  # type:ignore
 
-    def initialize(self, *args, **kwargs):
-        """初始化 Context
-        - 初始化 Actor 和 Process
-        - 构建 DAG 执行图
-        """
-        super().__setstate__(*args, **kwargs)
-        for k, process in self.processes():
-            logger.verbose(f"Initialize {k}")  # type:ignore
-            process.in_ports.connect(self)
-
-        self.in_ports.connect(self)
-
     def execute(self, *args, **kwargs) -> dict:
-        """执行 Context
-        - 执行 Actor 和 Process
-        """
-        res = super().execute(*args, **kwargs)
-        for _, entity in self.processes():
-            entity.refresh(*args, **kwargs)
-        return res
+        """执行 Context"""
+
+        return super().execute(*args, **kwargs) | {
+            k: entity.execute(*args, **kwargs) for k, entity in self.processes()
+        }
 
     def __view__(self, **styles) -> dict:
         """生成 Context 的视图。

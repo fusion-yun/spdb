@@ -55,15 +55,16 @@ def array_like(x: np.ndarray, d):
 
 
 def try_hash(obj) -> int:
-    if hasattr(obj.__class__, "__hash__"):
-        return hash(obj)
-    elif isinstance(obj, dict):
+
+    if isinstance(obj, dict):
         # 字典键值顺序不影响 hash
         keys = [*obj.keys()]
         keys.sort()
         return hash(tuple([hash(tuple([hash(k), try_hash(obj[k])]) for k in keys)]))
     elif isinstance(obj, (list, tuple)):
         return hash(tuple([try_hash(v) for v in obj]))
+    elif hasattr(obj.__class__, "__hash__"):
+        return hash(obj)
     else:
         return hash(obj)
 
