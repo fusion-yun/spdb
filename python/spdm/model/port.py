@@ -47,9 +47,7 @@ class Ports(SpTree):
 
     def connect(self, ctx=None, **kwargs) -> None:
         if ctx is not None:
-            self.connect(
-                **({k: getattr(ctx, k, _not_found_) for k in self.__properties__ if k not in kwargs} | kwargs)
-            )
+            self.push({k: getattr(ctx, k, _not_found_) for k in self.__properties__ if k not in kwargs}, **kwargs)
         else:
             self.push(**kwargs)
 

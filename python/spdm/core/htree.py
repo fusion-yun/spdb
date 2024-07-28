@@ -108,6 +108,9 @@ class HTreeNode:
 
             self._cache = self._setstate(self._cache, state)
 
+    def duplicate(self) -> typing.Self:
+        return self.__class__(self.__getstate__(), _entry=self._entry, _parent=self._parent)
+
     @typing.final
     def clear(self):
         return self.__delstate__()
@@ -305,11 +308,11 @@ class HTree(HTreeNode):
         """Put, alias of update"""
         return self.update(*args, **kwargs)
 
-    def get(self, path, default_value=_not_found_) -> typing.Any:
+    def get(self, path, default_value: typing.Any = _not_found_) -> typing.Any:
         """Get , alias of query"""
         return self.find(path, default_value=default_value)
 
-    def pop(self, path, default_value=_not_found_) -> typing.Any:
+    def pop(self, path, default_value: typing.Any = _not_found_) -> typing.Any:
         """Pop , query and delete"""
         node = self.find(path, default_value=_not_found_)
         if node is not _not_found_:
@@ -655,9 +658,12 @@ class Set(Generic[_T], HTree):
 
     def __init__(self, cache: dict = _not_found_, /, **kwargs):
         super().__init__({}, **kwargs)
-        if isinstance(cache, collections.abc.Iterable):
+        if isinstance(cache, list):
             for v in cache:
                 self.insert(v)
+        # elif isinstance(cache, dict):
+        #     for k, v in cache.items():
+        #         self.update(k, v)
         elif cache is not _not_found_:
             raise TypeError(f"Invalid args {cache}")
         return
@@ -669,7 +675,9 @@ class Set(Generic[_T], HTree):
             return super().find(key, *args, **kwargs)
 
     def update(self, key, *args, **kwargs) -> None:
-        self._cache = Path([hash(key)]).update(self._cache, *args, **kwargs)
+        if isinstance(key, str):
+            kwargs["metadata"] = {"label": key}
+        super().__as_node__(hash(key), *args, **kwargs)
 
     def insert(self, value, *args, **kwargs) -> None:
         node = super().__as_node__(None, value, *args, **kwargs)

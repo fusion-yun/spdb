@@ -50,9 +50,9 @@ class Process(abc.ABC):
         """刷新 Processor 的状态，将执行结果更新的out_ports"""
 
         kwargs = self.in_ports.push(*args, **kwargs)
-        
+
         if len(kwargs) > 0:
-            logger.debug(f"Ignore inputs {[*kwargs.keys()]}")
+            logger.debug(f"{self}: Ignore inputs {[*kwargs.keys()]}")
 
         in_ports_hash = self.in_ports.validate()
 
@@ -67,6 +67,7 @@ class Process(abc.ABC):
     @abc.abstractmethod
     def execute(self, *args, **kwargs) -> typing.Any:
         """执行 Processor 的操作，返回结果"""
+        logger.debug("Execute %s", self.code.name + ":" + self.__class__.__name__)
         return {}
 
 

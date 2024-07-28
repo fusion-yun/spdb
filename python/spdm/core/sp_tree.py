@@ -337,7 +337,7 @@ class WithProperty:
 
     def __getstate__(self) -> dict:
         state = super().__getstate__()
-        
+
         for k, value in state.items():
             if k not in self.__properties__:
                 continue
@@ -394,6 +394,11 @@ class WithMetadata:
             cls._metadata = Path().update(deepcopy(cls._metadata), metadata)
 
         super().__init_subclass__()
+
+    # def __init__(self, *args, _metadata=None, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     if _metadata is not None and _metadata is not _not_found_ and len(_metadata) > 0:
+    #         self._metadata = Path().update(deepcopy(self._metadata), _metadata)
 
 
 class WithAttribute:
