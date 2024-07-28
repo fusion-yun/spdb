@@ -8,6 +8,7 @@ import numpy as np
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 from spdm.core.entry import Entry, as_entry
+from spdm.core.sp_tree import annotation
 
 
 class WithTime(abc.ABC):
@@ -22,11 +23,15 @@ class WithTime(abc.ABC):
         else:
             self._history = as_entry(history)
 
-    time: float = 0.0
+    time: float = annotation(input=True, output=True, default_value=0.0)
+
+    def __hash__(self) -> int:
+        return hash(tuple([self.time, super().__hash__()]))
 
     def flush(self):
         """复制当前状态，并写入历史记录"""
-        self._history.append(deepcopy(super().__getstate__()))
+        logger.verbose("TODO: NOT IMPLEMENTED!")
+        self._history.append(super().__getstate__())
 
     @property
     def previous(self) -> typing.Self:
@@ -50,25 +55,16 @@ class WithTime(abc.ABC):
                 None, type_hint=self.__class__, _entry=self._history.child({"time": time})
             )
 
-    def advance(self, *args, dt: float = _not_found_, time: float = _not_found_, **kwargs) -> typing.Self:
-        """移动到指定时间片"""
+    def refresh(self, *args, time=None, **kwargs) -> None:
+        prev_hash = hash(self)
 
-        self.flush()
+        if time is not None:
+            self.time = time
 
-        if time is _not_found_ and dt is not _not_found_:
-            time = self.time + dt
+        super().refresh(*args, time=self.time, **kwargs)
 
-        if time is not _not_found_:
-            kwargs["time"] = time
-
-        prev_time = self.time
-
-        super().__setstate__(*args, **kwargs)
-
-        if prev_time >= self.time:
-            logger.warning("Move to previous time. %s", f"{prev_time}>={self.time}")
-
-        return self
+        if prev_hash != hash(self):
+            self.flush()
 
     def find(self, *args, time: float = _not_found_, **kwargs):
         if time is _not_found_ or np.isclose(time, self.time):
@@ -100,8 +96,8 @@ class WithTime(abc.ABC):
 
     def __as_node__(self, key, *args, **kwargs) -> typing.Self:
         node = super().__as_node__(key, *args, **kwargs)
-        if isinstance(node, WithTime) and (node._entry is None or node._entry.empty):
-            node._history = self._history.child([key])
+        if isinstance(node, WithTime) and (node._history is None):
+            node._history = self._history.child(key)
         return node  # type:ignore
 
     def _find_by_time(self, time: float) -> int:

@@ -2,15 +2,15 @@
 
 import typing
 import abc
+from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.utils.misc import try_hash
+from spdm.core.sp_tree import SpProperty, SpTree
 from spdm.core.htree import Set
 from spdm.core.sp_tree import annotation
 from spdm.model.port import Ports
-from spdm.model.entity import Entity
 
 
-class Process(Entity):
+class Process(abc.ABC):
     """Processor: 处理或转换数据的组件。
     - 一个 Processor 可以有多个输入端口和多个输出端口。
     - Processor 是无状态的，即不会保存任何状态信息。
@@ -21,38 +21,48 @@ class Process(Entity):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._inputs_hash = 0
-
     class InPorts(Ports, final=False):
         """输入端口集合。"""
 
     class OutPorts(Ports, final=False):
         """输出端口集合。"""
 
-    in_ports: InPorts
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    out_ports: OutPorts
+        self._in_ports_hash = 0
+
+        self._in_ports = self.InPorts(_parent=self)
+        self._out_ports = self.OutPorts(_parent=self)
+
+    @property
+    def in_ports(self) -> InPorts:
+        return self._in_ports
+
+    @property
+    def out_ports(self) -> typing.Self | OutPorts:
+        return self._out_ports
 
     def __hash__(self) -> int:
-        return hash(tuple([super().__hash__(), self._inputs_hash]))
+        return hash(tuple([super().__hash__(), self._in_ports_hash]))
 
-    def check_inputs(self, *args, **kwargs):
-        if len(kwargs) == 0:
-            kwargs = self.in_ports.pull()
-        elif self.in_ports is not _not_found_ and len(self.in_ports) > 0:
-            kwargs = self.in_ports.pull() | kwargs
-
-        return args, kwargs, hash(tuple([try_hash(args), try_hash(kwargs)]))
-
-    def refresh(self, *args, **kwargs) -> None:
+    def refresh(self, *args, **kwargs) -> OutPorts:
         """刷新 Processor 的状态，将执行结果更新的out_ports"""
-        args, kwargs, input_hash = self.check_inputs(*args, **kwargs)
-        if input_hash != self._inputs_hash:
+
+        kwargs = self.in_ports.push(*args, **kwargs)
+        
+        if len(kwargs) > 0:
+            logger.debug(f"Ignore inputs {[*kwargs.keys()]}")
+
+        in_ports_hash = self.in_ports.validate()
+
+        if in_ports_hash != self._in_ports_hash:
             # 只有在 input hash 改变时才执行 execute。
-            self._inputs_hash = input_hash
-            self.out_ports.push(self.execute(*args, **kwargs))
+            res = self.execute(**self.in_ports.pull())
+            self.out_ports.__setstate__(res)
+            self._in_ports_hash = in_ports_hash
+
+        return self.out_ports
 
     @abc.abstractmethod
     def execute(self, *args, **kwargs) -> typing.Any:
@@ -63,16 +73,12 @@ class Process(Entity):
 _T = typing.TypeVar("_T", bound=Process)
 
 
-class ProcessBundle(Set[_T], Process):
+class ProcessBundle(Process, Set[_T]):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO:
-        # - 汇总输出
-        # self.out_ports = self
-
-    in_ports: Process.InPorts = annotation(alias=".../in_ports")
-    # out_ports: typing.Self = annotation(alias="..")
+        self._in_ports = self._parent.in_ports
+        self._out_ports = self
 
     def execute(self, *args, **kwargs):
         return [process.execute(*args, **kwargs) for process in self]

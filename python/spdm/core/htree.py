@@ -401,7 +401,9 @@ class HTree(HTreeNode):
             else:
                 value = self.__missing__(key)
 
-            if isinstance(value, orig_tp) or (value is _not_found_ and entry is None):
+            if isinstance(value, orig_tp):
+                node = value
+            elif value is _not_found_ and entry is None:
                 node = value
             else:
                 node = type_hint(value, _entry=entry, _parent=parent)
@@ -425,8 +427,8 @@ class HTree(HTreeNode):
         if isinstance(node, HTreeNode):
             if node._parent is None:
                 node._parent = self
-        # if metadata is not None and len(metadata) > 0:
-        #     node._metadata = Path().update(deepcopy(getattr(node, "_metadata", {})), metadata)
+        if isinstance(node, HTree) and metadata is not None and len(metadata) > 0:
+            node._metadata = Path().update(deepcopy(getattr(node, "_metadata", {})), metadata)
 
         if node is not _not_found_ and key is not None:
             self._cache = Path([key]).update(self._cache, node)

@@ -4,9 +4,9 @@
 import typing
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-
+from spdm.core.path import Path
 from spdm.core.htree import List, Set
-
+from spdm.core.sp_tree import SpProperty, SpTree
 from spdm.model.entity import Entity
 from spdm.model.process import Process
 from spdm.model.component import Component
@@ -18,6 +18,41 @@ class Context(Process):
     Attributes:
         context (typing.Self): 获取当前 Actor 所在的 Context。
     """
+
+    def __init_subclass__(cls, **metadata):
+        super().__init_subclass__(**metadata)
+
+        in_ports = {}
+        out_ports = {}
+        for name, type_hint in typing.get_type_hints(cls).items():
+            attr = getattr(cls, name, _not_found_)
+            if not isinstance(attr, SpProperty):
+                continue
+            if attr.metadata.get("input", False):  # and getattr(cls.InPorts, name, None) is None:
+                in_ports[name] = SpProperty(type_hint=type_hint)
+            if attr.metadata.get("output", False):  # and getattr(cls.OutPorts, name, None) is None:
+                out_ports[name] = SpProperty(type_hint=type_hint)
+
+        if len(in_ports) > 0:
+            cls.InPorts = type("InPorts", (cls.InPorts,), {**in_ports})
+
+        if len(out_ports) > 0:
+            cls.OutPorts = type("OutPorts", (cls.OutPorts,), {**out_ports})
+
+    def refresh(self, *args, **kwargs):
+        for name in self.InPorts.__properties__:
+            if Path(f"{name}/metadata/input").get(self.__class__, False):
+                attr = getattr(self, name, _not_found_)
+                if attr is not _not_found_:
+                    self._in_ports[name] = attr
+
+        super().refresh(*args, **kwargs)
+
+        for name in self.OutPorts.__properties__:
+            if Path(f"{name}/metadata/output").get(self.__class__, False):
+                attr = getattr(self, name, _not_found_)
+                if attr is not _not_found_:
+                    self._out_ports[name] = attr
 
     @property
     def context(self) -> typing.Self:
@@ -62,10 +97,10 @@ class Context(Process):
 
     def execute(self, *args, **kwargs) -> dict:
         """执行 Context"""
-
-        return super().execute(*args, **kwargs) | {
-            k: entity.execute(*args, **kwargs) for k, entity in self.processes()
-        }
+        return super().execute(*args, **kwargs)
+        #      | {
+        #     k: entity.execute(*args, **kwargs) for k, entity in self.processes()
+        # }
 
     def __view__(self, **styles) -> dict:
         """生成 Context 的视图。

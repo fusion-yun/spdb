@@ -66,6 +66,15 @@ class TestField(unittest.TestCase):
         # logger.debug(np.count_nonzero(~np.isclose(dzdxdy, dZdxdy, rtol=1.0e-4)))
         # self.assertTrue(np.allclose(dzdxdy, dZdxdy, rtol=1.0e-4))
 
+    def test_mean(self):
+        x = np.linspace(0, TWOPI, 128)
+        y = np.linspace(0, 2 * TWOPI, 128)
+        g_x, g_y = np.meshgrid(x, y)
+        z = np.random.random([128, 128])
+        Z = Field(x, y, z, mesh={"periods": [TWOPI, 2 * TWOPI]})
+
+        self.assertTrue(np.allclose(np.mean(Z - 1), z.mean() - 1, rtol=1.0e-4))
+
 
 if __name__ == "__main__":
     unittest.main()

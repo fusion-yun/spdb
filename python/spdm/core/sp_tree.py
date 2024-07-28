@@ -337,18 +337,14 @@ class WithProperty:
 
     def __getstate__(self) -> dict:
         state = super().__getstate__()
-        for k in self.__properties__:
-            if k in state:
+        
+        for k, value in state.items():
+            if k not in self.__properties__:
                 continue
 
-            value = getattr(self, k, _not_found_)
-
-            if value is _not_found_:
-                continue
-            elif isinstance(value, HTreeNode):
+            if isinstance(value, HTreeNode):
                 value = value.__getstate__()
-
-            state[k] = value
+                state[k] = value
 
         return state
 
