@@ -30,7 +30,6 @@ class WithTime(abc.ABC):
 
     def flush(self):
         """复制当前状态，并写入历史记录"""
-        logger.verbose("TODO: NOT IMPLEMENTED!")
         self._history.append(super().__getstate__())
 
     @property
