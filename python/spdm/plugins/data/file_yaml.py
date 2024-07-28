@@ -1,6 +1,4 @@
-import collections
 import typing
-import numpy
 import yaml
 from spdm.core.entry import Entry
 from spdm.core.file import File
@@ -41,9 +39,9 @@ class EntryYAML(File.Entry, plugin_name=["yaml"]):
     def open(self) -> File:
         super().open()
         try:
-            self._fid = open(self.path, mode=self.mode_str)
+            self._fid = open(self.path, mode=self.mode_str, encoding="utf-8")
         except OSError as error:
-            raise FileExistsError(f"Can not open file {self.path}! {error}")
+            raise FileExistsError(f"Can not open file {self.path}! {error}") from error
         else:
             logger.debug(f"Open {self.__class__.__name__} File {self.path} mode={self.mode}")
         return self
@@ -61,6 +59,3 @@ class EntryYAML(File.Entry, plugin_name=["yaml"]):
 
     def write(self, d, *args, **kwargs):
         yaml.dump(as_native(d, enable_ndarray=False), self._fid, Dumper=yaml.CDumper)
-
-
-__SP_EXPORT__ = FILEPLUGINyaml

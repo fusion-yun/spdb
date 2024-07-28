@@ -6,12 +6,10 @@ import typing
 import h5py
 import numpy
 
-from spdm.core.entry import Entry
 from spdm.core.file import File
 from spdm.core.path import Path
 
-from spdm.utils.logger import logger
-from spdm.utils.tags import _undefined_, _not_found_
+from spdm.utils.tags import _not_found_
 
 SPDM_LIGHTDATA_MAX_LENGTH = 3
 
@@ -62,7 +60,7 @@ def h5_put_value(grp, path, value):
         if path != "" and path in grp.keys():
             del grp[path]
 
-        if type(value) is list:
+        if isinstance(value, list):
             array_value = numpy.array(value)
 
             if array_value.dtype.type is numpy.object_:
@@ -79,7 +77,7 @@ def h5_put_value(grp, path, value):
                 h5_put_value(grp, path, array_value)
             else:
                 h5_put_value(grp, path, array_value)
-        elif type(value) is numpy.ndarray and len(value) > SPDM_LIGHTDATA_MAX_LENGTH:
+        elif isinstance(value, numpy.ndarray) and len(value) > SPDM_LIGHTDATA_MAX_LENGTH:
             grp[path] = value
         else:  # type(value) in [str, int, float]:
             grp.attrs[path] = value
@@ -87,7 +85,7 @@ def h5_put_value(grp, path, value):
     return res
 
 
-def h5_get_value(obj, path=None, projection=None, default_value=_undefined_, **kwargs):
+def h5_get_value(obj, path=None, projection=None, default_value=_not_found_, **kwargs):
     if path is None:
         path = []
     elif isinstance(path, Path):

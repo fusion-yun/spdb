@@ -14,18 +14,12 @@ class PointSet(GeoObject):
 
     def __class_getitem__(cls, args):
         n_cls = super().__class_getitem__(args)
-        if isinstance(args, str):
-            n_cls.Point = Point[args]
-        elif isisntance(args, tuple):
-            n_cls.Point = Point[*args]
+        n_cls.Point = Point[args]
         return n_cls
 
     # def __init__(self, *args, **kwargs) -> None:
-
     #     super().__init__(*args, **kwargs)
-
     #     self.set_coordinates()
-
     # def set_coordinates(self, *args):
     #     if len(args) == 0:
     #         args = self._metadata.get("coordinates", [])

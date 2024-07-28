@@ -4,10 +4,8 @@ from copy import copy
 
 import jsonschema
 
-from . import io
-from .Alias import Alias
-from .logger import logger
-from .uri_utils import getvalue_r, uri_join
+from spdm.utils.logger import logger
+from spdm.utils.uri_utils import getvalue_r, uri_join
 
 
 def _extend_with_default(validator_class):
@@ -15,16 +13,24 @@ def _extend_with_default(validator_class):
 
     def _properties(validator, properties, instance, schema):
         for p, subschema in properties.items():
-            if isinstance(subschema, collections.abc.Iterable) \
-                    and "default" in subschema \
-                    and hasattr(instance, "setdefault"):
+            if (
+                isinstance(subschema, collections.abc.Iterable)
+                and "default" in subschema
+                and hasattr(instance, "setdefault")
+            ):
                 instance.setdefault(p, subschema["default"])
 
-        for error in validate_properties(validator, properties, instance, schema,):
+        for error in validate_properties(
+            validator,
+            properties,
+            instance,
+            schema,
+        ):
             yield error
 
     return jsonschema.validators.extend(
-        validator_class, {"properties": _properties},
+        validator_class,
+        {"properties": _properties},
     )
 
 
@@ -32,42 +38,43 @@ _DefaultValidatingValidator = _extend_with_default(jsonschema.Draft7Validator)
 
 
 class RefResolver(object):
-    """ Resolve and fetch '$ref' in the document (json,yaml,https ...)
-        schemas:
-            pkgdata     :   pkgutil.get_data(o.authority or __package__,o.path)
-            https,http  :   requests.get(uri).json()
-            josn        :   json.load(open(uri))
-            yaml        :   json.load(open(uri))
-        Example(code):
+    """Resolve and fetch '$ref' in the document (json,yaml,https ...)
+    schemas:
+        pkgdata     :   pkgutil.get_data(o.authority or __package__,o.path)
+        https,http  :   requests.get(uri).json()
+        josn        :   json.load(open(uri))
+        yaml        :   json.load(open(uri))
+    Example(code):
 
-            >>> repo = RefResolver()
-            >>> repo.alias.append("https://fusionyun.org/schemas/draft-00/",
-                        "pkgdata:///../schemas")
-            >>> repo.alias.append(f"/modules/", "file://workspaces/FyPackages/modules/")
-        @note
-            *  compatible with jsonschema.RefResolver
+        >>> repo = RefResolver()
+        >>> repo.alias.append("https://fusionyun.org/schemas/draft-00/",
+                    "pkgdata:///../schemas")
+        >>> repo.alias.append(f"/modules/", "file://workspaces/FyPackages/modules/")
+    @note
+        *  compatible with jsonschema.RefResolver
 
-        TODO (salmon 20190915): support XML,XSD,XSLT
+    TODO (salmon 20190915): support XML,XSD,XSLT
     """
 
-    def __init__(self, *,
-                 base_uri="",
-                 encode='UTF-8',
-                 prefetch=None,
-                 enable_remote=False,
-                 enable_validate=True,
-                 enable_envs_template=True,
-                 default_file_ext='yaml',
-                 default_schema="http://json-schema.org/draft-07/schema#",
-                 alias=None,
-                 **kwargs
-                 ):
+    def __init__(
+        self,
+        *,
+        base_uri="",
+        encode="UTF-8",
+        prefetch=None,
+        enable_remote=False,
+        enable_validate=True,
+        enable_envs_template=True,
+        default_file_ext="yaml",
+        default_schema="http://json-schema.org/draft-07/schema#",
+        alias=None,
+        **kwargs,
+    ):
         super().__init__()
 
-        self._alias = Alias(glob_pattern_char='*')
+        self._alias = Alias(glob_pattern_char="*")
         self._encode = encode
-        self._scopes_stack = [base_uri] if len(
-            base_uri) > 0 and base_uri[-1] == '/' else [base_uri+"/"]
+        self._scopes_stack = [base_uri] if len(base_uri) > 0 and base_uri[-1] == "/" else [base_uri + "/"]
         self._default_file_ext = default_file_ext
         self._default_schema = uri_join(base_uri, default_schema)
         self._enable_remote = enable_remote
@@ -78,7 +85,7 @@ class RefResolver(object):
             #     prefetch = pathlib.Path(prefetch)
 
             # if prefetch.is_dir():
-            prefetch = f"{prefetch}/" if prefetch[-1] != '/' else prefetch
+            prefetch = f"{prefetch}/" if prefetch[-1] != "/" else prefetch
             self._alias.prepend("https://", prefetch)
             self._alias.prepend("http://", prefetch)
 
@@ -94,8 +101,7 @@ class RefResolver(object):
             raise TypeError(f"Require list or map, not [{type(alias)}]")
 
         self._cache = {}
-        self._validator = {"http://json-schema.org/draft-07/schema#":
-                           _DefaultValidatingValidator}
+        self._validator = {"http://json-schema.org/draft-07/schema#": _DefaultValidatingValidator}
 
     @property
     def alias(self):
@@ -121,7 +127,7 @@ class RefResolver(object):
         if p is None:
             return None
         elif p.startswith(prefix):
-            return p[len(prefix):].strip("/.")
+            return p[len(prefix) :].strip("/.")
         else:
             raise NotImplementedError()
 
@@ -181,8 +187,8 @@ class RefResolver(object):
         return new_doc
 
     def fetch(self, doc, no_validate=False) -> dict:
-        """ fetch document from source, then validate and fill default
-            value basing on $schema in document
+        """fetch document from source, then validate and fill default
+        value basing on $schema in document
         """
 
         if isinstance(doc, (str, collections.abc.Sequence)):
@@ -253,7 +259,7 @@ class RefResolver(object):
             self.pop_scope()
 
     def resolve(self, ref):
-        """ Parse reference or description, return URI and full schema"""
+        """Parse reference or description, return URI and full schema"""
         uri = self.normalize_uri(ref)
         return uri, self.fetch(uri, no_validate=True)
 
@@ -272,5 +278,5 @@ class RefResolver(object):
     # END :compatible with jsonschema.RefResolver
     ##########################################################################
 
-        # RefResolver.HANDLERS["pyobject"] = lambda p: {
-        #     "$schema": "PyObject", "$class": p}
+    # RefResolver.HANDLERS["pyobject"] = lambda p: {
+    #     "$schema": "PyObject", "$class": p}

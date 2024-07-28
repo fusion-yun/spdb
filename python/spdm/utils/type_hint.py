@@ -213,26 +213,6 @@ def as_value(obj: typing.Any) -> HTreeLike:
         return obj
 
 
-def convert_to_named_tuple(d=None, ntuple=None, **kwargs):
-    if d is None and len(kwargs) > 0:
-        d = kwargs
-    if d is None:
-        return d
-    elif hasattr(ntuple, "_fields") and isinstance(ntuple, type):
-        return ntuple(*[try_get(d, k) for k in ntuple._fields])
-    elif isinstance(d, collections.abc.Mapping):
-        keys = [k.replace("$", "s_") for k in d.keys()]
-        values = [convert_to_named_tuple(v) for v in d.values()]
-        if not isinstance(ntuple, str):
-            ntuple = "__" + ("_".join(keys))
-        ntuple = ntuple.replace("$", "_")
-        return collections.namedtuple(ntuple, keys)(*values)
-    elif isinstance(d, collections.abc.MutableSequence):
-        return [convert_to_named_tuple(v) for v in d]
-    else:
-        return d
-
-
 def get_origin(tp: typing.Any) -> typing.Type:
     """
     获得 object，Type，typing.Generic 的原始类型

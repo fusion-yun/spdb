@@ -59,8 +59,8 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             signature = self.signature
 
         if signature is not False:
-            W, H = fig.get_size_inches()
-            if H > 4:
+            _, h = fig.get_size_inches()
+            if h > 4:
                 fig.text(
                     width,
                     0.05,  # 5 * height,
@@ -227,21 +227,36 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             )
 
         elif isinstance(obj, Line):
-            canvas.add_artist(plt.Line2D([obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **(s_styles | obj.styles.get("$matplotlib", {}))))
+            canvas.add_artist(
+                plt.Line2D(
+                    [obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **(s_styles | obj.styles.get("$matplotlib", {}))
+                )
+            )
 
         elif isinstance(obj, Curve):
-            canvas.add_patch(plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$matplotlib", {}))))
+            canvas.add_patch(
+                plt.Polygon(
+                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$matplotlib", {}))
+                )
+            )
 
         elif isinstance(obj, Rectangle):
             p0 = obj.points[0]
             p1 = obj.points[1]
             w = p1[0] - p0[0]
             h = p1[1] - p0[1]
-            canvas.add_patch(plt.Rectangle((p0[0], p0[1]), w, h, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))))
+            canvas.add_patch(
+                plt.Rectangle((p0[0], p0[1]), w, h, fill=False, **(s_styles | obj.styles.get("$matplotlib", {})))
+            )
 
         elif isinstance(obj, Circle):
             canvas.add_patch(
-                plt.Circle((obj.origin[0], obj.origin[1]), obj.radius, fill=False, **(s_styles | obj.styles.get("$matplotlib", {})))
+                plt.Circle(
+                    (obj.origin[0], obj.origin[1]),
+                    obj.radius,
+                    fill=False,
+                    **(s_styles | obj.styles.get("$matplotlib", {})),
+                )
             )
 
         elif isinstance(obj, Point):
@@ -254,7 +269,11 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             self._draw(canvas, obj.bbox, *styles)
 
         elif isinstance(obj, BBox):
-            canvas.add_patch(plt.Rectangle(obj.origin, *obj.dimensions, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))))
+            canvas.add_patch(
+                plt.Rectangle(
+                    obj.origin, *obj.dimensions, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))
+                )
+            )
 
         else:
             # raise RuntimeError(f"Unsupport type {(obj)} {obj}")
@@ -281,7 +300,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
             text_styles.setdefault("position", pos)
 
-            self._draw(canvas, text, {f"$matplotlib": text_styles})
+            self._draw(canvas, text, {"$matplotlib": text_styles})
 
         return obj
 
@@ -306,6 +325,9 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         elif len(args) > 1:
             x_value = args[0]
             profiles = args[1:]
+        else:
+            x_value = None
+            profiles = []
 
         styles = update_tree({}, styles, kwargs)
 
@@ -380,7 +402,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
                     if y_label is None:
                         y_label = t_y_label
 
-                except Exception as error:
+                except RuntimeError as error:
                     if SP_DEBUG == "strict":
                         raise RuntimeError(f'Plot [index={idx}] failed! y_label= "{y_label}"  ') from error
                     else:
@@ -412,7 +434,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         styles = update_tree(kwargs, styles)
 
-        s_styles = styles.get(f"matplotlib", {})
+        s_styles = styles.get("matplotlib", {})
 
         label = styles.get("label", None)
 
@@ -463,6 +485,6 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         units = getattr(expr, "_metadata", {}).get("units", "-")
 
-        units = units.replace("^-1", "^{-1}").replace("^-2", "^{-2}").replace("^-3", "^{-3}").replace(".", " \cdot ")
+        units = units.replace("^-1", "^{-1}").replace("^-2", "^{-2}").replace("^-3", "^{-3}").replace(".", r" \cdot ")
 
         return label, f"[{units}]"

@@ -39,7 +39,7 @@ def guess_mesh(holder, prefix="mesh", **kwargs):
             coordinates = {int(k): v for k, v in coordinates.items() if k.isdigit()}
             coordinates = dict(sorted(coordinates.items(), key=lambda x: x[0]))
             coordinates = [Path(c).find(holder) for c in coordinates.values()]
-            if all([is_array(c) for c in coordinates]):
+            if all([isinstance(c, array_type) for c in coordinates]):
                 mesh = {"dims": coordinates}
 
     elif isinstance(mesh, str) and mesh.isidentifier():

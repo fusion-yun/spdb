@@ -6,7 +6,6 @@ import numpy as np
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import isinstance_generic
-from spdm.utils.tree_utils import update_tree
 
 
 class Query:
@@ -58,7 +57,7 @@ class Query:
             return str(p)
         else:
             m_str = ",".join([f"{k}={Path._to_str(v)}" for k, v in p.items()])
-            return f"?{m_str}}}"
+            return f"?{m_str} "
 
     def __equal__(self, other: typing.Self) -> bool:
         return self._query == other._query if isinstance(other, Query) else False
@@ -75,7 +74,7 @@ class Query:
             query = {".": query}
 
         elif isinstance(query, str):
-            query = {f"@id": query}
+            query = {"@id": query}
 
         elif isinstance(query, dict):
             query = {k: Query._parser(v) for k, v in query.items()}

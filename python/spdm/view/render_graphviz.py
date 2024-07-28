@@ -1,22 +1,17 @@
 import collections
 import html
-import inspect
 import itertools
-import pathlib
-import pprint
 import collections.abc
 
 import numpy as np
 import pygraphviz as pgv
 
-import networkx as nx
 from networkx.drawing.nx_agraph import to_agraph
 
-from ..utils.tags import _not_found_
-from ..utils.logger import logger
-from ..core.htree import Dict
+from spdm.utils.tags import _not_found_
+from spdm.core.htree import Dict
 
-from .render import Render
+from spdm.view.render import Render
 
 MAX_LABEL_LENGTH = 15
 
@@ -126,8 +121,7 @@ PredefinedTheme = {
 }
 
 
-@Render.register(["graphviz"])
-class GraphvizRender(Render):
+class GraphvizRender(Render, plugin_name="graphviz"):
 
     def __init__(self, theme=None, *args, **kwargs):
         super().__init__(*args, theme=[*(theme or []), PredefinedTheme], **kwargs)
@@ -299,7 +293,9 @@ class GraphvizRender(Render):
                     if not isinstance(n, InSlot):
                         continue
                     elif n_in is not None:
-                        in_slots.edge(n_in.full_name, n.full_name, style="invisible", spline="false", arrowhead="none")
+                        in_slots.edge(
+                            n_in.full_name, n.full_name, style="invisible", spline="false", arrowhead="none"
+                        )
                     n_in = n
             n_out = None
             with sg.subgraph(name="_outslots", graph_attr={"rank": "max"}) as out_slots:

@@ -6,6 +6,8 @@ from spdm.utils.tags import _undefined_
 from spdm.core.collection import Collection, InsertOneResult
 from spdm.core.document import Document
 from spdm.core.entry import Entry
+from spdm.core.file import File
+from spdm.core.directory import Directory
 
 
 @Document.register(["directory"])

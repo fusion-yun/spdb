@@ -1,13 +1,6 @@
-import typing
-import numpy as np
-import numpy.typing as np_tp
-from spdm.utils.logger import logger
-from spdm.utils.tags import _not_found_
-from spdm.utils.type_hint import array_type
-from spdm.core.geo_object import GeoObject, BBox
-from spdm.core.sp_tree import annotation
+""" Point module"""
 
-_T = typing.TypeVar("_T", int, float, complex)
+from spdm.core.geo_object import GeoObject
 
 
 class Point(GeoObject, rank=0, plugin_name="point"):

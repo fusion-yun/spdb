@@ -2,10 +2,9 @@ import collections
 import collections.abc
 import typing
 
-from ..utils.sp_export import sp_find_module
-from ..utils.uri_utils import URITuple, uri_split
-from .document import Document
-from .entry import Entry
+from spdm.utils.uri_utils import URITuple, uri_split
+from spdm.core.document import Document
+from spdm.core.entry import Entry
 
 InsertOneResult = collections.namedtuple("InsertOneResult", "inserted_id success")
 InsertManyResult = collections.namedtuple("InsertManyResult", "inserted_ids success")
@@ -14,12 +13,12 @@ DeleteResult = collections.namedtuple("DeleteResult", "deleted_id success")
 
 
 class Collection(Document):
-    ''' Collection of documents
-    '''
+    """Collection of documents"""
+
     _registry = {}
 
     @classmethod
-    def _plugin_guess_name(cls, path, *args,  **kwargs) -> typing.List[str]:
+    def _plugin_guess_name(cls, path, *args, **kwargs) -> typing.List[str]:
         n_cls_name = None
 
         if "protocol" in kwargs:
@@ -33,13 +32,13 @@ class Collection(Document):
 
         return [f"spdm.plugins.data.Plugin{n_cls_name}#{n_cls_name}Collection"]
 
-    def __new__(cls,  *args, **kwargs)->typing.Self:
+    def __new__(cls, *args, **kwargs) -> typing.Self:
         if cls is not Collection:
             return object.__new__(cls)
         else:
             return super().__new__(cls, *args, **kwargs)
 
-    def __init__(self, uri, *args,  mapper=None,   **kwargs):
+    def __init__(self, uri, *args, mapper=None, **kwargs):
         super().__init__(uri, *args, **kwargs)
         self._mapper = mapper
 
@@ -76,10 +75,10 @@ class Collection(Document):
         else:
             return self.create_one(docs, *args, **kwargs)
 
-    def insert_one(self, doc, * args,  **kwargs) -> InsertOneResult:
+    def insert_one(self, doc, *args, **kwargs) -> InsertOneResult:
         raise NotImplementedError()
 
-    def insert_many(self, docs: typing. List[typing.Any], *args, **kwargs) -> InsertManyResult:
+    def insert_many(self, docs: typing.List[typing.Any], *args, **kwargs) -> InsertManyResult:
         return [self.insert_one(doc, *args, **kwargs) for doc in docs]
 
     def insert(self, docs, *args, **kwargs):
@@ -94,23 +93,23 @@ class Collection(Document):
     def find_many(self, *args, **kwargs) -> typing.List[Entry]:
         raise NotImplementedError()
 
-    def find(self, predicate, projection=None, only_one=False, **kwargs) -> typing.Union[Entry,  typing.List[Entry]]:
+    def find(self, predicate, projection=None, only_one=False, **kwargs) -> typing.Union[Entry, typing.List[Entry]]:
         # if not isinstance(predicate, str) and isinstance(predicate, collections.abc.Sequence):
         if not only_one:
-            return self.find_many(predicate, projection,  **kwargs)
+            return self.find_many(predicate, projection, **kwargs)
         else:
-            return self.find_one(predicate, projection,  **kwargs)
+            return self.find_one(predicate, projection, **kwargs)
 
-    def replace_one(self, predicate, replacement,  *args, **kwargs) -> UpdateResult:
+    def replace_one(self, predicate, replacement, *args, **kwargs) -> UpdateResult:
         raise NotImplementedError()
 
-    def update_one(self, predicate, update,  *args, **kwargs) -> UpdateResult:
+    def update_one(self, predicate, update, *args, **kwargs) -> UpdateResult:
         raise NotImplementedError()
 
-    def update_many(self, predicate, updates: list,  *args, **kwargs) -> UpdateResult:
+    def update_many(self, predicate, updates: list, *args, **kwargs) -> UpdateResult:
         return [self.update_one(predicate, update, *args, **kwargs) for update in updates]
 
-    def delete_one(self, predicate,  *args, **kwargs) -> DeleteResult:
+    def delete_one(self, predicate, *args, **kwargs) -> DeleteResult:
         raise NotImplementedError()
 
     def delete_many(self, predicate, *args, **kwargs) -> DeleteResult:
@@ -144,15 +143,15 @@ class Collection(Document):
         raise NotImplementedError()
 
 
-def open_collection(uri: typing.Union[str, URITuple], *args, schema=None, ** kwargs) -> Collection:
-    url_ = uri_split(url)
+def open_collection(uri: typing.Union[str, URITuple], *args, schema=None, **kwargs) -> Collection:
+    url_ = uri_split(uri)
     if url_.protocol is None:
         url_.scheme = "localdb"
 
     if source_schema is None and url_.protocol != "":
         source_schema = url_.protocol
 
-    mapper = create_mapper(url_.protocol,  schema)
+    mapper = create_mapper(url_.protocol, schema)
 
     if url_.protocol == "localdb":
         db = FileCollection(uri, *args, mapper=mapper, **kwargs)

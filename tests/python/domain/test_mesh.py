@@ -20,7 +20,7 @@ class TestMesh(unittest.TestCase):
     #     self.assertTrue(mesh.is_null)
 
     def test_structured_mesh(self):
-        from spdm.domain.mesh_rectilinear import RectilinearMesh
+        from spdm.mesh.mesh_rectilinear import RectilinearMesh
 
         mesh = RectilinearMesh(np.linspace(0, 1, 10), np.linspace(1, 2, 20))
         self.assertIsInstance(mesh, RectilinearMesh)
@@ -32,13 +32,13 @@ class TestMesh(unittest.TestCase):
         self.assertEqual(mesh.ndim, 2)
 
     def test_uniform_mesh(self):
-        from spdm.domain.mesh_uniform import UniformMesh
+        from spdm.mesh.mesh_uniform import UniformMesh
 
         mesh = Mesh({"@type": "uniform"})
         self.assertIsInstance(mesh, UniformMesh)
 
     def test_rectilinear_mesh(self):
-        from spdm.domain.mesh_rectilinear import RectilinearMesh
+        from spdm.mesh.mesh_rectilinear import RectilinearMesh
 
         x = np.linspace(0, 1 * TWOPI, 128)
         y = np.linspace(0, 2 * TWOPI, 128)
