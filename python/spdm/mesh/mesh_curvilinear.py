@@ -6,7 +6,7 @@ from scipy import interpolate
 from functools import cached_property
 
 from spdm.utils.type_hint import ArrayType
-from spdm.core.geo_object import GeoObjectBase
+from spdm.core.geo_object import GeoObject
 from spdm.geometry.point import Point
 
 
@@ -41,7 +41,7 @@ class CurvilinearMesh(RectilinearMesh, plugin_name="curvilinear"):
 
     @property
     def points(self) -> ArrayType:
-        if not isinstance(self.geometry, GeoObjectBase):
+        if not isinstance(self.geometry, GeoObject):
             raise RuntimeError(f"Unknown type {type(self.geometry)}")
         return self.geometry.points
 

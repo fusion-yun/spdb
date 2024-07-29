@@ -339,7 +339,8 @@ class HTree(HTreeNode):
 
     def __missing__(self, key: PathLike) -> typing.Any:
         """fallback 当 __getitem__ 没有找到元素时被调用"""
-        return _not_found_
+        raise KeyError(key)
+        # return _not_found_
 
     def __contains__(self, key: PathLike) -> bool:
         """检查 path 是否存在"""
@@ -392,21 +393,19 @@ class HTree(HTreeNode):
 
         orig_tp = typing.get_origin(type_hint) or type_hint
 
-        if isinstance(default_value, dict):
-            value = Path().update(value, default_value)
-            default_value = _not_found_
-
         if inspect.isclass(orig_tp) and issubclass(orig_tp, HTreeNode):
-            if not (value is _not_found_ and entry is None):
-                pass
-            elif default_value is not _not_found_:
-                value = default_value
-            else:
-                value = self.__missing__(key)
+            if (value is _not_found_) and (entry is None or not entry.exists):
+                entry = None
+                if isinstance(default_value, dict):
+                    value = Path().update(copy(default_value), value)
+                else:
+                    value = default_value
+                default_value = _not_found_
 
-            if isinstance(value, orig_tp):
+
+            if value is _not_found_ and entry is None:
                 node = value
-            elif value is _not_found_ and entry is None:
+            elif isinstance(value, orig_tp):
                 node = value
             else:
                 node = type_hint(value, _entry=entry, _parent=parent)
@@ -415,12 +414,12 @@ class HTree(HTreeNode):
             if value is _not_found_ and entry is not None:
                 value = entry.get()
 
-            if value is not _not_found_:
-                pass
-            elif default_value is not _not_found_:
+            if value is _not_found_:
                 value = default_value
-            else:
-                value = self.__missing__(key)
+
+            elif isinstance(default_value, dict):
+                value = Path().update(copy(default_value), value)
+                default_value = _not_found_
 
             if value is _not_found_:
                 node = value

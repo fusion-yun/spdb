@@ -10,7 +10,7 @@ from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
 
 from spdm.core.htree import List, HTree
-from spdm.core.sp_tree import annotation, sp_property, WithProperty
+from spdm.core.sp_tree import annotation, sp_property, SpTree
 from spdm.core.pluggable import Pluggable
 
 
@@ -80,7 +80,7 @@ class BBox:
         """measure of geometry, length,area,volume,etc. 默认为 bbox 的体积"""
         return float(np.product(self._dimensions))
 
-    def enclose(self, *args) -> bool | array_type:
+    def enclose(self, *args) -> bool | ArrayType:
         """Return True if all args are inside the geometry, False otherwise."""
 
         if len(args) == 1:
@@ -93,13 +93,13 @@ class BBox:
                 return self.enclose(*args[0].points)
             if isinstance(args[0], collections.abc.Sequence):
                 return self.enclose(*args[0])
-            elif isinstance(args[0], array_type):
+            elif isinstance(args[0], ArrayType):
                 return self.enclose([args[0][..., idx] for idx in range(self.ndim)])
             else:
                 raise TypeError(f"args has wrong type {type(args[0])} {args}")
 
         elif len(args) == self.ndim:
-            if isinstance(args[0], array_type):
+            if isinstance(args[0], ArrayType):
                 r_pos = [args[idx] - self._origin[idx] for idx in range(self.ndim)]
                 return np.bitwise_and.reduce(
                     [((r_pos[idx] >= 0) & (r_pos[idx] <= self._dimensions[idx])) for idx in range(self.ndim)]
@@ -146,8 +146,11 @@ class BBox:
         raise NotImplementedError(f"translate")
 
 
-class GeoObjectBase(Pluggable, plugin_prefix="spdm.geometry."):
-    """Geometry object base class
+class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
+    """Geomertic object
+    几何对象，包括点、线、面、体等
+
+    Geometry object base class
     ===============================
     几何对象基类，两个子类
     - GeoEntity: 几何体，包括点、线、面、体等
@@ -157,7 +160,7 @@ class GeoObjectBase(Pluggable, plugin_prefix="spdm.geometry."):
     _plugin_registry = {}
 
     ndim = 3
-    """几何体所处的空间维度， = 0，1，2，3 ,...
+    """几何体所处的空间维度， = 0,1,2,3,...
         The dimension of a geometric object, on the other hand, refers to the minimum number of
         coordinates needed to specify any point within it. In general, the rank and dimension of
         a geometric object are the same. However, there are some cases where they can differ.
@@ -179,6 +182,48 @@ class GeoObjectBase(Pluggable, plugin_prefix="spdm.geometry."):
         a plane has rank 2, and a volume has rank 3.
         """
 
+    def _class_getitem(cls, coordinate_name: str | list = None, ndim=None, rank=None):
+        """
+        example:
+            Point["RZ"]
+        """
+        n_cls_name = cls.__name__
+
+        cls_attrs = {}
+        if coordinate_name is not None:
+            n_cls_name += ("".join(coordinate_name)).upper()
+
+            cls_attrs.update(
+                {k.lower(): annotation(alias=["points", (..., idx)]) for idx, k in enumerate(coordinate_name)}
+            )
+            if ndim is None:
+                ndim = len(coordinate_name)
+
+        if ndim is not None:
+            n_cls_name += f"{ndim}D"
+            cls_attrs["ndim"] = ndim
+
+        if rank is not None:
+            cls_attrs["rank"] = rank
+
+        if len(cls_attrs) == 0:
+            n_cls = cls
+        else:
+            n_cls = type(
+                n_cls_name,
+                (cls,),
+                {"__module__": cls.__module__, "__package__": getattr(cls, "__package__", None), **cls_attrs},
+            )
+        # else:
+        #     n_cls = cls
+        #     for k, v in cls_attrs.items():
+        #         setattr(n_cls, k, v)
+
+        return n_cls
+
+    def __class_getitem__(cls, args) -> typing.Self:
+        return cls._class_getitem(cls, *args)
+
     def __new__(cls, *args, _entry=None, **kwargs) -> typing.Self:
         if cls is not GeoObject:
             return super().__new__(cls, *args, _entry=_entry, **kwargs)
@@ -193,15 +238,39 @@ class GeoObjectBase(Pluggable, plugin_prefix="spdm.geometry."):
 
         return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
 
-    def __init_subclass__(cls, rank: int = None, ndim: int = None, **kwargs) -> None:
+    def __init_subclass__(cls, ndim: int = None, rank: int = None, **kwargs):
+
+        super().__init_subclass__(**kwargs)
+
         if ndim is not None:
             cls.ndim = ndim
         if rank is not None:
             cls.rank = rank
-        super().__init_subclass__(**kwargs)
 
-    def __init__(self, styles=None, **others) -> None:
-        self.styles = styles if styles is not None else {}
+    def __init__(self, *args, **kwargs) -> None:
+        # if len(args) == 1:
+        #     if isinstance(args[0], dict):
+        #         pass
+        #     elif isinstance(args[0], (np.ndarray, list, tuple)):
+        #         points = np.asarray(args[0])
+        #         args = tuple()
+        #     elif len(args) == 1 and isinstance(args[0], GeoObject):
+        #         points = args[0].points
+        #         args = ()
+        #     else:
+        #         points = np.stack(args, axis=-1)
+        #         args = ()
+        if all(isinstance(a, (array_type, float, int)) for a in args):
+            kwargs["points"] = np.stack(args, axis=-1)
+            args = tuple()
+        # if not isinstance(points, np.ndarray) or len(points.shape) == 0 or points.shape[-1] != self.__class__.ndim:
+        #     raise RuntimeError(f"Illegal points! {points} ndim={self.__class__.ndim} {self.__class__}")
+
+        # ndim = self.__class__.ndim
+        # if points.shape[-1] != self.__class__.ndim:
+        #     ndim = points.shape[-1]
+
+        super().__init__(*args, **kwargs)
 
     def _repr_svg_(self) -> str:
         """Jupyter 通过调用 _repr_html_ 显示对象"""
@@ -217,92 +286,6 @@ class GeoObjectBase(Pluggable, plugin_prefix="spdm.geometry."):
         """
         return self
 
-
-class GeoObject(HTree, WithProperty, GeoObjectBase):
-    """Geomertic object
-    几何对象，包括点、线、面、体等
-
-    """
-
-    @classmethod
-    def __make_class__(cls, coordinate_name: str | list = None, ndim=None, rank=None, create_new_class=True):
-        """
-        example:
-            Point["RZ"]
-        """
-        n_cls_name = cls.__name__
-
-        cls_attrs = {}
-        if coordinate_name is not None:
-            n_cls_name += ("".join(coordinate_name)).upper()
-
-            cls_attrs.update(
-                {k.lower(): annotation(alias=["points", (..., idx)]) for idx, k in enumerate(coordinate_name)}
-            )
-            ndim = len(coordinate_name)
-
-        if ndim is not None:
-            n_cls_name += f"{ndim}D"
-            cls_attrs["ndim"] = ndim
-
-        if rank is not None:
-            cls_attrs["rank"] = rank
-
-        if len(cls_attrs) == 0:
-            n_cls = cls
-        elif create_new_class:
-            n_cls = type(
-                n_cls_name,
-                (cls,),
-                {"__module__": cls.__module__, "__package__": getattr(cls, "__package__", None), **cls_attrs},
-            )
-        else:
-            n_cls = cls
-            for k, v in cls_attrs.items():
-                setattr(n_cls, k, v)
-
-        return n_cls
-
-    def __class_getitem__(cls, args):
-        if issubclass(cls, GeoObjectSet):
-            return cls
-
-        if not isinstance(args, tuple):
-            args = (args,)
-
-        return cls.__make_class__(*args, create_new_class=True)
-
-    def __init_subclass__(cls, coordinate_name: str | list = None, **kwargs):
-        cls.__make_class__(coordinate_name, create_new_class=False)
-        super().__init_subclass__(**kwargs)
-
-    def __init__(self, *args, points=None, _entry=None, _parent=None, **styles) -> None:
-        if points is not None:
-            pass
-        elif len(args) == 1 and isinstance(args[0], dict):
-            pass
-        elif len(args) == 1 and isinstance(args[0], (np.ndarray, list, tuple)):
-            points = np.asarray(args[0])
-            args = tuple()
-        elif len(args) == 1 and isinstance(args[0], GeoObject):
-            points = args[0].points
-            args = ()
-        else:
-            points = np.stack(args, axis=-1)
-            args = ()
-
-        if not isinstance(points, np.ndarray) or len(points.shape) == 0 or points.shape[-1] != self.__class__.ndim:
-            raise RuntimeError(f"Illegal points! {points} ndim={self.__class__.ndim} {self.__class__}")
-
-        # ndim = self.__class__.ndim
-        # if points.shape[-1] != self.__class__.ndim:
-        #     ndim = points.shape[-1]
-
-        cache = {"points": points}
-
-        HTree.__init__(self, cache, _entry=_entry, _parent=_parent)
-        GeoObjectBase.__init__(self, **styles)
-
     def __str__(self) -> str:
         return f"<{self.__class__.__name__}> {self.points}</{self.__class__.__name__}>"
 
@@ -311,27 +294,29 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
 
     name: str
 
-    points: array_type
+    points: ArrayType
     """几何体控制点的坐标 例如 (x0,y0),(x1,y1)， 
         数组形状为 [*shape,ndim], shape 为控制点网格的形状，ndim 空间维度。"""
 
+    styles: HTree
+
     @property
-    def coordinates(self) -> array_type:
+    def coordinates(self) -> ArrayType:
         return tuple([self.points[..., idx] for idx in range(self.ndim)])
 
-    def __array__(self) -> array_type:
+    def __array__(self) -> ArrayType:
         return self.points
 
-    def __getitem__(self, idx) -> array_type | float:
+    def __getitem__(self, idx) -> ArrayType | float:
         return self.points[idx]
 
-    def __setitem__(self, idx, value: array_type | float):
+    def __setitem__(self, idx, value: ArrayType | float):
         self.points[idx] = value
 
     def __delitem__(self, idx):
         del self.points[idx]
 
-    def __iter__(self) -> typing.Generator[array_type, None, None]:
+    def __iter__(self) -> typing.Generator[ArrayType, None, None]:
         yield from self.points
 
     @sp_property
@@ -367,7 +352,7 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
         """measure of geometry, length,area,volume,etc. 默认为 bbox 的体积"""
         return self.bbox.measure
 
-    def enclose(self, *args) -> bool | array_type:
+    def enclose(self, *args) -> bool | ArrayType:
         """Return True if all args are inside the geometry, False otherwise."""
         return False if not self.is_closed else self.bbox.enclose(*args)
 
@@ -398,7 +383,7 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
 
     def translate(self, *shift) -> typing.Self:
         other = copy(self)
-        other.metadata["name"] = f"{self.name}_translate"
+        other._metadata["name"] = f"{self.name}_translate"
         other.bbox.translate(*shift)
         return other
 
@@ -419,10 +404,10 @@ class GeoObject(HTree, WithProperty, GeoObjectBase):
             raise TypeError(f"args has wrong type {type(args[0])} {args}")
 
 
-_TGeo = typing.TypeVar("_TGeo", bound=GeoObjectBase)
+_TGeo = typing.TypeVar("_TGeo", bound=GeoObject)
 
 
-class GeoObjectSet(List[_TGeo], GeoObjectBase):
+class GeoObjectSet(List[_TGeo], GeoObject):
     """Geometry object set"""
 
     OBJ_TYPE = _TGeo
@@ -434,7 +419,7 @@ class GeoObjectSet(List[_TGeo], GeoObjectBase):
             return n_cls
 
         g_cls = n_cls.__args__[0]
-        if issubclass(g_cls, GeoObjectBase):
+        if issubclass(g_cls, GeoObject):
             n_cls.rank = g_cls.rank
             n_cls.ndim = g_cls.ndim
 
@@ -442,7 +427,7 @@ class GeoObjectSet(List[_TGeo], GeoObjectBase):
 
     def __init__(self, *args, _entry=None, _parent=None, **metadata):
         List.__init__(self, *args, _entry=_entry, _parent=_parent)
-        GeoObjectBase.__init__(self, **metadata)
+        GeoObject.__init__(self, **metadata)
 
     # def __svg__(self) -> str:
     #     return f"<g >\n" + "\t\n".join([g.__svg__ for g in self if isinstance(g, GeoObject)]) + "</g>"
@@ -458,7 +443,7 @@ class GeoObjectSet(List[_TGeo], GeoObjectBase):
         return all([g.enclose(other) for g in self if isinstance(g, GeoObject)])
 
     @property
-    def points(self) -> array_type:
+    def points(self) -> ArrayType:
         return np.stack([surf.points for surf in self], axis=0)
 
 

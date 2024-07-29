@@ -5,10 +5,10 @@ import numpy.typing as np_tp
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import array_type, ArrayType
-from spdm.core.htree import  List
-from spdm.core.sp_tree import annotation, sp_property, SpTree
+from spdm.core.htree import List
+from spdm.core.sp_tree import annotation
 from spdm.core.sp_object import SpObject
-from spdm.core.geo_object import GeoObjectBase
+from spdm.core.geo_object import GeoObject
 from spdm.numlib.interpolate import interpolate
 from spdm.geometry.vector import Vector
 
@@ -27,7 +27,7 @@ class Domain(SpObject):
             return super().__new__(DomainPPoly)
         return super().__new__(cls, *args, kind=kind, **kwargs)
 
-    geometry: GeoObjectBase
+    geometry: GeoObject
 
     ndim: int = annotation(alias="geometry/ndim")
     """所在的空间维度"""
