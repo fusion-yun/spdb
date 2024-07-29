@@ -24,7 +24,7 @@ if int(os.environ.get("OMPI_COMM_WORLD_SIZE", "0")) > 0:
 try:
     from ..__version__ import __version__
 except ImportError:
-    SP_VERSION = "beta"
+    SP_VERSION = "develop"
 else:
     SP_VERSION = __version__
 

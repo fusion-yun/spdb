@@ -88,7 +88,7 @@ class Antiderivative(Derivative):
         super().__init__(*args, order=-order, **kwargs)
 
 
-def derivative(*args, order=1, **kwargs):
+def derivative(*args, order=1, **kwargs) -> Derivative:
     func = Derivative(*args, order=order, **kwargs)
     if all([isinstance(d, (array_type, float, int)) for d in args[1:]]):
         _, *x = args
@@ -97,7 +97,7 @@ def derivative(*args, order=1, **kwargs):
         return func
 
 
-def antiderivative(*args, order=1, **kwargs):
+def antiderivative(*args, order=1, **kwargs) -> Derivative:
     return Antiderivative(*args, order=order, **kwargs)
 
 
@@ -106,5 +106,5 @@ class PartialDerivative(Derivative):
         return f"d_{{{self.order}}} ({Expression._repr_s(self._expr)})"
 
 
-def partial_derivative(*args, **kwargs):
+def partial_derivative(*args, **kwargs) -> PartialDerivative:
     return PartialDerivative(*args, **kwargs)

@@ -67,7 +67,7 @@ class Process(abc.ABC):
     @abc.abstractmethod
     def execute(self, *args, **kwargs) -> typing.Any:
         """执行 Processor 的操作，返回结果"""
-        logger.debug("Execute %s", self.code.name + ":" + self.__class__.__name__)
+        logger.debug("Execute: %s", str(self))
         return {}
 
 
