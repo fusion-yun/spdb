@@ -93,13 +93,13 @@ class BBox:
                 return self.enclose(*args[0].points)
             if isinstance(args[0], collections.abc.Sequence):
                 return self.enclose(*args[0])
-            elif isinstance(args[0], ArrayType):
+            elif isinstance(args[0], array_type):
                 return self.enclose([args[0][..., idx] for idx in range(self.ndim)])
             else:
                 raise TypeError(f"args has wrong type {type(args[0])} {args}")
 
         elif len(args) == self.ndim:
-            if isinstance(args[0], ArrayType):
+            if isinstance(args[0], array_type):
                 r_pos = [args[idx] - self._origin[idx] for idx in range(self.ndim)]
                 return np.bitwise_and.reduce(
                     [((r_pos[idx] >= 0) & (r_pos[idx] <= self._dimensions[idx])) for idx in range(self.ndim)]
@@ -182,7 +182,8 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
         a plane has rank 2, and a volume has rank 3.
         """
 
-    def _class_getitem(cls, coordinate_name: str | list = None, ndim=None, rank=None):
+    @classmethod
+    def _create_subclass(cls, arg: str | int):
         """
         example:
             Point["RZ"]
@@ -190,21 +191,28 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
         n_cls_name = cls.__name__
 
         cls_attrs = {}
-        if coordinate_name is not None:
-            n_cls_name += ("".join(coordinate_name)).upper()
+
+        if isinstance(arg, int):
+            ndim = arg
+        else:
+            if isinstance(arg, str):
+                coordinates = arg.split()
+            elif isinstance(arg, (tuple, list)):
+                coordinates = arg
+            else:
+                raise TypeError(f"{type(arg)} is not str or int")
+
+            n_cls_name += ("".join(coordinates)).upper()
 
             cls_attrs.update(
-                {k.lower(): annotation(alias=["points", (..., idx)]) for idx, k in enumerate(coordinate_name)}
+                {k.lower(): annotation(alias=["points", (..., idx)]) for idx, k in enumerate(coordinates)}
             )
-            if ndim is None:
-                ndim = len(coordinate_name)
+
+            ndim = len(coordinates)
 
         if ndim is not None:
             n_cls_name += f"{ndim}D"
             cls_attrs["ndim"] = ndim
-
-        if rank is not None:
-            cls_attrs["rank"] = rank
 
         if len(cls_attrs) == 0:
             n_cls = cls
@@ -221,22 +229,27 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
 
         return n_cls
 
-    def __class_getitem__(cls, args) -> typing.Self:
-        return cls._class_getitem(cls, *args)
+    def __class_getitem__(cls, args):
+        if isinstance(args, tuple):
+            return cls._create_subclass(*args)
+        else:
+            return cls._create_subclass(args)
 
     def __new__(cls, *args, _entry=None, **kwargs) -> typing.Self:
         if cls is not GeoObject:
             return super().__new__(cls, *args, _entry=_entry, **kwargs)
 
-        plugin_name = kwargs.pop("kind", None)
+        else:
 
-        if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
-            plugin_name = args[0].get("type", None)
+            plugin_name = kwargs.pop("kind", None)
 
-        if plugin_name is None and _entry is not None:
-            plugin_name = _entry.get("type", None) or _entry.get("@type", None)
+            if plugin_name is None and len(args) > 0 and isinstance(args[0], dict):
+                plugin_name = args[0].get("type", None)
 
-        return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
+            if plugin_name is None and _entry is not None:
+                plugin_name = _entry.get("type", None) or _entry.get("@type", None)
+
+            return super().__new__(cls, *args, _plugin_name=plugin_name, _entry=_entry, **kwargs)
 
     def __init_subclass__(cls, ndim: int = None, rank: int = None, **kwargs):
 
@@ -248,29 +261,23 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
             cls.rank = rank
 
     def __init__(self, *args, **kwargs) -> None:
-        # if len(args) == 1:
-        #     if isinstance(args[0], dict):
-        #         pass
-        #     elif isinstance(args[0], (np.ndarray, list, tuple)):
-        #         points = np.asarray(args[0])
-        #         args = tuple()
-        #     elif len(args) == 1 and isinstance(args[0], GeoObject):
-        #         points = args[0].points
-        #         args = ()
-        #     else:
-        #         points = np.stack(args, axis=-1)
-        #         args = ()
-        if all(isinstance(a, (array_type, float, int)) for a in args):
-            kwargs["points"] = np.stack(args, axis=-1)
-            args = tuple()
-        # if not isinstance(points, np.ndarray) or len(points.shape) == 0 or points.shape[-1] != self.__class__.ndim:
-        #     raise RuntimeError(f"Illegal points! {points} ndim={self.__class__.ndim} {self.__class__}")
 
-        # ndim = self.__class__.ndim
-        # if points.shape[-1] != self.__class__.ndim:
-        #     ndim = points.shape[-1]
+        if len(args) == 1 and (isinstance(args[0], dict) or args[0] is _not_found_):
+            pass
+        else:
+            if len(args) == 1:
+                points = np.asarray(args[0])
+            else:
+                points = np.stack(args, axis=-1)
+            args = ({"points": points},)
 
         super().__init__(*args, **kwargs)
+
+        if not isinstance(self.points, np.ndarray) or len(self.points.shape) == 0:
+            raise RuntimeError(f"Illegal points! {self.points.shape} ndim={self.__class__.ndim} {self.__class__}")
+
+        if self.points.shape[-1] != self.__class__.ndim:
+            self.ndim = self.points.shape[-1]
 
     def _repr_svg_(self) -> str:
         """Jupyter 通过调用 _repr_html_ 显示对象"""
@@ -298,7 +305,7 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
     """几何体控制点的坐标 例如 (x0,y0),(x1,y1)， 
         数组形状为 [*shape,ndim], shape 为控制点网格的形状，ndim 空间维度。"""
 
-    styles: HTree
+    styles: HTree = {}
 
     @property
     def coordinates(self) -> ArrayType:
