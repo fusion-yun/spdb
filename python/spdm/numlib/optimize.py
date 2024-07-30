@@ -2,14 +2,14 @@ import collections.abc
 import os
 import pprint
 import typing
-from ..core.Expression import Variable
+from ..core.expression import Variable
 import numpy as np
 import scipy.optimize
 import scipy.ndimage  # for maximum_filter,binary_erosion, generate_binary_structure
 
-from ..core.Field import Field
+from ..core.field import Field
 from ..utils.logger import logger
-from ..utils.typing import ArrayType, NumericType, ScalarType
+from ..core.generic_helper import ArrayType, NumericType, ScalarType
 
 SP_EXPERIMENTAL = os.environ.get("SP_EXPERIMENTAL", False)
 

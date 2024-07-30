@@ -1,34 +1,24 @@
-import collections
-import collections.abc
+""" rectilinear Mesh """
+
 import typing
-from functools import cached_property
+import functools
 
 import numpy as np
 
-from ..core.Function import Function
-from ..geometry.BBox import BBox
-from ..geometry.Box import Box
-from ..geometry.Curve import Curve
-from ..geometry.GeoObject import GeoObject
-from ..geometry.Line import Line
-from ..geometry.Point import Point
-from ..numlib.interpolate import interpolate
-from ..utils.logger import logger
-from ..utils.typing import ArrayType, NumericType, ScalarType, array_type, numeric_type, scalar_type
-from .Mesh import Mesh
-from .mesh_structured import StructuredMesh
+from spdm.utils.tags import _not_found_
+from spdm.utils.type_hint import ArrayType, array_type
+from spdm.core.function import Function
 
-# from scipy.interpolate import (InterpolatedUnivariateSpline,
-#                                RectBivariateSpline, RegularGridInterpolator,
-#                                UnivariateSpline, interp1d, interp2d)
+from spdm.geometry.box import Box, Box2D
+from spdm.numlib.interpolate import interpolate
+from spdm.mesh.mesh_structured import StructuredMesh
 
 
-@Mesh.register("rectilinear")
-class RectilinearMesh(StructuredMesh):
-    """    A `rectilinear Mesh` is a tessellation by rectangles or rectangular cuboids (also known as rectangular parallelepipeds)
-    that are not, in general, all congruent to each other. The cells may still be indexed by integers as above, but the
-    mapping from indexes to vertex coordinates is less uniform than in a regular Mesh. An example of a rectilinear Mesh
-    that is not regular appears on logarithmic scale graph paper.
+class RectilinearMesh(StructuredMesh, plugin_name=["rectilinear", "rectangular", "rect"]):
+    """A `rectilinear Mesh` is a tessellation by rectangles or rectangular cuboids (also known as rectangular
+     parallelepipeds)    that are not, in general, all congruent to each other. The cells may still be indexed by
+     integers as above, but the mapping from indexes to vertex coordinates is less uniform than in a regular Mesh.
+     An example of a rectilinear Mesh that is not regular appears on logarithmic scale graph paper.
     -- [https://en.wikipedia.org/wiki/Regular_Mesh]
 
     RectlinearMesh
@@ -39,92 +29,65 @@ class RectilinearMesh(StructuredMesh):
 
     """
 
-    def __init__(self, *args: ArrayType, geometry=None, periods=None, dims=None, **kwargs) -> None:
-        if dims is None:
-            dims = args
-        elif len(args) > 0:
-            raise RuntimeError(f"ignore args {args}")
+    def __init__(self, *args, **kwargs):
+        if len(args) == 1 and isinstance(args[0], dict):
+            cache = args[0]
+        elif len(args) == 1 and args[0] is _not_found_:
+            cache = {}
+        else:
+            cache = {"dims": args}
 
-        if geometry is None:
-            geometry = Box([min(d) for d in dims], [max(d) for d in dims])
+        super().__init__(cache, **kwargs)
 
-        for idx in range(len(dims)):
-            if (
-                isinstance(periods, collections.abc.Sequence)
-                and periods[idx] is not None
-                and not np.isclose(dims[idx][-1] - dims[idx][0], periods[idx])
-            ):
-                raise RuntimeError(
-                    f"idx={idx} periods {periods[idx]} is not compatible with dims [{dims[idx][0]},{dims[idx][-1]}] "
-                )
-            if not np.all(dims[idx][1:] > dims[idx][:-1]):
-                raise RuntimeError(f"dims[{idx}] is not increasing")
+        if self.dims is _not_found_:
+            dims = list(self.get(f"dim{i}", _not_found_) for i in range(10))
+            dims = [d for d in dims if d is not _not_found_]
+            if len(dims) > 0:
+                self._cache["dims"] = tuple(dims)
+            else:
+                raise RuntimeError(f"dims not found in {self._cache}")
+        assert all(d.ndim == 1 for d in self.dims), f"Illegal dims shape! {self.dims}"
+        assert all(
+            np.all(d[1:] > d[:-1]) for d in self.dims
+        ), f"'dims' must be monotonically increasing.! {self.dims}"
 
-        super().__init__(shape=[len(d) for d in dims], geometry=geometry, **kwargs)
-        self._dims = dims
-        self._periods = periods
-        self._aixs = [Function(self._dims[i], np.linspace(0, 1.0, self.shape[i])) for i in range(self.rank)]
+        self.shape = tuple([d.size for d in self.dims])
 
-    @property
-    def dim1(self) -> ArrayType:
-        return self._dims[0].__array__()
+        if len(self.dims) == 2:
+            self.geometry = Box2D([min(d) for d in self.dims], [max(d) for d in self.dims])
+        else:
+            self.geometry = Box([min(d) for d in self.dims], [max(d) for d in self.dims])
 
-    @property
-    def dim2(self) -> ArrayType:
-        return self._dims[1].__array__()
+        self._aixs = [Function(d, np.linspace(0, 1.0, len(d))) for i, d in enumerate(self.dims)]
 
-    @property
-    def dims(self) -> typing.List[ArrayType]:
-        return self._dims
+    dims: typing.Tuple[ArrayType, ...]
 
-    @property
-    def dimensions(self) -> typing.List[ArrayType]:
-        return self._dims
-
-    @property
-    def rank(self) -> int:
-        return len(self._dims)
-
-    @cached_property
+    @functools.cached_property
     def dx(self) -> ArrayType:
-        return np.asarray([(d[-1] - d[0]) / len(d) for d in self._dims])
+        return np.asarray([(d[-1] - d[0]) / len(d) for d in self.dims])
 
-    def coordinates(self, *uvw) -> ArrayType:
-        """网格点的 _空间坐标_
-        @return: _数组_ 形状为 [geometry.dimension,<shape of uvw ...>]
-        """
-        if len(uvw) == 1 and self.rank != 1:
-            uvw = uvw[0]
-        return np.stack([self._dims[i](uvw[i]) for i in range(self.rank)], axis=-1)
+    @property
+    def coordinates(self) -> typing.Tuple[ArrayType, ...]:
+        return tuple(np.meshgrid(*self.dims, indexing="ij"))
 
-    @cached_property
-    def vertices(self) -> ArrayType:
-        """网格点的 _空间坐标_"""
-        if self.geometry.rank == 1:
-            return (self._dims[0],)
-        else:
-            return np.stack(self.points, axis=-1)
-
-    @cached_property
-    def points(self) -> typing.List[ArrayType]:
-        """网格点的 _空间坐标_"""
-        if self.geometry.rank == 1:
-            return (self._dims[0],)
-        else:
-            return np.meshgrid(*self._dims, indexing="ij")
-
-    def interpolate(self, value: ArrayType, **kwargs):
+    def interpolate(self, func: ArrayType | typing.Callable[..., array_type], **kwargs):
         """生成插值器
         method: "linear",   "nearest", "slinear", "cubic", "quintic" and "pchip"
         """
+        if callable(func):
+            value = func(*self.coordinates)
+        elif not isinstance(func, np.ndarray):
+            value = getattr(func, "_cache", None)
+        else:
+            value = func
 
         if not isinstance(value, np.ndarray):
             raise ValueError(f"value must be np.ndarray, but {type(value)} {value}")
 
         elif tuple(value.shape) != tuple(self.shape):
-            raise NotImplementedError(f"{value.shape}!={self.shape}")
+            raise NotImplementedError(f"{func.shape}!={self.shape}")
 
         if np.any(tuple(value.shape) != tuple(self.shape)):
             raise ValueError(f"{value} {self.shape}")
 
-        return interpolate(*self._dims, value, periods=self._periods, **kwargs)
+        return interpolate(*self.dims, value, periods=self.periods, **kwargs)

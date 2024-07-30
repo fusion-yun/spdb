@@ -1,16 +1,15 @@
 import collections.abc
 import typing
 from io import BytesIO
-from spdm.core.Expression import Expression, Variable
-from spdm.core.Functor import Functor
-from spdm.core.Function import Function
 import matplotlib.pyplot as plt
 import numpy as np
 
-
-from spdm.utils.logger import logger
-from spdm.utils.typing import array_type
-from spdm.view.View import View
+from ..core.expression import Expression, Variable
+from ..core.functor import Functor
+from ..core.function import Function
+from ..utils.logger import logger
+from spdm.utils.type_hint  import array_type
+from .sp_view import SpView
 
 _EXPR_OP_NAME = {
     "negative": "-",
@@ -37,7 +36,6 @@ _EXPR_OP_NAME = {
     # "invert": "",
     "bitwise_and": "&",
     "bitwise_or": "|",
-
     # "bitwise_xor": "",
     # "right_shift": "",
     # "left_shift": "",
@@ -92,11 +90,11 @@ _EXPR_OP_LATEX = {
 # fmt:on
 
 
-@View.register(["Latex", "latex"])
-class LatexView(View):
+@SpView.register(["Latex", "latex"])
+class LatexView(SpView):
     backend = "latex"
 
-    def __init__(self, *args,   **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def draw(self, expr: typing.Any, *args, **kwargs) -> str:
@@ -162,4 +160,7 @@ class LatexView(View):
         return res, level
 
     def _render_expr(self, expr: Expression, *args, parent=None, **kwargs) -> typing.Tuple[str, int]:
-        return f"{expr._op.__label__}\\left({', '.join([self._render(child, *args, parent=None,**kwargs)[0] for child in  expr._children])}\\right)", 0
+        return (
+            f"{expr._op.__label__}\\left({', '.join([self._render(child, *args, parent=None,**kwargs)[0] for child in  expr._children])}\\right)",
+            0,
+        )

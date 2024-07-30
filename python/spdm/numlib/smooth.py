@@ -1,9 +1,10 @@
-import logging
-
+import typing
 import numpy as np
 
-from ..utils.logger import logger
-from .interpolate import interpolate
+from spdm.utils.logger import logger
+from spdm.utils.type_hint import array_type
+from spdm.numlib.interpolate import interpolate
+from spdm.core.expression import Expression
 
 
 def smooth(x, window_len=11, window="hanning"):
@@ -72,3 +73,30 @@ def smooth_1d(x, y, i_begin=0, i_end=None, **kwargs):
 
 def rms_residual(a, b):
     return np.abs((a - b) / (a + b) * 2) * 100
+
+
+from scipy.signal import savgol_filter
+
+
+class SmoothOp(Expression):
+    def __init__(self, op, *args, **kwargs) -> None:
+        super().__init__(op or savgol_filter, *args, options=kwargs)
+
+    def __eval__(self, y: array_type, *args, **kwargs) -> typing.Any:
+        if len(args) + len(kwargs) > 0:
+            logger.warning(f"Ignore {args} {kwargs}")
+
+        return self._op(y, **self._kwargs.get("options", {}))
+
+    def __call__(self, *args, **kwargs):
+        if len(args) + len(kwargs) > 0:
+            return super().__call__(*args, **kwargs)
+        else:
+            return self.__eval__(*self._children)
+
+
+# def smooth(expr, *args, op=None, **kwargs):
+#     if isinstance(expr, array_type):
+#         return SmoothOp(op, expr, *args, **kwargs)()
+#     else:
+#         return SmoothOp(op, expr, *args, **kwargs)

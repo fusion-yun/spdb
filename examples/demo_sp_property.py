@@ -1,4 +1,4 @@
-from spdm.core.sp_property import AttributeTree, SpTree, sp_property, sp_tree
+from spdm.core.sp_tree import AttributeTree, SpTree, sp_property, sp_tree
 
 
 class Data(SpTree):

@@ -1,49 +1,52 @@
+""" MatplotlibView class definition
+"""
+
 import collections.abc
 import typing
 from io import BytesIO
 
 import matplotlib.pyplot as plt
 import numpy as np
-from spdm.core.Path import update_tree, merge_tree
-from spdm.core.Expression import Expression
-from spdm.core.Signal import Signal
-from spdm.core.Field import Field
-from spdm.core.Function import Function
-from spdm.geometry.BBox import BBox
-from spdm.geometry.Circle import Circle
-from spdm.geometry.Curve import Curve
-from spdm.geometry.GeoObject import GeoObject
-from spdm.geometry.Line import Line
-from spdm.geometry.Point import Point
-from spdm.geometry.PointSet import PointSet
-from spdm.geometry.Polygon import Polygon, Rectangle
-from spdm.geometry.Polyline import Polyline
+
+from spdm.core.path import update_tree, merge_tree
+from spdm.core.expression import Expression
+from spdm.core.signal import Signal
+from spdm.core.htree import List
+
+from spdm.geometry.circle import Circle
+from spdm.geometry.curve import Curve
+from spdm.core.geo_object import GeoObject, BBox
+from spdm.geometry.line import Line
+from spdm.geometry.point import Point
+from spdm.geometry.point_set import PointSet
+from spdm.geometry.polygon import Polygon, Rectangle
+from spdm.geometry.polyline import Polyline
+
 from spdm.utils.envs import SP_DEBUG
-from spdm.utils.logger import SP_DEBUG, logger
+from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
-from spdm.utils.typing import array_type, as_array, is_array, is_scalar
-from spdm.view.View import View
+from spdm.utils.type_hint import array_type, as_array, is_scalar
+
+from spdm.view.sp_view import SpView
 
 
-@View.register(["matplotlib"])
-class MatplotlibView(View):
-    backend = "matplotlib"
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+class MatplotlibView(SpView, plugin_name="matplotlib"):
+    """MatplotlibView class definition"""
 
     def _figure_post(
         self,
-        fig: plt.Figure,
+        fig,
         title="",
         output=None,
-        styles={},
+        styles=None,
         transparent=True,
         signature=None,
         width=1.0,
         height=1.0,
         **kwargs,
     ) -> typing.Any:
+        if styles is None:
+            styles = {}
         fontsize = styles.get("fontsize", 16)
 
         fig.suptitle(title, fontsize=fontsize)
@@ -56,11 +59,11 @@ class MatplotlibView(View):
             signature = self.signature
 
         if signature is not False:
-            W, H = fig.get_size_inches()
-            if H > 4:
+            _, h = fig.get_size_inches()
+            if h > 4:
                 fig.text(
                     width,
-                    0.0,  # 5 * height,
+                    0.05,  # 5 * height,
                     signature,
                     verticalalignment="bottom",
                     horizontalalignment="left",
@@ -71,7 +74,7 @@ class MatplotlibView(View):
             else:
                 fig.text(
                     width,
-                    0.0,
+                    0.05,
                     signature,
                     verticalalignment="bottom",
                     horizontalalignment="right",
@@ -89,7 +92,7 @@ class MatplotlibView(View):
             fig = fig_html
 
         elif output is not None:
-            logger.debug(f"Write figure to  {output}")
+            logger.verbose("Write figure to %s", output)
             kwargs.setdefault("format", "svg")
             fig.savefig(output, transparent=transparent, **kwargs)
             plt.close(fig)
@@ -97,7 +100,7 @@ class MatplotlibView(View):
 
         return fig
 
-    def draw(self, geo, *styles, view_point="rz", title=None, scaled=False, **kwargs) -> typing.Any:
+    def draw(self, geo, *styles, view_point="rz", title=None, **kwargs) -> typing.Any:
         fig, canvas = plt.subplots()
 
         geo = self._draw(canvas, geo, *styles, view_point=view_point)
@@ -140,111 +143,141 @@ class MatplotlibView(View):
     def _draw(
         self,
         canvas,
-        geo: GeoObject | str | BBox,
+        obj: GeoObject | str | BBox | dict | list,
         *styles,
         view_point=None,
         **kwargs,
     ):
         if False in styles:
             return
-        g_styles = getattr(geo, "_metadata", {}).get("styles", {})
+        g_styles = getattr(obj, "_metadata", {}).get("styles", {})
         g_styles = update_tree(g_styles, *styles)
+        s_styles = g_styles.get("$matplotlib", {})
 
-        if geo is None or geo is _not_found_:
-            pass
-        elif hasattr(geo.__class__, "__geometry__"):
+        if hasattr(obj.__class__, "__view__"):
             try:
-                geo = geo.__geometry__(view_point=view_point, **kwargs)
-            except Exception as error:
+                obj = obj.__view__(view_point=view_point, **kwargs)
+            except RuntimeError as error:
                 if SP_DEBUG == "strict":
-                    raise RuntimeError(f"ignore unsupported geometry {geo.__class__.__name__} {geo}! ") from error
-                else:
-                    logger.exception(f"ignore unsupported geometry {geo.__class__.__name__} {geo}! ")
+                    raise RuntimeError(f"ignore unsupported view {obj.__class__.__name__} {obj}! ") from error
+                logger.exception(f"ignore unsupported view {obj.__class__.__name__} {obj}! ", exc_info=error)
 
-            else:
-                self._draw(canvas, geo, *styles, view_point=view_point, **kwargs)
+        if obj is None or obj is _not_found_:
+            pass
 
-        elif hasattr(geo, "mesh") and hasattr(geo, "__array__"):
-            self._draw(canvas, (*geo.mesh.points, geo.__array__()), *styles, **kwargs)
-
-        elif isinstance(geo, dict):
-            s_styles = geo.get("$styles", {})
-
-            for s in [k for k in geo.keys() if not k.startswith("$")]:
-                self._draw(canvas, geo[s], {"id": s}, s_styles, *styles, view_point=view_point, **kwargs)
-            else:
-                self._draw(canvas, geo.get("$data"), s_styles, *styles, view_point=view_point, **kwargs)
-
-            self._draw(canvas, None, s_styles, *styles, **kwargs)
-
-        elif isinstance(geo, list):
-            for idx, g in enumerate(geo):
+        elif isinstance(obj, (list, List)):
+            for idx, g in enumerate(obj):
                 self._draw(canvas, g, {"id": idx}, *styles, view_point=view_point, **kwargs)
 
             self._draw(canvas, None, *styles, view_point=view_point, **kwargs)
 
-        elif geo.__class__ is GeoObject:
-            self._draw(canvas, geo.bbox, *styles)
+        elif isinstance(obj, dict) and "$type" not in obj:
+            s_styles = obj.get("$styles", {})
+
+            for s in [k for k in obj.keys() if not k.startswith("$")]:
+                self._draw(canvas, obj[s], {"id": s}, s_styles, *styles, view_point=view_point, **kwargs)
+            else:
+                self._draw(canvas, obj.get("$data"), s_styles, *styles, view_point=view_point, **kwargs)
+
+            self._draw(canvas, None, s_styles, *styles, **kwargs)
+
+        elif isinstance(obj, dict) and "$type" in obj:
+            match view_type := obj.get("$type"):
+                case "contour":
+                    *x, y = obj.get("$data")
+
+                    if len(x) != 2 or y.ndim != 2:
+                        raise RuntimeError(f"Illegal dimension {[d.shape for d in x]} {y.shape} ")
+
+                    canvas.contour(*x, y, **merge_tree(s_styles, {"levels": 20, "linewidths": 0.5}))
+
+                case _:
+                    logger.warning(f"ignore unknown view type {view_type}")
+        elif isinstance(obj, tuple):
+            g, t_styles = obj
+            self._draw(canvas, g, t_styles, *styles, view_point=view_point, **kwargs)
+
+        elif isinstance(obj, (str, int, float, bool)):
+            pos = g_styles.get("position", None)
+
+            if pos is None:
+                return
+
+            canvas.text(
+                *pos,
+                str(obj),
+                **collections.ChainMap(
+                    s_styles,
+                    {
+                        "horizontalalignment": "center",
+                        "verticalalignment": "center",
+                        "fontsize": "xx-small",
+                    },
+                ),
+            )
+
+        elif isinstance(obj, Polygon):
+            canvas.add_patch(plt.Polygon(obj.points, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))))
+
+        elif isinstance(obj, Polyline):
+            canvas.add_patch(
+                plt.Polygon(
+                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$matplotlib", {}))
+                )
+            )
+
+        elif isinstance(obj, Line):
+            canvas.add_artist(
+                plt.Line2D(
+                    [obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **(s_styles | obj.styles.get("$matplotlib", {}))
+                )
+            )
+
+        elif isinstance(obj, Curve):
+            canvas.add_patch(
+                plt.Polygon(
+                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$matplotlib", {}))
+                )
+            )
+
+        elif isinstance(obj, Rectangle):
+            p0 = obj.points[0]
+            p1 = obj.points[1]
+            w = p1[0] - p0[0]
+            h = p1[1] - p0[1]
+            canvas.add_patch(
+                plt.Rectangle((p0[0], p0[1]), w, h, fill=False, **(s_styles | obj.styles.get("$matplotlib", {})))
+            )
+
+        elif isinstance(obj, Circle):
+            canvas.add_patch(
+                plt.Circle(
+                    (obj.origin[0], obj.origin[1]),
+                    obj.radius,
+                    fill=False,
+                    **(s_styles | obj.styles.get("$matplotlib", {})),
+                )
+            )
+
+        elif isinstance(obj, Point):
+            canvas.scatter(obj[0], obj[1], **(s_styles | obj.styles.get("$matplotlib", {})))
+
+        elif isinstance(obj, PointSet):
+            canvas.scatter(*obj.points, **(s_styles | obj.styles.get("$matplotlib", {})))
+
+        elif isinstance(obj, GeoObject):
+            self._draw(canvas, obj.bbox, *styles)
+
+        elif isinstance(obj, BBox):
+            canvas.add_patch(
+                plt.Rectangle(
+                    obj.origin, *obj.dimensions, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))
+                )
+            )
 
         else:
-            s_styles = g_styles.get("$matplotlib", {})
-
-            if isinstance(geo, tuple) and all([isinstance(g, array_type) for g in geo]):
-                *x, y = geo
-
-                if len(x) != 2 or y.ndim != 2:
-                    raise RuntimeError(f"Illegal dimension {[d.shape for d in x]} {y.shape} ")
-
-                canvas.contour(*x, y, **merge_tree(s_styles, {"levels": 20, "linewidths": 0.5}))
-
-            elif isinstance(geo, (str, int, float, bool)):
-                pos = g_styles.get("position", None)
-
-                if pos is None:
-                    return
-
-                canvas.text(
-                    *pos,
-                    str(geo),
-                    **collections.ChainMap(
-                        s_styles,
-                        {
-                            "horizontalalignment": "center",
-                            "verticalalignment": "center",
-                            "fontsize": "xx-small",
-                        },
-                    ),
-                )
-
-            elif isinstance(geo, BBox):
-                canvas.add_patch(plt.Rectangle(geo.origin, *geo.dimensions, fill=False, **s_styles))
-
-            elif isinstance(geo, Polygon):
-                canvas.add_patch(plt.Polygon(geo._points, fill=False, **s_styles))
-
-            elif isinstance(geo, Polyline):
-                canvas.add_patch(plt.Polygon(geo._points, fill=False, closed=geo.is_closed, **s_styles))
-
-            elif isinstance(geo, Line):
-                canvas.add_artist(plt.Line2D([geo.p0.x, geo.p1.x], [geo.p0.y, geo.p1.y], **s_styles))
-
-            elif isinstance(geo, Curve):
-                canvas.add_patch(plt.Polygon(geo._points, fill=False, closed=geo.is_closed, **s_styles))
-
-            elif isinstance(geo, Rectangle):
-                canvas.add_patch(plt.Rectangle((geo._x, geo._y), geo._width, geo._height, fill=False, **s_styles))
-
-            elif isinstance(geo, Circle):
-                canvas.add_patch(plt.Circle((geo.x, geo.y), geo.r, fill=False, **s_styles))
-
-            elif isinstance(geo, Point):
-                canvas.scatter(geo.x, geo.y, **s_styles)
-
-            elif isinstance(geo, PointSet):
-                canvas.scatter(*geo.points, **s_styles)
-
-            else:
-                raise RuntimeError(f"Unsupport type {(geo)} {geo}")
+            # raise RuntimeError(f"Unsupport type {(obj)} {obj}")
+            logger.warning(f"ignore unsupported view {obj.__class__.__name__}! ")
 
         text_styles = g_styles.get("text", False)
 
@@ -252,73 +285,84 @@ class MatplotlibView(View):
             if not isinstance(text_styles, dict):
                 text_styles = {}
 
-            if isinstance(geo, Line):
-                text = geo.name
-                pos = [geo.p1.x, geo.p1.y]
-            elif isinstance(geo, GeoObject):
-                text = geo.name
-                pos = geo.bbox.center
-            elif hasattr(geo, "mesh"):
-                text = geo.name
-                pos = geo.mesh.bbox.center
+            if isinstance(obj, Line):
+                text = obj.name
+                pos = [obj.p1.x, obj.p1.y]
+            elif isinstance(obj, GeoObject):
+                text = obj.name
+                pos = obj.bbox.center
+            elif hasattr(obj, "mesh"):
+                text = obj.name
+                pos = obj.mesh.bbox.center
             else:
-                text = str(geo)
+                text = str(obj)
                 pos = None
 
             text_styles.setdefault("position", pos)
 
-            self._draw(canvas, text, {f"${self.backend}": text_styles})
+            self._draw(canvas, text, {"$matplotlib": text_styles})
 
-        return geo
+        return obj
 
     def plot(
         self,
         *args,
-        x_axis: Expression | np.ndarray | str = None,
-        x_label=None,
+        x_axis: np.ndarray = None,
+        x_label: str = None,
         styles=_not_found_,
         width=10,
         height=8,
         **kwargs,
     ) -> typing.Any:
+        if len(args) == 1:
+            if isinstance(args[0], (list, tuple)):
+                profiles = args[0]
+                x_value = None
+            else:
+                profiles = [args[0]]
+                x_value = None
+
+        elif len(args) > 1:
+            x_value = args[0]
+            profiles = args[1:]
+        else:
+            x_value = None
+            profiles = []
+
         styles = update_tree({}, styles, kwargs)
 
         fontsize = styles.get("fontsize", 16)
 
-        if len(args) > 1 and isinstance(args[0], array_type):
-            x_value = args[0]
-            args = args[1:]
-        else:
-            x_value = None
+        # if len(args) > 1:
+        #     x_value = args[0]
+        #     args = args[1:]
+        # else:
+        #     x_value = None
 
-        nprofiles = len(args)
+        if isinstance(x_value, tuple):
+            x_value, x_label = x_value
 
-        height = max(2, height / nprofiles) * nprofiles
+        if isinstance(x_value, Expression):
+            if x_label is None:
+                units = x_value._kwargs.get("units", "-")
+                x_label = f"{ x_value.__label__} [{units}]"
+            if isinstance(x_axis, array_type):
+                x_value = x_value(x_axis)
+            else:
+                x_value = as_array(x_value)
+                x_axis = None
+
+        nprofiles = len(profiles)
+
+        if nprofiles > 0:
+            height = max(2, height / nprofiles) * nprofiles
 
         fig, canvas = plt.subplots(ncols=1, nrows=nprofiles, sharex=True, figsize=(width, height))
 
         if nprofiles == 1:
             canvas = [canvas]
 
-        if isinstance(x_axis, Expression):
-            if x_label is None:
-                units = x_axis._metadata.get("units", "-")
-                x_label = f"{ x_value.__label__} [{units}]"
-            if isinstance(x_value, array_type):
-                x_axis = x_axis(x_value)
-            elif x_value is None:
-                x_value = as_array(x_axis)
-                x_axis = None
-        elif isinstance(x_axis, str):
-            x_label = x_axis
-            x_axis = None
-        elif isinstance(x_axis, array_type):
-            if x_value is None:
-                x_value = x_axis
-            elif x_value.size != x_value.size:
-                raise RuntimeError(f"size mismatch {x_value.size} != {x_axis.size}")
-
-        for idx, profiles in enumerate(args):
+        for idx, profiles in enumerate(profiles):
             if isinstance(profiles, tuple):
                 profiles, sub_styles = profiles
             else:
@@ -352,13 +396,13 @@ class MatplotlibView(View):
                 p_styles = collections.ChainMap(p_styles, sub_styles)
 
                 try:
-                    t_label, t_y_label = self._plot(canvas[idx], x_value, p, x_axis=x_axis, styles=p_styles)
+                    t_label, t_y_label = self._plot(canvas[idx], x_value, p, styles=p_styles)
 
                     labels.append(t_label)
                     if y_label is None:
                         y_label = t_y_label
 
-                except Exception as error:
+                except RuntimeError as error:
                     if SP_DEBUG == "strict":
                         raise RuntimeError(f'Plot [index={idx}] failed! y_label= "{y_label}"  ') from error
                     else:
@@ -384,13 +428,13 @@ class MatplotlibView(View):
 
         return self._figure_post(fig, styles=styles, **kwargs)
 
-    def _plot(self, canvas, x_value, expr, x_axis=None, styles=None, **kwargs) -> str:
+    def _plot(self, canvas, x_value, expr, styles=None, **kwargs) -> str:
         if expr is None or expr is _not_found_:
             return None, None
 
         styles = update_tree(kwargs, styles)
 
-        s_styles = styles.get(f"${self.backend}", {})
+        s_styles = styles.get("matplotlib", {})
 
         label = styles.get("label", None)
 
@@ -398,7 +442,7 @@ class MatplotlibView(View):
 
         if isinstance(expr, Expression):
             if label is None:
-                label = expr.__label__               
+                label = expr.__label__
             y_value = expr(x_value)
 
         elif isinstance(expr, Signal):
@@ -432,272 +476,15 @@ class MatplotlibView(View):
         elif not isinstance(x_value, array_type):
             raise RuntimeError(f"ignore unsupported profiles label={label} {(y_value)}")
 
-        if x_axis is None:
-            x_axis = x_value
-
         if label is False:
             label = None
         elif not isinstance(label, str) or ("$" not in label and any(c in label for c in r"\{")):
             label = f"${label}$"
 
-        canvas.plot(x_axis, y_value, **s_styles, label=label)
+        canvas.plot(x_value, y_value, **s_styles, label=label)
 
         units = getattr(expr, "_metadata", {}).get("units", "-")
 
-        units = units.replace("^-1", "^{-1}").replace("^-2", "^{-2}").replace("^-3", "^{-3}").replace(".", " \cdot ")
+        units = units.replace("^-1", "^{-1}").replace("^-2", "^{-2}").replace("^-3", "^{-3}").replace(".", r" \cdot ")
 
         return label, f"[{units}]"
-
-    # def profiles_(self, obj, *args,  x_axis=None, x=None,
-    #               default_num_of_points=128, fontsize=10, grid=True,
-    #               signature=None, title=None, **kwargs):
-    #     fontsize = kwargs.get("fontsize", 10)
-    #     nprofiles = len(obj)
-    #     fig, canves = plt.subplots(
-    #         ncols=1, nrows=nprofiles, sharex=True, figsize=(10, 2 * nprofiles)
-    #     )
-    #     self.draw(canves, obj, styles)
-    #     x_label = kwargs.get("xlabel", "")
-    #     if len(canves) == 1:
-    #         canves[0].set_xlabel(x_label, fontsize=fontsize)
-    #     else:
-    #         canves[-1].set_xlabel(x_label, fontsize=fontsize)
-    #     if not isinstance(profile_list, collections.abc.Sequence):
-    #         profile_list = [profile_list]
-    #     if isinstance(x_axis, collections.abc.Sequence) and not isinstance(
-    #         x_axis, np.ndarray
-    #     ):
-    #         x_axis, x_label, *x_opts = x_axis
-    #         x_opts = (x_opts or [{}])[0]
-    #     else:
-    #         x_axis = [0, 1]
-    #         x_label = ""
-    #         x_opts = {}
-    #     if isinstance(x_axis, Function) and x is not None:
-    #         x_axis = x_axis(x)
-    #     elif x is None and isinstance(x_axis, np.ndarray):
-    #         x = x_axis
-
-    #     if isinstance(x_axis, np.ndarray):
-    #         x_min = x_axis[0]
-    #         x_max = x_axis[-1]
-    #     elif isinstance(x_axis, collections.abc.Sequence) and len(x_axis) == 2:
-    #         x_min, x_max = x_axis
-    #         x_axis = np.linspace(x_min, x_max, default_num_of_points)
-    #     else:
-    #         raise TypeError(x_axis)
-
-    #     if x is None and isinstance(x_axis, np.ndarray):
-    #         x = x_axis
-    #     elif callable(x_axis) or isinstance(x_axis, Function):
-    #         x_axis = x_axis(x)
-
-    #     nprofiles = len(profile_list)
-
-    #     fig, sub_plot = plt.subplots(
-    #         ncols=1, nrows=nprofiles, sharex=True, figsize=(10, 2 * nprofiles)
-    #     )
-
-    #     if not isinstance(sub_plot, (collections.abc.Sequence, np.ndarray)):
-    #         sub_plot = [sub_plot]
-
-    #     for idx, profile_grp in enumerate(profile_list):
-    #         if not isinstance(profile_grp, list):
-    #             profile_grp = [profile_grp]
-    #         ylabel = None
-    #         for jdx, p_desc in enumerate(profile_grp):
-    #             profile, label, *o_args = p_desc
-    #             opts = {}
-    #             if len(o_args) > 0 and ylabel is None:
-    #                 ylabel = o_args[0]
-    #             if len(o_args) > 1:
-    #                 opts = o_args[1]
-
-    #             y = None
-
-    #             if isinstance(profile, Function) or callable(profile):
-    #                 try:
-    #                     y = profile(x)
-    #                 except Exception as error:
-    #                     raise RuntimeError(
-    #                         f"Can not get profile [idx={idx} jdx={jdx}]! name={getattr(profile,'_name',profile)}\n {error} "
-    #                     ) from error
-
-    #             elif isinstance(profile, np.ndarray) and len(profile) == len(x):
-    #                 y = profile
-    #             elif np.isscalar(profile):
-    #                 y = np.full_like(x, profile, dtype=float)
-    #             else:
-    #                 raise RuntimeError(f"Illegal profile! {profile}!={x}")
-
-    #             if not isinstance(y, np.ndarray) or not isinstance(x, np.ndarray):
-    #                 logger.warning(f"Illegal profile! {(type(x) ,type(y), label, o_args)}")
-    #                 continue
-    #             elif x.shape != y.shape:
-    #                 logger.warning(f"Illegal profile! {x.shape} !={y.shape}")
-    #                 continue
-    #             else:
-    #                 # 删除 y 中的 nan
-    #                 mark = np.isnan(y)
-    #                 # if np.any(mark):
-    #                 #     logger.warning(f"Found NaN in array  {np.argwhere(mark)}! {profile}  ")
-    #                 sub_plot[idx].plot(x_axis[~mark], y[~mark], label=label, **opts)
-
-    #         sub_plot[idx].legend(fontsize=fontsize)
-
-    #         if grid:
-    #             sub_plot[idx].grid()
-
-    #         if ylabel is not None:
-    #             sub_plot[idx].set_ylabel(ylabel, fontsize=fontsize)
-    #         sub_plot[idx].labelsize = "media"
-    #         sub_plot[idx].tick_params(labelsize=fontsize)
-
-    #     if len(sub_plot) <= 1:
-    #         sub_plot[0].set_xlabel(x_label, fontsize=fontsize)
-
-    #     else:
-    #         sub_plot[-1].set_xlabel(x_label, fontsize=fontsize)
-
-    #     return fig
-
-    # def draw_profile(self, profiles, x_axis, canves: plt.Axes = ..., style=None, **kwargs):
-    #     if style is None:
-    #         style = {}
-
-    #     fontsize = style.get("fontsize", 10)
-
-    #     ylabel = None
-
-    #     x_value = x_axis
-
-    #     if not isinstance(profiles, collections.abc.Sequence):
-    #         profiles = [profiles]
-
-    #     for profile, label, legend, *opts in profiles:
-    #         y = None
-
-    #         if isinstance(profile, Function) or callable(profile):
-    #             try:
-    #                 y = profile(x_value)
-    #             except Exception as error:
-    #                 raise RuntimeError(
-    #                     f"Can not get profile! name={getattr(profile,'name',profile)}\n {error} "
-    #                 ) from error
-
-    #         elif isinstance(profile, array_type) and len(profile) == len(x_value):
-    #             y = profile
-    #         elif np.isscalar(profile):
-    #             y = np.full_like(x_value, profile, dtype=float)
-    #         else:
-    #             raise RuntimeError(f"Illegal profile! {profile}!={x_value}")
-
-    #         if not isinstance(y, array_type) or not isinstance(x_value, array_type):
-    #             logger.warning(
-    #                 f"Illegal profile! {(type(x_value) ,type(y), label, opts)}"
-    #             )
-    #             continue
-    #         elif x.shape != y.shape:
-    #             logger.warning(f"Illegal profile! {x_value.shape} !={y.shape}")
-    #             continue
-    #         else:
-    #             # 删除 y 中的 nan
-    #             mark = np.isnan(y)
-    #             # if np.any(mark):
-    #             #     logger.warning(f"Found NaN in array  {np.argwhere(mark)}! {profile}  ")
-    #             canves.plot(x_axis[~mark], y[~mark], label=label, **opts)
-
-    #     canves.legend(fontsize=fontsize)
-
-    #     if kwargs.get("grid", True):
-    #         canves.grid()
-
-    #     if ylabel is not None:
-    #         canves.set_ylabel(ylabel, fontsize=fontsize)
-    #     canves.labelsize = "media"
-    #     canves.tick_params(labelsize=fontsize)
-
-
-# def sp_figure_signature(fig: plt.Figure, signature=None, x=1.0, y=0.1):
-#     if signature is False:
-#         return fig
-#     elif not isinstance(signature, str):
-#         signature = f"author: {getpass.getuser().capitalize()}. Create by SpDM at {datetime.datetime.now().isoformat()}."
-
-#     pos = fig.gca().get_position()
-
-#     fig.text(pos.xmax+0.01, 0.5*(pos.ymin+pos.ymax), signature,
-#              verticalalignment='center', horizontalalignment='left',
-#              fontsize='small', alpha=0.2, rotation='vertical')
-
-#     # fig.text(x, y, signature, va='bottom', ha='left', fontsize='small', alpha=0.5, rotation='vertical')
-#     return fig
-
-# def plot(self, axis=None, *args, **kwargs):
-
-#         if axis is None:
-#             axis = plt.gca()
-
-#         desc2d = self.description_2d[0]
-
-#         # outline = desc2d.vessel.unit[0].annular.outline_inner
-
-#         vessel_inner_points = np.array([desc2d.vessel.unit[0].annular.outline_inner.r,
-#                                         desc2d.vessel.unit[0].annular.outline_inner.z]).transpose([1, 0])
-
-#         vessel_outer_points = np.array([desc2d.vessel.unit[0].annular.outline_outer.r,
-#                                         desc2d.vessel.unit[0].annular.outline_outer.z]).transpose([1, 0])
-
-#         limiter_points = np.array([desc2d.limiter.unit[0].outline.r,
-#                                    desc2d.limiter.unit[0].outline.z]).transpose([1, 0])
-
-#         axis.add_patch(plt.Polygon(limiter_points, **
-#                                    merge_tree(kwargs.get("limiter", {}), {"fill": False, "closed": True})))
-
-#         axis.add_patch(plt.Polygon(vessel_outer_points, **merge_tree(kwargs.get("vessel_outer", {}),
-#                                                                                kwargs.get("vessel", {}),
-#                                                                                {"fill": False, "closed": True})))
-
-#         axis.add_patch(plt.Polygon(vessel_inner_points, **merge_tree(kwargs.get("vessel_inner", {}),
-#                                                                                kwargs.get("vessel", {}),
-#                                                                                {"fill": False, "closed": True})))
-
-#         return axis
-#    def plot(self, axis=None, *args, with_circuit=False, **kwargs):
-
-#         if axis is None:
-#             axis = plt.gca()
-
-#         for coil in self.coil:
-#             rect = coil.element[0].geometry.rectangle
-
-#             axis.add_patch(plt.Rectangle((rect.r - rect.width / 2.0,  rect.z - rect.height / 2.0),
-#                                          rect.width,  rect.height,
-#                                          **merge_tree(kwargs,  {"fill": False})))
-#             axis.text(rect.r, rect.z, coil.name,
-#                       horizontalalignment='center',
-#                       verticalalignment='center',
-#                       fontsize='xx-small')
-
-#         return axis
-
-# def plot(self, axis=None, *args, with_circuit=False, **kwargs):
-
-#     if axis is None:
-#         axis = plt.gca()
-#     for idx, p_probe in enumerate(self.b_field_tor_probe):
-#         pos = p_probe.position
-
-#         axis.add_patch(plt.Circle((pos.r, pos.z), 0.01))
-#         axis.text(pos.r, pos.z, idx,
-#                   horizontalalignment='center',
-#                   verticalalignment='center',
-#                   fontsize='xx-small')
-
-#     for p in self.flux_loop:
-#         axis.add_patch(plt.Rectangle((p.position[0].r,  p.position[0].z), 0.01, 0.01))
-#         axis.text(p.position[0].r, p.position[0].z, p.name,
-#                   horizontalalignment='center',
-#                   verticalalignment='center',
-#                   fontsize='xx-small')
-#     return axis

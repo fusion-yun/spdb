@@ -1,7 +1,7 @@
 
 import os
 
-from spdm.core.File import File
+from spdm.core.file import File
 from spdm.flow.ModuleRepository import ModuleRepository
 from spdm.flow.SpModule import SpModule
 from ..util.logger import logger

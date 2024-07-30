@@ -7,7 +7,7 @@ sys.path.append("/home/salmon/workspace/SpDev/SpDB")
 
 if __name__ == '__main__':
     from ..util.logger import logger
-    from spdm.core.Entry import open_entry
+    from spdm.core.entry import open_entry
 
     entry = open_entry("east+mdsplus:///home/salmon/public_data/~t/?tree_name=efit_east", shot=55555, time_slice=10)
 

@@ -1,7 +1,7 @@
 import os
 
 from spdm.utils.logger import logger
-from spdm.core.Entry import open_entry
+from spdm.core.entry import open_entry
 
 os.environ["SP_DATA_MAPPING_PATH"] = "/home/salmon/workspace/fytok_data/mapping"
 DATA_PATH = "/home/salmon/workspace/fytok_data/"
