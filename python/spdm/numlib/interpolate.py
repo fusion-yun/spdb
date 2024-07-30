@@ -1,20 +1,16 @@
-import collections.abc
 import typing
-from copy import copy
 
 import numpy as np
+
 from scipy.interpolate import (
     InterpolatedUnivariateSpline,
     RectBivariateSpline,
     RegularGridInterpolator,
-    UnivariateSpline,
-    interp1d,
-    interp2d,
 )
 
-from ..core.Functor import Functor
-from ..utils.logger import logger
-from ..utils.typing import array_type
+from spdm.core.functor import Functor
+from spdm.utils.logger import logger
+from spdm.utils.type_hint import array_type, ArrayType
 
 
 class RectInterpolateOp(Functor):
@@ -62,21 +58,21 @@ class RectInterpolateOp(Functor):
             x = self._dims[0]
 
             if len(x) == 0:
-                raise RuntimeError(f"x is empty!")
+                raise RuntimeError("x is empty!")
 
             if self._check_nan:
                 mark = np.isnan(value)
                 nan_count = np.count_nonzero(mark)
 
                 if nan_count == len(value):
-                    raise RuntimeError(f"value is NaN!")
+                    raise RuntimeError("value is NaN!")
                 elif nan_count > 0:
                     # logger.warning(  f"{self.__class__.__name__}[{self.__str__()}]: Ignore {nan_count} NaN at {np.argwhere(mark)}.")
                     value = value[~mark]
                     x = x[~mark]
 
             try:
-                self._ppoly = InterpolatedUnivariateSpline(x, value, ext=self._extrapolate)    
+                self._ppoly = InterpolatedUnivariateSpline(x, value, ext=self._extrapolate)
             except Exception as error:
                 raise RuntimeError(f"Can not create Interpolator! \n x={x} value={value}") from error
 
@@ -129,10 +125,10 @@ class RectInterpolateOp(Functor):
         return Functor(self.ppoly.antiderivative(*d), **self._opts)
 
 
-def interpolate(*args, type="rectlinear", **kwargs) -> Functor:
-    match type:
+def interpolate(*args, kind="rectlinear", **kwargs) -> typing.Callable[..., ArrayType]:
+    match kind:
         case "rectlinear":
             res = RectInterpolateOp(*args, **kwargs)
         case _:
-            raise NotImplementedError(f"type={type}")
+            raise NotImplementedError(f"kind={kind}")
     return res

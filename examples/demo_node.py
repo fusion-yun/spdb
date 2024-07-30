@@ -2,10 +2,10 @@ from copy import copy, deepcopy
 
 import numpy as np
 from spdm.utils.logger import logger
-from spdm.core.Dict import Dict
-from spdm.core.HTree import HTree
-from spdm.core.sp_property import sp_property
-from spdm.core.List import List
+from spdm.core.htree import Dict
+from spdm.core.htree import HTree
+from spdm.core.htree import List
+from spdm.core.sp_tree import sp_property
 
 
 # class Foo(Dict[Node]):
@@ -17,6 +17,7 @@ from spdm.core.List import List
 #     @sp_property
 #     def goo(self) -> int:
 #         return self.doo+100
+
 
 class Ion(Dict):
     label: str = sp_property()  # type:ignore
@@ -30,23 +31,28 @@ class TransModel(Dict):
     ions: List[Ion] = sp_property()  # type:ignore
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-    atom_list = List[TransModel]([
-        {"id": "first",
-            "ions":  [
-                {"label": "H", "Z": 1, "m": 1, "density": 1.0},
-                {"label": "D", "Z": 1, "m": 3},
-                {"label": "T", "Z": 1, "m": 3},
-            ]},
-        {"id": "second",
-            "ions":  [
-                {"label": "H", "Z": 1, "m": 1, "density": 2.0},
-                {"label": "D", "Z": 1, "m": 3},
-                {"label": "T", "Z": 1, "m": 3},
-            ]}
-
-    ])
+    atom_list = List[TransModel](
+        [
+            {
+                "id": "first",
+                "ions": [
+                    {"label": "H", "Z": 1, "m": 1, "density": 1.0},
+                    {"label": "D", "Z": 1, "m": 3},
+                    {"label": "T", "Z": 1, "m": 3},
+                ],
+            },
+            {
+                "id": "second",
+                "ions": [
+                    {"label": "H", "Z": 1, "m": 1, "density": 2.0},
+                    {"label": "D", "Z": 1, "m": 3},
+                    {"label": "T", "Z": 1, "m": 3},
+                ],
+            },
+        ]
+    )
 
     logger.debug(atom_list[0].ions[0].label)
     # ion = atom_list.combine(common_data={"id": "commbine"})

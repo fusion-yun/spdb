@@ -2,7 +2,7 @@ import pprint
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
-from spdm.core.File import File
+from spdm.core.file import File
 from ..util.logger import logger
 import sys
 

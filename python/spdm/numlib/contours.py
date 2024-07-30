@@ -6,11 +6,11 @@ import collections.abc
 import scipy.interpolate
 from skimage import measure
 
-from ..core.Field import Field
-from ..core.Expression import Variable
-from ..geometry.Curve import Curve
-from ..geometry.GeoObject import GeoObject
-from ..geometry.Point import Point
+from ..core.field import Field
+from ..core.expression import Variable
+from ..geometry.curve import Curve
+from ..core.geo_object import GeoObject
+from ..geometry.point import Point
 from ..utils.logger import deprecated, logger
 from .optimize import minimize_filter
 

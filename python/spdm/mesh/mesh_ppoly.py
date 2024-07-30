@@ -1,18 +1,12 @@
 from __future__ import annotations
 
-import typing
 
-import numpy as np
 from scipy.interpolate import CubicSpline, PPoly
-
-from .Mesh import Mesh
-from .RectilinearMesh import RectilinearMesh
+from spdm.mesh.mesh_rectilinear import RectilinearMesh
 
 
-@Mesh.register('ppoly')
-class PPolyMesh(RectilinearMesh):
-    """Piecewise polynomial Mesh
-    """
+class PPolyMesh(RectilinearMesh, plugin_name="ppoly"):
+    """Piecewise polynomial Mesh"""
 
     def interpolator(self, y, **kwargs) -> PPoly:
         bc_type = self._metadata.get("bc_type", "not-a-knot")
@@ -20,8 +14,6 @@ class PPolyMesh(RectilinearMesh):
         # return interp1d(*self.points, y, **kwargs)
         return CubicSpline(*self.xyz, y, bc_type=bc_type, **kwargs)
 
-
-__SP_EXPORT__ = PPolyMesh
 
 # class Function1D(Function[_T]):
 #     """

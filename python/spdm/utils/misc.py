@@ -26,9 +26,7 @@ import re
 
 
 def camel_to_snake(name):
-    # name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", name)
-    return name.lower()
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name)
 
 
 def float_unique(d: np.ndarray, x_min=-np.inf, x_max=np.inf) -> np.ndarray:
@@ -54,6 +52,21 @@ def array_like(x: np.ndarray, d):
         return np.zeros_like(x)
     # else:
     #     raise TypeError(type(d))
+
+
+def try_hash(obj) -> int:
+
+    if isinstance(obj, dict):
+        # 字典键值顺序不影响 hash
+        keys = [*obj.keys()]
+        keys.sort()
+        return hash(tuple([hash(tuple([hash(k), try_hash(obj[k])]) for k in keys)]))
+    elif isinstance(obj, (list, tuple)):
+        return hash(tuple([try_hash(v) for v in obj]))
+    elif hasattr(obj.__class__, "__hash__"):
+        return hash(obj)
+    else:
+        return hash(obj)
 
 
 # _empty = object()

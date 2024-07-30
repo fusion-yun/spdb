@@ -6,7 +6,7 @@
   "configurations": [
     {
       "name": "Python: Current File",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
@@ -15,6 +15,14 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}/python"
       }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug",
+      "program": "${workspaceFolder}/rust/main",
+      "args": [],
+      "cwd": "${workspaceFolder}"
     }
   ]
 }

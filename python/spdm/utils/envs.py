@@ -2,6 +2,12 @@ import os
 
 SP_DEBUG = os.environ.get("SP_DEBUG", True)
 
+SP_VERBOSE = os.environ.get("SP_VERBOSE", "info")
+
+if SP_DEBUG in (True, "true", "on"):
+    SP_VERBOSE = "debug"
+
+
 SP_LABEL = os.environ.get("SP_LABEL", __package__[: __package__.find(".")])
 
 SP_MPI = None
@@ -18,7 +24,7 @@ if int(os.environ.get("OMPI_COMM_WORLD_SIZE", "0")) > 0:
 try:
     from ..__version__ import __version__
 except ImportError:
-    SP_VERSION = "beta"
+    SP_VERSION = "develop"
 else:
     SP_VERSION = __version__
 
@@ -34,6 +40,3 @@ def is_notebook():
             return False  # Other type (?)
     except NameError:
         return False  # Probably standard Python interpreter
-
-
-SP_QUIET = os.environ.get("SP_QUIET", is_notebook())

@@ -8,7 +8,7 @@ class tags(Flag):
     next_ = auto()
 
 
-_not_found_ = tags.not_found
+_not_found_ = ...
 
 _undefined_ = tags.undefined
 

@@ -1,19 +1,17 @@
-import collections.abc
 import typing
-import uuid
 
 import numpy as np
-from spdm.core.HTree import HTree
-from spdm.geometry.BBox import BBox
-from spdm.geometry.Circle import Circle
-from spdm.geometry.Curve import Curve
-from spdm.geometry.GeoObject import GeoObject
-from spdm.geometry.Line import Line
-from spdm.geometry.Point import Point
-from spdm.geometry.PointSet import PointSet
+from spdm.core.htree import HTree
+
+from spdm.geometry.circle import Circle
+from spdm.geometry.curve import Curve
+from spdm.core.geo_object import GeoObject, BBox
+from spdm.geometry.line import Line
+from spdm.geometry.point import Point
+from spdm.geometry.point_set import PointSet
 from spdm.utils.logger import logger
 
-from spdm.view.View import View
+from spdm.view.sp_view import SpView
 
 SVG_TEMPLATE = """<?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -31,13 +29,9 @@ SVG_TEMPLATE = """<?xml version="1.0" encoding="utf-8" standalone="no"?>
 </svg>"""
 
 
-@View.register(["svg", "SVG"])
-class SVGView(View):
+class SVGView(SpView, plugin_name="svg"):
 
     TEMPLATE = SVG_TEMPLATE
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
 
     def draw(self, obj, **kwargs) -> typing.Any:
 
@@ -51,8 +45,8 @@ class SVGView(View):
         else:
             opts = {}
 
-        if hasattr(obj.__class__, "__geometry__"):
-            geo, *_ = obj.__geometry__(view=self.viewpoint)
+        if hasattr(obj.__class__, "__view__"):
+            geo, *_ = obj.__view__(view=self.viewpoint)
             contents.append(geo)
             bbox.append(geo.bbox)
         elif hasattr(obj, "bbox"):
@@ -67,24 +61,24 @@ class SVGView(View):
         bbox = np.bitwise_or.reduce(bbox)
 
         (xmin, ymin), (xmax, ymax) = bbox
-        width = xmax-xmin
-        height = ymax-ymin
+        width = xmax - xmin
+        height = ymax - ymin
         p_width = 300
-        p_height = int(p_width*height/width+10)
+        p_height = int(p_width * height / width + 10)
         contents = "\n\t".join(contents)
 
-        padd_x = (width/50)
-        padd_y = (height/50)
+        padd_x = width / 50
+        padd_y = height / 50
 
-        line_width = min(width/100, height/100)
+        line_width = min(width / 100, height / 100)
 
         return self.TEMPLATE.format(
             p_width=p_width,
             p_height=p_height,
-            xmin=xmin-padd_x,
-            ymin=ymin-padd_y,
-            width=width+2*padd_x,
-            height=height+2*padd_y,
+            xmin=xmin - padd_x,
+            ymin=ymin - padd_y,
+            width=width + 2 * padd_x,
+            height=height + 2 * padd_y,
             contents=contents,
             signature=self.signature,
             name=kwargs.pop("name", f"spdm_"),
@@ -92,11 +86,12 @@ class SVGView(View):
             xlabel=kwargs.pop("xlabel", ""),
             ylabel=kwargs.pop("ylabel", ""),
             line_width=line_width,
-            color="black",)
+            color="black",
+        )
 
     def _draw_geo(self, cancas, obj: GeoObject | HTree | BBox, styles=None, **kwargs) -> str:
 
-        name = kwargs.pop('name', obj.name)
+        name = kwargs.pop("name", obj.name)
 
         if getattr(obj, "ndim", 0) != 2:
             raise NotImplementedError(f"{self.__class__.__name__}.draw ndim={obj.ndim}")
@@ -124,7 +119,7 @@ class SVGView(View):
         elif isinstance(obj, Curve):
 
             pts = "M "
-            pts += '\nL'.join([f' {x} {y}' for x, y in obj._points])
+            pts += "\nL".join([f" {x} {y}" for x, y in obj._points])
             if obj.is_closed:
                 pts += " Z"
             svg = f'<path class="sp_geo_object" d="{pts}" fill="none" />'

@@ -1,11 +1,20 @@
 {
-  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-
-  "python.testing.unittestEnabled": true,
-
-  "cSpell.words": ["efit", "geqdsk", "mdsplus"],
-  // "python.analysis.typeCheckingMode": "basic",
-
   "cmake.configureOnOpen": false,
 
+  "[python]": {
+    "editor.rulers": [120],
+    "editor.tabSize": 4,
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.detectIndentation": false
+  },
+  "black-formatter.args": ["--line-length", "118", "--target-version", "py311"],
+  "python.analysis.exclude": ["*/obsolete/*", "*/_obsolete/*", "*/test/*"],
+  "python.analysis.importFormat": "absolute",
+  "python.testing.unittestArgs": ["-v", "-s", "./tests/python/", "-p", "test_*.py"],
+  "python.testing.unittestEnabled": true,
+  "python.envFile": "${workspaceFolder}/python/.env",
+  "pylint.args": [
+    "--rcfile=${workspaceFolder}/python/.pylintrc"
+  ]
 }
