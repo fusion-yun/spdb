@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools", 
+"setuptools-scm"
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,9 +11,9 @@ authors = [{ name = "Zhi YU", email = "yuzhi@ipp.ac.cn" }]
 
 dynamic = ["version"]
 
-readme = "../../README.md"
+readme = "README.md"
 
-license = { file = "../../LICENSE.txt" }
+license = { file = "LICENSE.txt" }
 
 description = "Ontology based modeling tools."
 
@@ -40,11 +42,12 @@ dependencies = [
 ]
 
 
-[tool.setuptools]
-package-dir = { "" = "." }
+
+[tool.setuptools.package-dir]
+spdm = "spdm"
 
 [tool.setuptools.packages.find]
-where = ["python"]
+where = ["spdm"]
 
 exclude = ["*.obsolete", "*.obsolete.*", "*.todo", "*.todo.*", "*.tests"]
 
@@ -52,7 +55,9 @@ namespaces = true
 
 
 [tool.setuptools_scm]
-version_file = "__version__.py"
+root = ".."
+version_file = "spdm/__version__.py"
+version_scheme = "no-guess-dev"
 
 [tool.black]
 line-length = 120
