@@ -3,7 +3,6 @@ import yaml
 from spdm.core.entry import Entry
 from spdm.core.file import File
 from spdm.utils.logger import logger
-from spdm.core.generic import as_native
 
 
 # class YAMLDocument(Document):
@@ -31,7 +30,9 @@ from spdm.core.generic import as_native
 #                          ** kwargs)
 
 
-class EntryYAML(File.Entry, plugin_name=["yaml"]):
+class EntryYAML(File.Entry, plugin_name="yaml"):
+    """Entry for YAML file"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._fid: typing.Optional[typing.IO[typing.Any]] = None

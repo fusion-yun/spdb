@@ -49,9 +49,9 @@ from spdm.utils.logger import logger
 #         else:
 #             return nobj
 
-@File.register(["namelist"])
-class NAMELISTFile(File):
-    def __init__(self,  *args, template: str = None, **kwargs):
+
+class NAMELISTFile(File, plugin_name="namelist"):
+    def __init__(self, *args, template: str = None, **kwargs):
         super().__init__(*args, **kwargs)
         self._template = pathlib.Path(template) if template is not None else None
 

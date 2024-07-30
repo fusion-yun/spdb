@@ -14,19 +14,19 @@ from spdm.core.path import Path
 SPDM_LIGHTDATA_MAX_LENGTH = 64
 
 
-def nc_put_value(grp, path, value,  **kwargs):
+def nc_put_value(grp, path, value, **kwargs):
     res = None
     path = Path(path)
     if isinstance(value, collections.abc.Mapping):
         for k, v in value.items():
-            nc_put_value(grp, path/k,  v, **kwargs)
+            nc_put_value(grp, path / k, v, **kwargs)
     elif isinstance(value, collections.abc.Sequence) and not isinstance(value, str):
         if all(map(lambda v: isinstance(v, (int, float)), value)):
             value = np.array(value)
             nc_put_value(grp, path, value, **kwargs)
         else:
             for k, v in enumerate(value):
-                nc_put_value(grp, path/k, v)
+                nc_put_value(grp, path / k, v)
     elif type(value) is np.ndarray and len(value) > SPDM_LIGHTDATA_MAX_LENGTH:
         parent = path.parent.__str__()
         key = path[-1]
@@ -49,7 +49,7 @@ def nc_put_value(grp, path, value,  **kwargs):
             obj = grp.createGroup(p)
         else:
             obj = grp
-        
+
         obj.setncattr(path[-1], value)
     return
 
@@ -65,10 +65,10 @@ def nc_get_value(grp, path, projection=None, default=_not_found_, **kwargs):
         if isinstance(p, str):
             if p in obj.groups():
                 obj = obj[p]
-            elif p in obj.ncattrs() and pos == len(path)-1:
+            elif p in obj.ncattrs() and pos == len(path) - 1:
                 obj = obj.getncattr(p)
             else:
-                raise IndexError(path[:pos+1])
+                raise IndexError(path[: pos + 1])
 
     if isinstance(obj, (nc.Group, nc.Dataset)):
         res1 = {k: nc_get_value(v, []) for k, v in obj.groups.items()}
@@ -89,7 +89,7 @@ def nc_dump(grp):
 
 class NetCDFEntry(Entry):
 
-    def __init__(self,   *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def copy(self, other):
@@ -97,28 +97,28 @@ class NetCDFEntry(Entry):
             other = other.__entry__.__value__()
         self.update(other)
 
-    def insert(self,  value, *args, **kwargs):
+    def insert(self, value, *args, **kwargs):
         return nc_put_value(self._cache, self._path, value, *args, **kwargs)
 
-    def find(self,   *args, **kwargs) -> typing.Any:
+    def find(self, *args, **kwargs) -> typing.Any:
         return nc_get_value(self._cache, self._path, *args, **kwargs)
 
     def dump(self):
         return nc_dump(self._cache)
 
-    def iter(self,  path, *args, **kwargs):
+    def iter(self, path, *args, **kwargs):
         raise NotImplementedError()
 
 
-@File.register(["nc", "netcdf", "NetCDf"])
-class FILEPLUGINnetcdf(File):
+class FILEPLUGINnetcdf(File, plugin_name=["nc", "netcdf", "NetCDf"]):
 
-    MOD_MAP = {File.Mode.read: "r",
-               File.Mode.read | File.Mode.write: "r+",
-               File.Mode.write: "w-",
-               File.Mode.write | File.Mode.create: "w",
-               File.Mode.read | File.Mode.write | File.Mode.create: "a",
-               }
+    MOD_MAP = {
+        File.Mode.read: "r",
+        File.Mode.read | File.Mode.write: "r+",
+        File.Mode.write: "w-",
+        File.Mode.write | File.Mode.create: "w",
+        File.Mode.read | File.Mode.write | File.Mode.create: "a",
+    }
 
     """
         r       Readonly, file must exist (default)
@@ -128,8 +128,8 @@ class FILEPLUGINnetcdf(File):
         a       Read/write if exists, create otherwise
     """
 
-    def __init__(self,  *args,  **kwargs):
-        super().__init__(*args,   **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._fid = None
 
     @property
@@ -142,7 +142,7 @@ class FILEPLUGINnetcdf(File):
 
         try:
             if self._fid is None:
-                self._fid = nc.Dataset(self.path,  self.mode_str, format="NETCDF4")
+                self._fid = nc.Dataset(self.path, self.mode_str, format="NETCDF4")
         except OSError as error:
             raise FileExistsError(f"Can not open file {self.path}! {error}")
         else:

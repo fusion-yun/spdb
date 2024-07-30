@@ -5,14 +5,12 @@ from spdm.core.document import Document
 from spdm.core.path import as_path
 
 
-class File(Document):
+class File(Document, plugin_prefix="file_"):
     """
     File like object
     """
 
-    _plugin_prefix = Document._plugin_prefix + "file_"
-
-    def __new__(cls, uri, *args, kind=None, **kwargs)->typing.Self:
+    def __new__(cls, uri, *args, kind=None, **kwargs) -> typing.Self:
         if isinstance(kind, str) and kind.startswith("file+"):
             kind = kind[5:]
         if kind == "file":

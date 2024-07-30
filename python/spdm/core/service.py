@@ -1,12 +1,11 @@
+import typing
 from spdm.utils.uri_utils import uri_split
 from spdm.core.document import Document
 
 
-class Service(Document, plugin_name="service"):
+class Service(Document, plugin_prefix="service_", plugin_name="service"):
 
-    _plugin_prefix = Document._plugin_prefix + "service_"
-
-    def __new__(cls, uri, *args, _plugin_name=None, **kwargs)->typing.Self:
+    def __new__(cls, uri, *args, _plugin_name=None, **kwargs) -> typing.Self:
         if cls is not Service:
             return super().__new__(cls)
 
