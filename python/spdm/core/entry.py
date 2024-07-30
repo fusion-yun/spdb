@@ -271,8 +271,8 @@ class EntryChain(Entry):
         Yields:
             Iterator[typing.Generator[typing.Tuple[int, typing.Any], None, None]]: _description_
         """
-
-        yield from super().search(*args, **kwargs)
+        if self._cache is not _not_found_:
+            yield from super().search(*args, **kwargs)
 
         for root_entry in self._entries:
             yield from root_entry.child(self._path).search(*args, **kwargs)
@@ -355,7 +355,7 @@ def as_entry(obj, **kwargs) -> Entry:
     elif obj is not None and obj is not _not_found_:
         entry = Entry(obj, **kwargs)
     else:
-        entry = None
+        entry = Entry(**kwargs)
 
     return entry
 

@@ -7,6 +7,7 @@ import numpy as np
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.logger import logger
+from spdm.core.path import Path
 from spdm.core.entry import Entry, as_entry
 from spdm.core.sp_tree import annotation
 
@@ -18,8 +19,22 @@ class WithTime(abc.ABC):
 
     def __init__(self, *args, history=_not_found_, **kwargs):
         super().__init__(*args, **kwargs)
-        if history is _not_found_:
-            self._history = Entry([])
+
+        if getattr(self, "_entry", None) is not None:
+            history_entry = self._entry.child(["time_slice"])
+
+            time = Path(["time"]).get(self._cache, _not_found_)
+
+            if time is not _not_found_:
+                entry = history_entry.child([{"time": time}])
+            else:
+                entry = history_entry.child([-1])
+
+            if entry.exists:
+                self._entry = entry
+                self._history = as_entry([history, history_entry])
+            else:
+                self._history = as_entry(history)
         else:
             self._history = as_entry(history)
 

@@ -10,7 +10,8 @@ from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, as_array, primary_type, PrimaryType, type_convert
 
 from spdm.core.entry import Entry, as_entry
-from spdm.core.path import Path, Query, PathLike, as_path
+from spdm.core.query import Query
+from spdm.core.path import Path, PathLike, as_path
 from spdm.core.generic import Generic
 
 
@@ -103,7 +104,11 @@ class HTreeNode:
         for state in [*args, kwargs]:
             if isinstance(state, dict):
                 self._entry = as_entry(
-                    [state.pop("_entry", _not_found_), state.pop("$entry", _not_found_), self._entry]
+                    [
+                        state.pop("_entry", _not_found_),
+                        state.pop("$entry", _not_found_),
+                        getattr(self, "_entry", _not_found_),
+                    ]
                 )
 
             self._cache = self._setstate(self._cache, state)
@@ -402,7 +407,6 @@ class HTree(HTreeNode):
                     value = default_value
                 default_value = _not_found_
 
-
             if value is _not_found_ and entry is None:
                 node = value
             elif isinstance(value, orig_tp):
@@ -660,9 +664,15 @@ class Set(Generic[_T], HTree):
         if isinstance(cache, list):
             for v in cache:
                 self.insert(v)
-        # elif isinstance(cache, dict):
-        #     for k, v in cache.items():
-        #         self.update(k, v)
+        elif cache is _not_found_ and self._entry is not None:
+            for item in self._entry.search(Query.tags.get_value):
+                if isinstance(item, Entry):
+                    node = self.__as_node__(None, _not_found_, entry=item, parent=self)
+                else:
+                    node = self.__as_node__(None, item, parent=self)
+
+                self._cache[hash(node)] = node
+
         elif cache is not _not_found_:
             raise TypeError(f"Invalid args {cache}")
         return
