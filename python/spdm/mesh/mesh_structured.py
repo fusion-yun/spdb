@@ -5,7 +5,6 @@ import numpy as np
 
 from spdm.utils.type_hint import ArrayType
 from spdm.core.mesh import Mesh
-from spdm.geometry.vector import Vector
 
 
 class StructuredMesh(Mesh, plugin_name="structured"):
@@ -13,7 +12,7 @@ class StructuredMesh(Mesh, plugin_name="structured"):
     结构化网格, 由坐标轴上的点组成的网格
     """
 
-    periods: Vector[bool]
+    periods: typing.Tuple[bool, ...]
     """Periodic boundary condition  周期性网格,  标识每个维度周期长度"""
 
     @property

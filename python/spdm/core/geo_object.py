@@ -419,8 +419,8 @@ class GeoObjectSet(List[_TGeo], GeoObject):
 
     OBJ_TYPE = _TGeo
 
-    def __class_getitem__(cls, item):
-        n_cls = super().__class_getitem__(item)
+    def __class_getitem__(cls, params):
+        n_cls = super().__class_getitem__(params)
 
         if not inspect.isclass(n_cls):
             return n_cls

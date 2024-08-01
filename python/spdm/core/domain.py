@@ -1,5 +1,6 @@
 import abc
 import typing
+import functools
 import numpy as np
 import numpy.typing as np_tp
 
@@ -9,6 +10,7 @@ from spdm.core.htree import List
 from spdm.core.sp_tree import annotation
 from spdm.core.sp_object import SpObject
 from spdm.core.geo_object import GeoObject
+from spdm.core.generic import Generic
 from spdm.numlib.interpolate import interpolate
 from spdm.geometry.vector import Vector
 
@@ -83,6 +85,48 @@ class DomainExpr(Domain):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         raise NotImplementedError()
+
+
+_TDomain = typing.TypeVar("_TDomain", bound=Domain)
+
+
+class SubDomainTraits(abc.ABC):
+    """部分定义域，用以描述函数/场所在流形的一部分。
+    - 用以区分边界，内部
+    - 用以区分网格的 vertical、edge 和 Cell
+    """
+
+    def __init__(self, *args, _parent: _TDomain, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    indices: ArrayType
+    """ 子域在主域网格点索引 """
+
+    @functools.cached_property
+    def points(self) -> ArrayType:
+        if not isinstance(self._parent, Domain):
+            raise RuntimeError(f"Invalid parent {self._parent}")
+
+        return self._parent.points[self.indices]
+
+
+class SubDomain(typing.Generic[_TDomain], Domain):
+    """部分定义域，用以描述函数/场所在流形的一部分。
+    - 用以区分边界，内部
+    - 用以区分网格的 vertical、edge 和 Cell
+    """
+
+    def __class_getitem__(cls, params):
+        if not isinstance(params, tuple):
+            params = (params, tuple)
+
+        cls_name = f"{cls.__name__}[{','.join(p.__name__ for p in params)}]"
+
+        return type(cls_name, (SubDomainTraits, *params), {})
+
+    @property
+    def points(self) -> ArrayType:
+        return super().points
 
 
 class DomainPPoly(Domain):

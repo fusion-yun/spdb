@@ -1,18 +1,19 @@
+""" 网格 Mesh"""
+
 import collections.abc
 import typing
 import abc
-from functools import cache
 from enum import Enum
 
 import numpy as np
 import numpy.typing as np_tp
 
 from spdm.utils.logger import logger
-from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, as_array, array_type
+from spdm.utils.type_hint import ArrayType, NumericType, ScalarType
 from spdm.utils.tags import _not_found_
 from spdm.utils.misc import group_dict_by_prefix
 
-from spdm.core.domain import Domain
+from spdm.core.domain import Domain, SubDomain
 from spdm.core.path import Path
 from spdm.core.sp_tree import annotation
 
@@ -91,7 +92,7 @@ class Mesh(Domain, plugin_prefix="spdm.mesh.mesh_"):
     def axis_label(self) -> typing.Tuple[str, ...]:
         return self._metadata.get("axis_label", ["[-]"] * self.ndim)
 
-    shape: Vector[int]
+    shape: typing.Tuple[bool, ...]
     """
         存储网格点数组的形状
         结构化网格 shape   如 [n,m] n,m 为网格的长度dimension
@@ -100,7 +101,7 @@ class Mesh(Domain, plugin_prefix="spdm.mesh.mesh_"):
 
     @property
     @abc.abstractmethod
-    def points(self) -> array_type:
+    def points(self) -> ArrayType:
         """网格点的 _空间坐标_  形状为 [...shape,ndim]"""
 
     @property
@@ -214,6 +215,21 @@ class Mesh(Domain, plugin_prefix="spdm.mesh.mesh_"):
                     **kwargs,
                 }
         return geo
+
+    @property
+    def interior(self) -> SubDomain[typing.Self]:
+        """Return boundary points."""
+        raise NotImplementedError(f"{self.__class__.__name__}.interior")
+
+    @property
+    def skin(self) -> SubDomain[typing.Self]:
+        """Return boundary points."""
+        raise NotImplementedError(f"{self.__class__.__name__}.skin")
+
+    @property
+    def boundary(self) -> SubDomain[typing.Self]:
+        """Return boundary points."""
+        raise NotImplementedError(f"{self.__class__.__name__}.boundary")
 
 
 class NullMesh(Mesh, plugin_name=["null"]):

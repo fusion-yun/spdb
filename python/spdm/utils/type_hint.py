@@ -38,7 +38,7 @@ ScalarType = (
 
 scalar_type = (*boolean_type, *integral_type, *real_type, *complex_type)
 
-ArrayType = np_tp.NDArray[np.floating | np.complexfloating]
+ArrayType = np.ndarray  # np_tp.NDArray[np.floating | np.complexfloating]
 
 array_type = np.ndarray
 

@@ -2,6 +2,7 @@
   - 管理原子，分子数据
 """
 
+import abc
 import typing
 import numpy as np
 import scipy.constants
@@ -13,7 +14,6 @@ from spdm.core.sp_tree import annotation, sp_property, SpTree
 from spdm.core.sp_tree import AttributeTree
 
 
- 
 _predef_species = {
     "electron": {
         "label": "e",
@@ -71,9 +71,9 @@ _predef_species = {
 }
 
 
-class Species(SpTree):
+class Species(abc.ABC):
     """Atom database
-       TODO: 需要 AMNS 数据库接口
+    TODO: 需要 AMNS 数据库接口
     """
 
     def __init__(self, data: str | dict, **kwargs):
@@ -84,9 +84,6 @@ class Species(SpTree):
             data = _predef_species.get(data, _not_found_)
             if data == data_:
                 raise RuntimeError(f"Cyclice reference {data_}!")
-
-        if isinstance(data, Species):
-            data = data._cache
 
         super().__init__(data, **kwargs)
 
