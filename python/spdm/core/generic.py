@@ -117,8 +117,8 @@ class Generic(typing.Generic[*_Ts]):
     """
 
     @typing._tp_cache
-    def __class_getitem__(cls, item):
-        alias = super().__class_getitem__(item)
+    def __class_getitem__(cls, params):
+        alias = super().__class_getitem__(params)
         alias.__class__ = _GenericAlias
         if cls is not Generic and len(alias.__parameters__) == 0:
             return alias[()]

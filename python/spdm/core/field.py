@@ -5,7 +5,9 @@ import numpy as np
 from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType, array_type
+
 from spdm.core.path import Path
+from spdm.core.htree import Tuple
 from spdm.core.mesh import Mesh
 from spdm.core.expression import Expression
 
@@ -56,6 +58,10 @@ class Field(Expression):
     """
 
     Domain = Mesh
+    rank = 0
+
+    def __class_getitem__(cls, params):
+        return FieldTuple.__class_getitem__(params)
 
     def __init__(self, *args, mesh=None, **kwargs):
         """
@@ -96,7 +102,20 @@ class Field(Expression):
                 mesh.setdefault("type", "curvilinear")
                 mesh["dims"] = dims
 
-        super().__init__(*args[-1:], domain=mesh, **kwargs)
+        if len(args) > 0:
+            cache = np.asarray(args[-1])
+        else:
+            cache = _not_found_
+
+        super().__init__(cache, domain=mesh, **kwargs)
+
+    def _render_latex_(self) -> str:
+        if self._cache is _not_found_ or len(self._cache.shape) == 0:
+            shape = "n/a"
+        else:
+            shape = r" \times ".join(map(str, self._cache.shape))
+
+        return rf"\left<{shape}\right>"
 
     @property
     def mesh(self) -> Mesh:
@@ -181,3 +200,36 @@ class Field(Expression):
 
     def partial_derivative(self, *args, **kwargs) -> typing.Self:
         return self.derivative(args, **kwargs)
+
+
+class FieldTuple(Field):
+    rank = (1,)
+
+    def __class_getitem__(cls, params):
+        if not isinstance(params, tuple):
+            params = (params,)
+
+        return type(f"Field[{','.join(map(str,params))}]", (cls,), {"rank": params})
+
+    def __getitem__(self, idx) -> Field:
+        if not isinstance(idx, tuple):
+            idx = (idx,)
+
+        # value = self._cache[*idx]
+        # value = self._cache
+        # for v in idx:
+        #     value = value[v]
+
+        if len(idx) > len(self.rank):
+            return self._cache[..., *idx]
+        else:
+            return FieldTuple[self.rank[len(idx) :]](self._cache[..., *idx], _parent=self)
+
+    def __setitem__(self, idx, value) -> None:
+        if not isinstance(idx, tuple):
+            idx = (idx,)
+        self._cache[..., *idx] = value
+
+
+VectorField = FieldTuple[3]
+TensorField = FieldTuple[3, 3]

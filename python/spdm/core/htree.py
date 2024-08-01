@@ -107,7 +107,7 @@ class HTreeNode:
                     [
                         state.pop("_entry", _not_found_),
                         state.pop("$entry", _not_found_),
-                       self._entry ,
+                        self._entry,
                     ]
                 )
 
@@ -707,3 +707,43 @@ class Set(Generic[_T], HTree):
 
 
 collections.abc.Set.register(Set)
+
+_IRANK = typing.TypeVarTuple("_IRANK")
+
+
+class Tuple(Generic[_T, *_IRANK], HTreeNode):
+
+    ItemClass = _T
+
+    def __class_getitem__(cls, params):
+        if not isinstance(params, tuple):
+            return super().__class_getitem__(params)
+
+        n_cls = super().__class_getitem__(params[0])
+
+        suffix = ",".join(map(str, params[1:]))
+        if len(params) == 2:
+            item_class = params[0]
+        else:
+            item_class = Tuple[params[0], *params[2:]]
+
+        return type(
+            f"{cls.__name__}[{params[0].__name__},{suffix}]",
+            (n_cls,),
+            {"rank": params[1:], "ItemClass": item_class},
+        )
+
+    def __getitem__(self, idx: int | typing.Tuple[int]) -> _T:
+
+        if not isinstance(idx, tuple):
+            idx = (idx,)
+        elif len(idx) == 0:
+            return self
+        if len(self.rank) == 1 or len(idx) == 1:
+            return type_convert(self.ItemClass, self._cache[idx[0]])
+
+        return self.ItemClass(self._cache[idx[0]], _parent=self)[idx[1:]]
+
+
+Tensor = Tuple
+Vector = Tuple
