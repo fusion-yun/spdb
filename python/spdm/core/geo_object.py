@@ -17,11 +17,14 @@ from spdm.core.pluggable import Pluggable
 class BBox:
     """Boundary Box"""
 
-    def __init__(self, origin: ArrayLike = None, dimensions: ArrayLike = None, transform=None, shift=None) -> None:
+    def __init__(
+        self, origin: ArrayLike = None, dimensions: ArrayLike = None, transform=None, shift=None, **styles
+    ) -> None:
         self._origin = np.asarray(origin)
         self._dimensions = np.asarray(dimensions)
         self._transform = transform
         self._shift = shift
+        self._styles = styles
 
     def __copy__(self) -> typing.Self:
         return BBox(self._origin, self._dimensions, self._transform, self._shift)
@@ -29,6 +32,10 @@ class BBox:
     def __repr__(self) -> str:
         """x y width height"""
         return f"viewBox=\"{' '.join([*map(str,self._origin)])}  {' '.join([*map(str,self._dimensions)]) }\" transform=\"{self._transform}\" shift=\"{self._shift}\""
+
+    @property
+    def styles(self) -> dict:
+        return self._styles
 
     @property
     def origin(self) -> ArrayType:
@@ -213,6 +220,8 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
         if ndim is not None:
             n_cls_name += f"{ndim}D"
             cls_attrs["ndim"] = ndim
+            if cls.rank > ndim:
+                cls_attrs["rank"] = ndim
 
         if len(cls_attrs) == 0:
             n_cls = cls
@@ -220,7 +229,11 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
             n_cls = type(
                 n_cls_name,
                 (cls,),
-                {"__module__": cls.__module__, "__package__": getattr(cls, "__package__", None), **cls_attrs},
+                {
+                    "__module__": cls.__module__,
+                    "__package__": getattr(cls, "__package__", None),
+                    **cls_attrs,
+                },
             )
         # else:
         #     n_cls = cls
@@ -264,11 +277,11 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
 
         if len(args) == 1 and (isinstance(args[0], dict) or args[0] is _not_found_):
             pass
+        elif len(args) == 1:
+            points = np.asarray(args[0])
+            args = ({"points": points},)
         else:
-            if len(args) == 1:
-                points = np.asarray(args[0])
-            else:
-                points = np.stack(args, axis=-1)
+            points = np.stack(args)
             args = ({"points": points},)
 
         super().__init__(*args, **kwargs)
@@ -326,7 +339,7 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
     def __iter__(self) -> typing.Generator[ArrayType, None, None]:
         yield from self.points
 
-    @sp_property
+    @property
     def bbox(self) -> BBox:
         """boundary box of geometry [ [...min], [...max] ]"""
         xmin = np.asarray([np.min(self.points[..., n]) for n in range(self.ndim)])

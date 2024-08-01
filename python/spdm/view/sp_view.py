@@ -24,6 +24,8 @@ class SpView(SpObject):
     _plugin_registry = {}
     _plugin_prefix = "spdm.view.view_"
 
+    DEFAULT_VIEWPOINT = "RZ"
+
     @property
     def signature(self) -> str:
         return f"Create by SpDM at {datetime.datetime.now().isoformat()}. AUTHOR: {getpass.getuser().capitalize()}. "

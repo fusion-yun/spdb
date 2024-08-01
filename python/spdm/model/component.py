@@ -27,7 +27,7 @@ class Component(Entity):
     def _repr_svg_(self):
         from spdm.view import sp_view as sp_view
 
-        return sp_view.display(self.__view__(), output="svg")
+        return sp_view.display(self.__view__(), scaled=True, output="svg")
 
     def __view__(self, **styles) -> dict:
         geo = self.geometry()

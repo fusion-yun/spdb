@@ -100,7 +100,10 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         return fig
 
-    def draw(self, geo, *styles, view_point="rz", title=None, **kwargs) -> typing.Any:
+    def draw(self, geo, *styles, view_point=None, title=None, aspect=None, scaled=False, **kwargs) -> typing.Any:
+        if view_point is None:
+            view_point = SpView.DEFAULT_VIEWPOINT
+
         fig, canvas = plt.subplots()
 
         geo = self._draw(canvas, geo, *styles, view_point=view_point)
@@ -112,24 +115,22 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         if xlabel is not None:
             canvas.set_xlabel(xlabel)
-        elif view_point.lower() == "rz":
-            canvas.set_xlabel(r" $R$ [m]")
         else:
-            canvas.set_xlabel(r" $X$ [m]")
+            canvas.set_xlabel(f" ${view_point[0].upper()}$ [m]")
 
         ylabel = g_styles.get("ylabel", None)
         if ylabel is not None:
             canvas.set_ylabel(ylabel)
-        elif view_point.lower() == "rz":
-            canvas.set_ylabel(r" $Z$ [m]")
         else:
-            canvas.set_ylabel(r" $Y$ [m]")
+            canvas.set_ylabel(f" ${view_point[1].upper()}$ [m]")
 
         pos = canvas.get_position()
 
-        canvas.set_aspect("equal")
+        if aspect is not None:
+            canvas.set_aspect(aspect)
 
-        canvas.axis("scaled")
+        if scaled is not False:
+            canvas.axis("scaled")
 
         new_pos = canvas.get_position()
 
@@ -152,7 +153,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             return
         g_styles = getattr(obj, "_metadata", {}).get("styles", {})
         g_styles = update_tree(g_styles, *styles)
-        s_styles = g_styles.get("$matplotlib", {})
+        s_styles = g_styles.get("$plot", {})
 
         if hasattr(obj.__class__, "__view__"):
             try:
@@ -190,6 +191,11 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
                         raise RuntimeError(f"Illegal dimension {[d.shape for d in x]} {y.shape} ")
 
                     canvas.contour(*x, y, **merge_tree(s_styles, {"levels": 20, "linewidths": 0.5}))
+                case "mesh":
+                    X, Y = obj.get("$data")
+                    styles = obj.get("$plot", {})
+                    canvas.plot(X, Y, **styles)
+                    canvas.plot(X.T, Y.T, **styles)
 
                 case _:
                     logger.warning(f"ignore unknown view type {view_type}")

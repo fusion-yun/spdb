@@ -87,6 +87,9 @@ class Species(abc.ABC):
 
         super().__init__(data, **kwargs)
 
+    def __hash__(self) -> int:
+        return hash(self.label)
+
     label: str
     z: float
     a: float

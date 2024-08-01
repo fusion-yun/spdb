@@ -10,7 +10,8 @@ from spdm.core.htree import List
 from spdm.core.sp_tree import annotation
 from spdm.core.sp_object import SpObject
 from spdm.core.geo_object import GeoObject
-from spdm.core.generic import Generic
+from spdm.core.geo_object import BBox, GeoObject
+
 from spdm.numlib.interpolate import interpolate
 from spdm.geometry.vector import Vector
 
@@ -30,6 +31,8 @@ class Domain(SpObject):
         return super().__new__(cls, *args, kind=kind, **kwargs)
 
     geometry: GeoObject
+
+    bbox: BBox = annotation(alias="geometry/bbox")
 
     ndim: int = annotation(alias="geometry/ndim")
     """所在的空间维度"""
@@ -158,7 +161,7 @@ class DomainPPoly(Domain):
         self._coordinates = coordinates
         self.dims = dims
 
-    shape: Vector[int]
+    shape: typing.Tuple[int]
 
     dims: typing.Tuple[ArrayType, ...]
 

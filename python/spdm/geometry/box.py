@@ -1,3 +1,5 @@
+""" Box 矩形，n维几何体 """
+
 from spdm.geometry.solid import Solid
 
 
@@ -11,7 +13,3 @@ class Box(Solid, plugin_name="box"):
     @property
     def is_convex(self) -> bool:
         return True
-
-
-class Box2D(Solid, plugin_name="box2d", ndim=2):
-    pass

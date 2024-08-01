@@ -3,6 +3,7 @@
 import typing
 import numpy as np
 
+from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import ArrayType
 from spdm.core.mesh import Mesh
 
@@ -21,8 +22,17 @@ class StructuredMesh(Mesh, plugin_name="structured"):
 
     @property
     def coordinates(self) -> typing.Tuple[ArrayType, ...]:
-        xmin, xmax = self.geometry.bbox
-        dims = [np.linspace(xmin[i], xmax[i], self.shape[i], endpoint=self.periods[i]) for i in range(self.ndim)]
+        origin = self.bbox.origin
+        dimensions = self.bbox.dimensions
+        dims = [
+            np.linspace(
+                origin[i],
+                origin[i] + dimensions[i],
+                self.shape[i],
+                endpoint=self.periods[i] if self.periods is not _not_found_ else True,
+            )
+            for i in range(self.ndim)
+        ]
         return tuple(np.meshgrid(*dims, indexing="ij"))
 
     def interpolator(self, *args, **kwargs) -> typing.Callable:

@@ -9,15 +9,14 @@ import numpy as np
 import numpy.typing as np_tp
 
 from spdm.utils.logger import logger
-from spdm.utils.type_hint import ArrayType, NumericType, ScalarType
+from spdm.utils.type_hint import ArrayType, NumericType, ScalarType, array_type
 from spdm.utils.tags import _not_found_
 from spdm.utils.misc import group_dict_by_prefix
 
 from spdm.core.domain import Domain, SubDomain
 from spdm.core.path import Path
-from spdm.core.sp_tree import annotation
-
-from spdm.geometry.vector import Vector
+from spdm.core.sp_tree import annotation, sp_property
+from spdm.core.geo_object import BBox
 
 from spdm.numlib.numeric import float_nan, bitwise_and
 from spdm.numlib.interpolate import interpolate
@@ -92,6 +91,15 @@ class Mesh(Domain, plugin_prefix="spdm.mesh.mesh_"):
     def axis_label(self) -> typing.Tuple[str, ...]:
         return self._metadata.get("axis_label", ["[-]"] * self.ndim)
 
+    @property
+    def bbox(self) -> BBox:
+        if self.margin is _not_found_:
+            return super().bbox
+        else:
+            return BBox(super().bbox.origin - self.margin, super().bbox.dimensions + self.margin * 2)
+
+    margin: ArrayType
+
     shape: typing.Tuple[bool, ...]
     """
         存储网格点数组的形状
@@ -100,9 +108,9 @@ class Mesh(Domain, plugin_prefix="spdm.mesh.mesh_"):
     """
 
     @property
-    @abc.abstractmethod
     def points(self) -> ArrayType:
         """网格点的 _空间坐标_  形状为 [...shape,ndim]"""
+        return None
 
     @property
     def coordinates(self) -> typing.Tuple[ArrayType, ...]:
@@ -199,6 +207,34 @@ class Mesh(Domain, plugin_prefix="spdm.mesh.mesh_"):
     def integrate(self, y: NumericType, *args, **kwargs) -> ScalarType:
         raise NotImplementedError(f"{self.__class__.__name__}.integrate")
 
+    @property
+    def interior(self) -> SubDomain:
+        """Return boundary points."""
+        raise NotImplementedError(f"{self.__class__.__name__}.interior")
+
+    @property
+    def skin(self) -> SubDomain:
+        """Return boundary points."""
+        raise NotImplementedError(f"{self.__class__.__name__}.skin")
+
+    @property
+    def boundary(self) -> SubDomain:
+        """Return boundary points."""
+        raise NotImplementedError(f"{self.__class__.__name__}.boundary")
+
+    def __view__(self, **styles) -> dict:
+        return {
+            "geometry": (self.geometry, {"$plot": {"color": "blue", "linewidth": 0.5}}),
+            "bbox": (self.bbox, {"$plot": {"color": "red", "linewidth": 0.1}}),
+            "mesh": {"$type": "mesh", "$data": self.coordinates, "$plot": {"color": "gray", "linewidth": 0.1}},
+            "$styles": styles,
+        }
+
+    def _repr_svg_(self):
+        from spdm.view import sp_view as sp_view
+
+        return sp_view.display(self.__view__(), output="svg")
+
     def view(self, obj, view_point="rz", label=None, **kwargs):
         """将 obj 画在 domain 上，默认为 n维 contour。"""
 
@@ -215,21 +251,6 @@ class Mesh(Domain, plugin_prefix="spdm.mesh.mesh_"):
                     **kwargs,
                 }
         return geo
-
-    @property
-    def interior(self) -> SubDomain[typing.Self]:
-        """Return boundary points."""
-        raise NotImplementedError(f"{self.__class__.__name__}.interior")
-
-    @property
-    def skin(self) -> SubDomain[typing.Self]:
-        """Return boundary points."""
-        raise NotImplementedError(f"{self.__class__.__name__}.skin")
-
-    @property
-    def boundary(self) -> SubDomain[typing.Self]:
-        """Return boundary points."""
-        raise NotImplementedError(f"{self.__class__.__name__}.boundary")
 
 
 class NullMesh(Mesh, plugin_name=["null"]):
