@@ -35,6 +35,7 @@ dependencies = [
     "lxml",
     "numpy",
     "scipy",
+    "shapely",
     "scikit_image",
     "matplotlib",
     "networkx",

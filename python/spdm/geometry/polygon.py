@@ -1,5 +1,8 @@
 import typing
+import shapely
+import numpy as np
 
+from spdm.utils.type_hint import array_type, ArrayType
 from spdm.core.sp_tree import annotation
 from spdm.core.geo_object import GeoObject
 from spdm.geometry.line import Segment
@@ -12,11 +15,16 @@ class Rectangle(GeoObject, plugin_name="rectangle"):
 
 
 RectangleRZ = Rectangle["RZ"]
-RectangleXY= Rectangle["XY"]
+RectangleXY = Rectangle["XY"]
 
 
 class Polygon(GeoObject, plugin_name="polygon", rank=2):
     """Polygon 多边形"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._impl = shapely.geometry.Polygon(self.points)
+
 
     @property
     def is_valid(self) -> bool:

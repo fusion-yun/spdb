@@ -4,6 +4,7 @@ from copy import copy
 import typing
 import inspect
 import numpy as np
+import shapely
 
 from spdm.utils.type_hint import ArrayLike, ArrayType, array_type
 from spdm.utils.tags import _not_found_
@@ -291,6 +292,7 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
 
         if self.points.shape[-1] != self.__class__.ndim:
             self.ndim = self.points.shape[-1]
+        self._impl = None
 
     def _repr_svg_(self) -> str:
         """Jupyter 通过调用 _repr_html_ 显示对象"""
@@ -374,7 +376,27 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
 
     def enclose(self, *args) -> bool | ArrayType:
         """Return True if all args are inside the geometry, False otherwise."""
-        return False if not self.is_closed else self.bbox.enclose(*args)
+        return self.contains(*args)
+
+    def distance(self, *args) -> float | ArrayType:
+        """Return the distance between self and"""
+        if self._impl is None:
+            raise NotImplementedError(f"{self.__class__.__name__}.distance")
+        elif len(args) > 0 and all(isinstance(a, array_type) and a.shape == args[0].shape for a in args[1:]):
+            vectorized_contains = np.vectorize(lambda *x: self._impl.distance(shapely.geometry.Point(*x)))
+            return vectorized_contains(*args)
+        else:
+            return self._impl.distance(shapely.geometry.Point(*args))
+
+    def contains(self, *args) -> bool | ArrayType:
+        """Return True if all args are inside the geometry, False otherwise."""
+        if self._impl is None:
+            raise NotImplementedError(f"{self.__class__.__name__}.contains")
+        elif len(args) > 0 and all(isinstance(a, array_type) and a.shape == args[0].shape for a in args[1:]):
+            vectorized_contains = np.vectorize(lambda *x: (self._impl.contains(shapely.geometry.Point(*x))))
+            return vectorized_contains(*args)
+        else:
+            return self._impl.contains(shapely.geometry.Point(*args))
 
     def intersection(self, other: typing.Self) -> typing.List[typing.Self]:
         """Return the intersection of self with other."""
@@ -461,6 +483,9 @@ class GeoObjectSet(List[_TGeo], GeoObject):
 
     def enclose(self, other) -> bool:
         return all([g.enclose(other) for g in self if isinstance(g, GeoObject)])
+
+    def contains(self, *args) -> bool | ArrayType:
+        raise NotImplementedError(f"{self.__class__.__name__}.contains")
 
     @property
     def points(self) -> ArrayType:

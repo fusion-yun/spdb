@@ -223,26 +223,26 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             )
 
         elif isinstance(obj, Polygon):
-            canvas.add_patch(plt.Polygon(obj.points, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))))
+            canvas.add_patch(plt.Polygon(obj.points, fill=False, **(s_styles | obj.styles.get("$plot", {}))))
 
         elif isinstance(obj, Polyline):
             canvas.add_patch(
                 plt.Polygon(
-                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$matplotlib", {}))
+                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$plot", {}))
                 )
             )
 
         elif isinstance(obj, Line):
             canvas.add_artist(
                 plt.Line2D(
-                    [obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **(s_styles | obj.styles.get("$matplotlib", {}))
+                    [obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **(s_styles | obj.styles.get("$plot", {}))
                 )
             )
 
         elif isinstance(obj, Curve):
             canvas.add_patch(
                 plt.Polygon(
-                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$matplotlib", {}))
+                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$plot", {}))
                 )
             )
 
@@ -252,7 +252,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             w = p1[0] - p0[0]
             h = p1[1] - p0[1]
             canvas.add_patch(
-                plt.Rectangle((p0[0], p0[1]), w, h, fill=False, **(s_styles | obj.styles.get("$matplotlib", {})))
+                plt.Rectangle((p0[0], p0[1]), w, h, fill=False, **(s_styles | obj.styles.get("$plot", {})))
             )
 
         elif isinstance(obj, Circle):
@@ -261,15 +261,15 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
                     (obj.origin[0], obj.origin[1]),
                     obj.radius,
                     fill=False,
-                    **(s_styles | obj.styles.get("$matplotlib", {})),
+                    **(s_styles | obj.styles.get("$plot", {})),
                 )
             )
 
         elif isinstance(obj, Point):
-            canvas.scatter(obj[0], obj[1], **(s_styles | obj.styles.get("$matplotlib", {})))
+            canvas.scatter(obj[0], obj[1], **(s_styles | obj.styles.get("$plot", {})))
 
         elif isinstance(obj, PointSet):
-            canvas.scatter(*obj.points, **(s_styles | obj.styles.get("$matplotlib", {})))
+            canvas.scatter(*obj.coordinates, **(s_styles | obj.styles.get("$plot", {})))
 
         elif isinstance(obj, GeoObject):
             self._draw(canvas, obj.bbox, *styles)
@@ -277,7 +277,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         elif isinstance(obj, BBox):
             canvas.add_patch(
                 plt.Rectangle(
-                    obj.origin, *obj.dimensions, fill=False, **(s_styles | obj.styles.get("$matplotlib", {}))
+                    obj.origin, *obj.dimensions, fill=False, **(s_styles | obj.styles.get("$plot", {}))
                 )
             )
 
@@ -306,7 +306,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
             text_styles.setdefault("position", pos)
 
-            self._draw(canvas, text, {"$matplotlib": text_styles})
+            self._draw(canvas, text, {"$plot": text_styles})
 
         return obj
 
@@ -440,7 +440,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         styles = update_tree(kwargs, styles)
 
-        s_styles = styles.get("matplotlib", {})
+        s_styles = styles.get("plot", {})
 
         label = styles.get("label", None)
 
