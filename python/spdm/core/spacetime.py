@@ -1,7 +1,5 @@
-import typing
-
-from spdm.utils.logger import logger
-from spdm.utils.envs import SP_DEBUG, SP_LABEL
+# -*- coding: utf-8 -*-
+""" Space Volume """
 
 from spdm.core.time import WithTime
 from spdm.core.domain import WithDomain
@@ -12,8 +10,3 @@ class SpacetimeVolume(WithTime, WithDomain):
 
     def __view__(self, **styles) -> dict:
         return styles
-
-    def _repr_svg_(self):
-        from spdm.view import sp_view as sp_view
-
-        return sp_view.display(self.__view__(), output="svg")

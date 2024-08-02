@@ -4,7 +4,7 @@ import typing
 import numpy as np
 
 from spdm.utils.tags import _not_found_
-from spdm.utils.type_hint import ArrayType
+from spdm.utils.type_hint import ArrayType, array_type
 from spdm.core.mesh import Mesh
 
 
@@ -22,12 +22,11 @@ class StructuredMesh(Mesh, plugin_name="structured"):
 
     @property
     def coordinates(self) -> typing.Tuple[ArrayType, ...]:
-        origin = self.bbox.origin
-        dimensions = self.bbox.dimensions
+
         dims = [
             np.linspace(
-                origin[i],
-                origin[i] + dimensions[i],
+                self.bbox.points[0][i],
+                self.bbox.points[1][i],
                 self.shape[i],
                 endpoint=self.periods[i] if self.periods is not _not_found_ else True,
             )
@@ -43,3 +42,14 @@ class StructuredMesh(Mesh, plugin_name="structured"):
         输入坐标若为数组，则返回数组
         """
         raise NotImplementedError(f"{args} {kwargs}")
+
+    def interpolate(self, func: typing.Callable | ArrayType, *args, **kwargs) -> typing.Callable[..., ArrayType]:
+        xargs = self.coordinates
+        if callable(func):
+            value = func(*xargs)
+        elif isinstance(func, array_type):
+            value = func
+        else:
+            raise TypeError(f"{type(func)} is not array or callable!")
+
+        return interpolate(*xargs, value)

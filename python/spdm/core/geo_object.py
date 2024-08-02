@@ -18,75 +18,71 @@ from spdm.core.pluggable import Pluggable
 class BBox:
     """Boundary Box"""
 
-    def __init__(
-        self, origin: ArrayLike = None, dimensions: ArrayLike = None, transform=None, shift=None, **styles
-    ) -> None:
-        self._origin = np.asarray(origin)
-        self._dimensions = np.asarray(dimensions)
+    def __init__(self, *points: ArrayLike, transform=None, shift=None, **styles) -> None:
+        self._points = np.asarray(points[0]) if len(points) == 1 else np.asarry(points)
         self._transform = transform
         self._shift = shift
         self._styles = styles
 
     def __copy__(self) -> typing.Self:
-        return BBox(self._origin, self._dimensions, self._transform, self._shift)
+        return self.__class__(self._points, self._transform, self._shift, **self._styles)
 
     def __repr__(self) -> str:
         """x y width height"""
-        return f"viewBox=\"{' '.join([*map(str,self._origin)])}  {' '.join([*map(str,self._dimensions)]) }\" transform=\"{self._transform}\" shift=\"{self._shift}\""
+        return f'box=[{self.min},{self.max}] transform="{self._transform}" shift="{self._shift}"'
 
     @property
     def styles(self) -> dict:
         return self._styles
 
     @property
+    def points(self) -> ArrayType:
+        return self._points
+
+    @property
+    def min(self) -> ArrayType:
+        return self._points[0]
+
+    @property
+    def max(self) -> ArrayType:
+        return self._points[1]
+
+    @property
     def origin(self) -> ArrayType:
-        return self._origin
+        return self._points[0]
 
     @property
     def dimensions(self) -> ArrayType:
-        return self._dimensions
+        return self._points[0] - self._points[0]
 
     @property
     def is_valid(self) -> bool:
-        return np.all(self._dimensions > 0)
+        return np.all(self.dimensions > 0)
 
     @property
     def is_degraded(self) -> bool:
-        return np.any(np.isclose(self._dimensions, 0.0))
+        return np.any(np.isclose(self.dimensions, 0.0))
 
     @property
     def is_null(self) -> bool:
-        return np.allclose(self._dimensions, 0)
+        return np.allclose(self.dimensions, 0)
 
-    # def __equal__(self, other: BBox) -> bool:
-    #     return np.allclose(self._xmin, other._xmin) and np.allclose(self._xmax, other._xmax)
-
-    # def __or__(self, other: BBox) -> BBox:
-    #     if other is None:
-    #         return self
-    #     else:
-    #         return BBox(np.min(self._xmin, other._xmin), np.max(self._xmax, other._xmax))
-
-    # def __and__(self, other: BBox) -> BBox | None:
-    #     if other is None:
-    #         return None
-    #     else:
-    #         res = BBox(np.max(self._xmin, other._xmin), np.min(self._xmax, other._xmax))
-    #         return res if res.is_valid else None
+    def __equal__(self, other: typing.Self) -> bool:
+        return np.allclose(self._points, other._points)
 
     @property
     def ndim(self) -> int:
-        return len(self._dimensions)
+        return self._points.shape[-1]
 
     @property
     def center(self) -> ArrayType:
         """center of geometry"""
-        return self._origin + self._dimensions * 0.5
+        return (self._points[0] + self._points[1]) * 0.5
 
     @property
     def measure(self) -> float:
         """measure of geometry, length,area,volume,etc. 默认为 bbox 的体积"""
-        return float(np.product(self._dimensions))
+        return float(np.product(self.dimensions))
 
     def enclose(self, *args) -> bool | ArrayType:
         """Return True if all args are inside the geometry, False otherwise."""
@@ -108,22 +104,19 @@ class BBox:
 
         elif len(args) == self.ndim:
             if isinstance(args[0], array_type):
-                r_pos = [args[idx] - self._origin[idx] for idx in range(self.ndim)]
+                r_pos = [args[idx] - self.origin[idx] for idx in range(self.ndim)]
                 return np.bitwise_and.reduce(
-                    [((r_pos[idx] >= 0) & (r_pos[idx] <= self._dimensions[idx])) for idx in range(self.ndim)]
+                    [((r_pos[idx] >= 0) & (r_pos[idx] <= self.dimensions[idx])) for idx in range(self.ndim)]
                 )
             else:
                 res = all(
                     [
-                        (
-                            (args[idx] >= self._origin[idx])
-                            and (args[idx] <= self._origin[idx] + self._dimensions[idx])
-                        )
+                        ((args[idx] >= self.origin[idx]) and (args[idx] <= self.origin[idx] + self.dimensions[idx]))
                         for idx in range(self.ndim)
                     ]
                 )
                 if not res:
-                    logger.debug((args, self._origin, self._dimensions))
+                    logger.debug((args, self.origin, self.dimensions))
                 return res
 
         else:
@@ -131,27 +124,26 @@ class BBox:
 
     def union(self, other: typing.Self) -> typing.Self:
         """Return the union of self with other."""
-
-        raise NotImplementedError(f"intersection")
+        raise NotImplementedError("intersection")
 
     def intersection(self, other: typing.Self):
         """Return the intersection of self with other."""
-        raise NotImplementedError(f"intersection")
+        raise NotImplementedError("intersection")
 
     def reflect(self, point0, pointt1):
         """reflect  by line"""
-        raise NotImplementedError(f"reflect")
+        raise NotImplementedError("reflect")
 
     def rotate(self, angle, axis=None):
         """rotate  by angle and axis"""
-        raise NotImplementedError(f"rotate")
+        raise NotImplementedError("rotate")
 
     def scale(self, *s, point=None):
         """scale self by *s, point"""
-        raise NotImplementedError(f"scale")
+        raise NotImplementedError("scale")
 
     def translate(self, *shift):
-        raise NotImplementedError(f"translate")
+        raise NotImplementedError("translate")
 
 
 class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
@@ -296,9 +288,9 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
 
     def _repr_svg_(self) -> str:
         """Jupyter 通过调用 _repr_html_ 显示对象"""
-        from spdm.view.sp_view import display
+        from spdm.view import sp_view
 
-        return display(self, schema="svg")
+        return sp_view.draw(self.__view__(), output="svg+html")
 
     def __view__(self, *args, **kwargs) -> typing.Self:
         """
@@ -323,7 +315,7 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
     styles: HTree = {}
 
     @property
-    def coordinates(self) -> ArrayType:
+    def coordinates(self) -> typing.Tuple[ArrayType, ...]:
         return tuple([self.points[..., idx] for idx in range(self.ndim)])
 
     def __array__(self) -> ArrayType:
@@ -335,8 +327,8 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
     def __setitem__(self, idx, value: ArrayType | float):
         self.points[idx] = value
 
-    def __delitem__(self, idx):
-        del self.points[idx]
+    # def __delitem__(self, idx):
+    #     del self.points[idx]
 
     def __iter__(self) -> typing.Generator[ArrayType, None, None]:
         yield from self.points
@@ -346,7 +338,7 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
         """boundary box of geometry [ [...min], [...max] ]"""
         xmin = np.asarray([np.min(self.points[..., n]) for n in range(self.ndim)])
         xmax = np.asarray([np.max(self.points[..., n]) for n in range(self.ndim)])
-        return BBox(xmin, xmax - xmin)
+        return BBox(xmin, xmax)
 
     @property
     def boundary(self) -> typing.Self | None:

@@ -2,54 +2,70 @@ import abc
 import typing
 import functools
 import numpy as np
-import numpy.typing as np_tp
 
 from spdm.utils.tags import _not_found_
 from spdm.utils.type_hint import array_type, ArrayType
-from spdm.core.htree import List
-from spdm.core.sp_tree import annotation
+from spdm.core.sp_tree import annotation, sp_property
 from spdm.core.sp_object import SpObject
-from spdm.core.geo_object import GeoObject
 from spdm.core.geo_object import BBox, GeoObject
 
 from spdm.numlib.interpolate import interpolate
-from spdm.geometry.vector import Vector
 
 
 class Domain(SpObject):
-    """函数/场的定义域，用以描述函数/场所在流形
-    - geometry  ：几何边界
-    - shape     ：网格所对应数组形状， 例如，均匀网格 的形状为 （n,m) 其中 n,m 都是整数
-    - points    ：网格顶点坐标，例如 (x,y) ，其中，x，y 都是形状为 （n,m) 的数组
-
-
-    """
+    """Domain 描述空间底流形$B$，Field/Function 是在底流形上的函数或称为纤维丛 $F$。"""
 
     def __new__(cls, *args, kind=None, **kwargs) -> typing.Self:
+        """根据参数确定 Domain 的类型"""
         if cls is Domain and kind is None and all(isinstance(d, np.ndarray) for d in args):
             return super().__new__(DomainPPoly)
         return super().__new__(cls, *args, kind=kind, **kwargs)
 
-    geometry: GeoObject
-
-    bbox: BBox = annotation(alias="geometry/bbox")
+    # ------------------------------------------------------------------------------------------------------------------
+    # 网格几何属性
 
     ndim: int = annotation(alias="geometry/ndim")
-    """所在的空间维度"""
+    """流形所在空间的维度"""
 
     rank: int = annotation(alias="geometry/rank")
-    """所在流形的维度，0:点， 1:线， 2:面， 3:体"""
+    """流形的维度，0:点， 1:线， 2:面， 3:体"""
+
+    geometry: GeoObject
+    """流形的几何形状"""
+
+    @sp_property
+    def bbox(self) -> BBox:
+        """返回边界的包围盒，默认为 geometry 的包围盒"""
+        return self.geometry.bbox
+
+    period: typing.Tuple[bool, ...]
+    """周期性边界条件，用以描述边界的周期性，例如，边界的周期性为 (True,False) 表示第一个维度为周期性，第二个维度为非周期性"""
+
+    margin: typing.Tuple[int, ...]
+    """ 边界边界的宽度，用以描述边界的宽度，例如，边界的宽度为 1，表示边界的宽度为 1 个网格单元"""
+
+    # -------------------------------------------------------------------------------------------------------------------
+    # 网格点
+
+    shape: typing.Tuple[bool, ...]
+    """
+        网格点数组的形状
+        结构化网格 shape   如 [n,m] n,m 为网格的长度dimension
+        非结构化网格 shape 如 [<number of vertices>]
+    """
 
     @property
-    @abc.abstractmethod
-    def points(self) -> array_type:
-        return NotImplemented
+    def points(self) -> ArrayType:
+        """网格顶点（vertices）的 _坐标_  形状为 [(x0,y0,z0),(x1,y1,z1)...] ，返回数组形状为 shape= (...mesh.shape,ndim)"""
+        raise NotImplementedError(f"{self.__class__.__name__}.points")
 
     @property
-    def coordinates(self):
-        points = self.points
-        return tuple([points[..., i] for i in range(self.ndim)])
+    def coordinates(self) -> typing.Tuple[ArrayType, ...]:
+        """网格 __坐标__，形如 (X,Y,Z) ，其中 X,Y,Z 为网格点的坐标数组。 返回数组形状为 shape= (ndim,...mesh.shape)"""
+        return tuple([self.points[..., i] for i in range(self.ndim)])
 
+    # -------------------------------------------------------------------------------------------------------------------
+    # 流形属性
     @property
     def is_simple(self) -> bool:
         return self.shape is not None and len(self.shape) > 0
@@ -66,41 +82,50 @@ class Domain(SpObject):
     def is_null(self) -> bool:
         return all(d == 0 for d in self.shape)
 
-    def interpolate(self, func: typing.Callable | ArrayType) -> typing.Callable[..., ArrayType]:
-        pass
+    # -------------------------------------------------------------------------------------------------------------------
+    # 底流形$B$上定义的运算操作
 
-    def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
-        pass
+    def execute(self, func: typing.Callable, *args, **kwargs) -> ArrayType:
+        """在定义域上执行函数"""
+        raise NotImplementedError(f"{self.__class__.__name__}.execute")
 
-    def check(self, *x) -> bool | np_tp.NDArray[np.bool_]:
-        pass
+    def interpolate(self, func: typing.Callable | ArrayType, *args, **kwargs) -> typing.Callable[..., ArrayType]:
+        """依据网格对数字插值，返回插值函数"""
+        raise NotImplementedError(f"{self.__class__.__name__}.interpolate")
 
-    def eval(self, func, *xargs, **kwargs) -> ArrayType:
-        pass
+    def partial_derivative(
+        self, order, y: typing.Callable | ArrayType, *args, **kwargs
+    ) -> typing.Callable[..., ArrayType]:
+        """返回偏导数函数"""
+        raise NotImplementedError(f"{self.__class__.__name__}.partial_derivative")
 
-    def refresh(self, *args, domain=None, **kwargs) -> typing.Self:
-        if domain is not None and domain is not _not_found_:
-            self.__setstate__(domain)
-        return self
+    def antiderivative(self, y: typing.Callable | ArrayType, *args, **kwargs) -> typing.Callable[..., ArrayType]:
+        """返回积分函数"""
+        raise NotImplementedError(f"{self.__class__.__name__}.antiderivative")
 
+    # def integrate(self, y: typing.Callable | ArrayType, *args, **kwargs) -> ScalarType:
+    #     """返回积分函数"""
+    #     raise NotImplementedError(f"{self.__class__.__name__}.integrate")
 
-class DomainExpr(Domain):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        raise NotImplementedError()
+    # -------------------------------------------------------------------------------------------------------------------
+    # obsolete
+    # def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
+    #     pass
+    # def check(self, *x) -> bool | np_tp.NDArray[np.bool_]:
+    #     pass
 
 
 _TDomain = typing.TypeVar("_TDomain", bound=Domain)
 
 
 class SubDomainTraits(abc.ABC):
-    """部分定义域，用以描述函数/场所在流形的一部分。
+    """
+    部分定义域，用以描述函数/场所在流形的一部分。
     - 用以区分边界，内部
-    - 用以区分网格的 vertical、edge 和 Cell
     """
 
     def __init__(self, *args, _parent: _TDomain, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, _parent=_parent, **kwargs)
 
     indices: ArrayType
     """ 子域在主域网格点索引 """
@@ -175,23 +200,16 @@ class DomainPPoly(Domain):
             self._coordinates = np.meshgrid(*self.dims, indexing="ij")
         return self._coordinates
 
-    def interpolate(self, func: array_type, **kwargs):
+    def interpolate(self, value: ArrayType, *args, **kwargs) -> typing.Callable[..., ArrayType]:
+        """构建插值函数"""
         return interpolate(
             *self.coordinates,
-            func,
+            value,
+            *args,
             periods=self._metadata.get("periods", None),
             extrapolate=self._metadata.get("extrapolate", 0),
             **kwargs,
         )
-
-    def mask(self, *args) -> bool | np_tp.NDArray[np.bool_]:
-        return False
-
-    def check(self, *x) -> bool | np_tp.NDArray[np.bool_]:
-        return True
-
-    def eval(self, func, *xargs, **kwargs) -> ArrayType:
-        return NotImplemented
 
 
 _T = typing.TypeVar("_T")
@@ -240,7 +258,3 @@ class WithDomain(abc.ABC):
             super().insert(*args, **kwargs)
         else:
             self._set_by_domain(domain, *args, **kwargs)
-
-
-class MultiDomains(Domain, plugin_name="multiblock"):
-    sub_domains: List[Domain] = annotation()

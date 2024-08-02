@@ -62,7 +62,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             _, h = fig.get_size_inches()
             if h > 4:
                 fig.text(
-                    width,
+                    width * 0.95,
                     0.05,  # 5 * height,
                     signature,
                     verticalalignment="bottom",
@@ -82,23 +82,24 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
                     alpha=0.2,
                     # rotation="vertical",
                 )
+        fig.subplots_adjust(top=0.9, bottom=0.1, right=width * 0.9)
 
-        if output == "svg":
+        if output is None or output == "svg+html":
             buf = BytesIO()
             fig.savefig(buf, format="svg", transparent=transparent, **kwargs)
             buf.seek(0)
             fig_html = buf.getvalue().decode("utf-8")
             plt.close(fig)
-            fig = fig_html
+            res = fig_html
 
         elif output is not None:
             logger.verbose("Write figure to %s", output)
             kwargs.setdefault("format", "svg")
             fig.savefig(output, transparent=transparent, **kwargs)
             plt.close(fig)
-            fig = None
+            res = None
 
-        return fig
+        return res
 
     def draw(self, geo, *styles, view_point=None, title=None, aspect=None, scaled=False, **kwargs) -> typing.Any:
         if view_point is None:
@@ -123,6 +124,11 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
             canvas.set_ylabel(ylabel)
         else:
             canvas.set_ylabel(f" ${view_point[1].upper()}$ [m]")
+
+        if (bbox := g_styles.get("bbox", None)) is not None:
+            xmin, xmax = bbox
+            canvas.set_xlim(xmin[0], xmax[0])
+            canvas.set_ylim(xmin[1], xmax[1])
 
         pos = canvas.get_position()
 
@@ -227,23 +233,17 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         elif isinstance(obj, Polyline):
             canvas.add_patch(
-                plt.Polygon(
-                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$plot", {}))
-                )
+                plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$plot", {})))
             )
 
         elif isinstance(obj, Line):
             canvas.add_artist(
-                plt.Line2D(
-                    [obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **(s_styles | obj.styles.get("$plot", {}))
-                )
+                plt.Line2D([obj.p0[0], obj.p1[0]], [obj.p0[1], obj.p1[1]], **(s_styles | obj.styles.get("$plot", {})))
             )
 
         elif isinstance(obj, Curve):
             canvas.add_patch(
-                plt.Polygon(
-                    obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$plot", {}))
-                )
+                plt.Polygon(obj.points, fill=False, closed=obj.is_closed, **(s_styles | obj.styles.get("$plot", {})))
             )
 
         elif isinstance(obj, Rectangle):
@@ -276,9 +276,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         elif isinstance(obj, BBox):
             canvas.add_patch(
-                plt.Rectangle(
-                    obj.origin, *obj.dimensions, fill=False, **(s_styles | obj.styles.get("$plot", {}))
-                )
+                plt.Rectangle(obj.origin, *obj.dimensions, fill=False, **(s_styles | obj.styles.get("$plot", {})))
             )
 
         else:

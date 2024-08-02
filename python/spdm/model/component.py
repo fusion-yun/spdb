@@ -24,14 +24,11 @@ class Component(Entity):
     def geometry(self) -> GeoObject:
         return {}
 
-    def _repr_svg_(self):
-        from spdm.view import sp_view as sp_view
-
-        return sp_view.display(self.__view__(), scaled=True, output="svg")
-
+    
     def __view__(self, **styles) -> dict:
         geo = self.geometry()
         if isinstance(geo, GeoObject):
             return geo.__view__(**styles)
         else:
             return styles
+        

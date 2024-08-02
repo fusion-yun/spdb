@@ -52,5 +52,10 @@ class SpObject(Pluggable, SpTree):
     def __hash__(self) -> int:
         return hash(self.name)
 
-    # def __copy__(self) -> typing.Self:
-    #     return SpTree.__copy__(self)
+    def __view__(self) -> dict:
+        return {}
+
+    def _repr_svg_(self):
+        from spdm.view import sp_view
+
+        return sp_view.draw(self.__view__(), output="svg+html")
