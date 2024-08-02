@@ -76,16 +76,26 @@ class Species(abc.ABC):
     TODO: 需要 AMNS 数据库接口
     """
 
-    def __init__(self, data: str | dict, **kwargs):
-        if data is None or data is _not_found_:
-            data = kwargs.pop("label", None)
-        data_ = data
-        while isinstance(data, str):
-            data = _predef_species.get(data, _not_found_)
-            if data == data_:
-                raise RuntimeError(f"Cyclice reference {data_}!")
+    def __class_getitem__(cls, params:str):
+        return type(f"{cls.__name__}[{params}]", (cls,), {"label": params})
 
-        super().__init__(data, **kwargs)
+    def __init__(self, *args, **kwargs):
+        if len(args) == 0 or args[0] is _not_found_:
+            label = kwargs.pop("label", None)
+        elif isinstance(args[0], dict):
+            label = args[0].get("label", None)
+        elif isinstance(args[0], str):
+            label = args[0]
+        spec_ = label
+        spec = label
+        while isinstance(spec, str):
+            spec = _predef_species.get(spec, _not_found_)
+            if spec == spec_:
+                raise RuntimeError(f"Cyclice reference {spec_}!")
+        if not isinstance(spec, dict):
+            spec = {}
+
+        super().__init__(*args, **spec, **kwargs)
 
     def __hash__(self) -> int:
         return hash(self.label)

@@ -67,9 +67,7 @@ class Mesh(Domain, plugin_prefix="spdm/mesh/mesh_"):
 
     _plugin_registry = {}
 
-    @property
-    def axis_label(self) -> typing.Tuple[str, ...]:
-        return self._metadata.get("axis_label", ["[-]"] * self.ndim)
+    axis_label: typing.Tuple[str, ...]
 
     # -------------------------------------------------------------------------------------------------------------------
     # 子域，选取部分网格点
@@ -96,6 +94,7 @@ class Mesh(Domain, plugin_prefix="spdm/mesh/mesh_"):
             "bbox": (self.bbox, {"$plot": {"color": "red", "linewidth": 0.1}}),
             "mesh": {"$type": "mesh", "$data": self.coordinates, "$plot": {"color": "gray", "linewidth": 0.1}},
             "$styles": {"bbox": self.bbox.points} | styles,
+            "$view_point": self.axis_label,
         }
 
     def _repr_svg_(self):

@@ -101,13 +101,16 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         return res
 
-    def draw(self, geo, *styles, view_point=None, title=None, aspect=None, scaled=False, **kwargs) -> typing.Any:
-        if view_point is None:
-            view_point = SpView.DEFAULT_VIEWPOINT
+    def draw(
+        self, geo, *styles, view_point: str = None, title=None, aspect=None, scaled=False, **kwargs
+    ) -> typing.Any:
 
         fig, canvas = plt.subplots()
 
         geo = self._draw(canvas, geo, *styles, view_point=view_point)
+
+        if view_point is None and isinstance(geo, dict):
+            view_point = geo.get("$view_point", None)
 
         g_styles = geo.get("$styles", {}) if isinstance(geo, dict) else {}
         g_styles = merge_tree(g_styles, *styles)
@@ -116,14 +119,14 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         if xlabel is not None:
             canvas.set_xlabel(xlabel)
-        else:
-            canvas.set_xlabel(f" ${view_point[0].upper()}$ [m]")
+        elif isinstance(view_point, collections.abc.Sequence) and len(view_point) >= 1:
+            canvas.set_xlabel(view_point[0])
 
         ylabel = g_styles.get("ylabel", None)
         if ylabel is not None:
             canvas.set_ylabel(ylabel)
-        else:
-            canvas.set_ylabel(f" ${view_point[1].upper()}$ [m]")
+        elif isinstance(view_point, collections.abc.Sequence) and len(view_point) >= 2:
+            canvas.set_ylabel(view_point[1])
 
         if (bbox := g_styles.get("bbox", None)) is not None:
             xmin, xmax = bbox
@@ -152,7 +155,6 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
         canvas,
         obj: GeoObject | str | BBox | dict | list,
         *styles,
-        view_point=None,
         **kwargs,
     ):
         if False in styles:
@@ -163,7 +165,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         if hasattr(obj.__class__, "__view__"):
             try:
-                obj = obj.__view__(view_point=view_point, **kwargs)
+                obj = obj.__view__(**kwargs)
             except RuntimeError as error:
                 if SP_DEBUG == "strict":
                     raise RuntimeError(f"ignore unsupported view {obj.__class__.__name__} {obj}! ") from error
@@ -174,17 +176,17 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
 
         elif isinstance(obj, (list, List)):
             for idx, g in enumerate(obj):
-                self._draw(canvas, g, {"id": idx}, *styles, view_point=view_point, **kwargs)
+                self._draw(canvas, g, {"id": idx}, *styles, **kwargs)
 
-            self._draw(canvas, None, *styles, view_point=view_point, **kwargs)
+            self._draw(canvas, None, *styles, **kwargs)
 
         elif isinstance(obj, dict) and "$type" not in obj:
             s_styles = obj.get("$styles", {})
 
             for s in [k for k in obj.keys() if not k.startswith("$")]:
-                self._draw(canvas, obj[s], {"id": s}, s_styles, *styles, view_point=view_point, **kwargs)
+                self._draw(canvas, obj[s], {"id": s}, s_styles, *styles, **kwargs)
             else:
-                self._draw(canvas, obj.get("$data"), s_styles, *styles, view_point=view_point, **kwargs)
+                self._draw(canvas, obj.get("$data"), s_styles, *styles, **kwargs)
 
             self._draw(canvas, None, s_styles, *styles, **kwargs)
 
@@ -207,7 +209,7 @@ class MatplotlibView(SpView, plugin_name="matplotlib"):
                     logger.warning(f"ignore unknown view type {view_type}")
         elif isinstance(obj, tuple):
             g, t_styles = obj
-            self._draw(canvas, g, t_styles, *styles, view_point=view_point, **kwargs)
+            self._draw(canvas, g, t_styles, *styles, **kwargs)
 
         elif isinstance(obj, (str, int, float, bool)):
             pos = g_styles.get("position", None)

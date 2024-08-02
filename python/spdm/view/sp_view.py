@@ -32,8 +32,6 @@ class SpView(Pluggable, plugin_prefix="spdm/view/view_"):
 
     _plugin_registry = {}
 
-    DEFAULT_VIEWPOINT = "RZ"
-
     @property
     def signature(self) -> str:
         return f"Create by SpDM at {datetime.datetime.now().isoformat()}. AUTHOR: {getpass.getuser().capitalize()}. "
@@ -80,5 +78,5 @@ from spdm.view.render import Render
 SP_RENDER = os.environ.get("SP_RENDER", "graphviz")
 
 
-def render(*args, plugin=SP_RENDER, **kwargs):
-    return Render(type=plugin).apply(*args, **kwargs)
+def render(*args, **kwargs):
+    return Render(_plugin_name=SP_RENDER).apply(*args, **kwargs)

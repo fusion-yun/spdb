@@ -290,15 +290,7 @@ class GeoObject(Pluggable, SpTree, plugin_prefix="spdm/geometry/"):
         """Jupyter 通过调用 _repr_html_ 显示对象"""
         from spdm.view import sp_view
 
-        return sp_view.draw(self.__view__(), output="svg+html")
-
-    def __view__(self, *args, **kwargs) -> typing.Self:
-        """
-        TODO:
-        - 支持3D可视化 （Jupyter+？）
-
-        """
-        return self
+        return sp_view.draw(self, output="svg+html")
 
     def __str__(self) -> str:
         return f"<{self.__class__.__name__}> {self.points}</{self.__class__.__name__}>"

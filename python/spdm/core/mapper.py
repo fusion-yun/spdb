@@ -1,7 +1,8 @@
+""" Mapper class for mapping data between different schema. """
+
 import pathlib
 import typing
 from importlib import resources
-from copy import copy
 import os
 
 from spdm.utils.logger import logger
@@ -11,7 +12,7 @@ from spdm.core.entry import Entry, as_entry
 from spdm.core.file import File
 
 
-path = "spdm/mapping/{schema}"
+path: typing.List[str] = ["spdm/mapping/{schema}"]
 
 
 class Mapper(Entry):

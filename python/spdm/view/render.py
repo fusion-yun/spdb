@@ -10,7 +10,7 @@ from spdm.utils.logger import logger
 from spdm.utils.tags import _not_found_
 from spdm.core.htree import HTreeNode, Dict
 from spdm.core.template import Template
-from spdm.core.sp_object import SpObject
+from spdm.core.pluggable import Pluggable
 
 SpGraphLightTheme = Dict(
     {
@@ -71,10 +71,8 @@ SpGraphDarkTheme = SpGraphLightTheme.update(
 DefaultTheme = SpGraphDarkTheme
 
 
-class Render(SpObject):
+class Render(Pluggable, plugin_prefix="spdm/view/render_"):
 
-    _plugin_prefix = "spdm.view.render_"
-    _plugin_singletons = {}
     _plugin_registry = {}
 
     def __init__(self, *args, envs=None, theme=None, **kwargs):

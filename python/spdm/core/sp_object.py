@@ -15,6 +15,12 @@ class SpObject(Pluggable, SpTree):
 
     """
 
+    def __class_getitem__(cls, params):
+        if not isinstance(params, str):
+            raise TypeError(f"Illegal genric parameters!")
+        else:
+            return cls._get_plugin(params)
+
     def __new__(cls, *args, plugin_name=None, _entry=None, **kwargs) -> typing.Self:
         if plugin_name is None:
             plugin_name = kwargs.pop("kind", None) or kwargs.pop("type", None)

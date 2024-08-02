@@ -21,14 +21,12 @@ class Component(Entity):
         """返回当前时间点的状态树"""
         raise NotImplementedError("TODO: time_slice ")
 
-    def geometry(self) -> GeoObject:
+    def geometry(self, *args, **kwargs) -> GeoObject:
         return {}
 
-    
     def __view__(self, **styles) -> dict:
         geo = self.geometry()
         if isinstance(geo, GeoObject):
             return geo.__view__(**styles)
         else:
             return styles
-        
