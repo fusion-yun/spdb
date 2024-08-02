@@ -55,9 +55,9 @@ namespaces = true
 
 
 [tool.setuptools_scm]
-root = ".."
+root=".."
 version_file = "spdm/__version__.py"
-version_scheme = "no-guess-dev"
+# version_scheme = "no-guess-dev"
 
 [tool.black]
 line-length = 120
