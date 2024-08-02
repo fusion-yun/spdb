@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spdm"
+
+authors = [{ name = "Zhi YU", email = "yuzhi@ipp.ac.cn" }]
+
+dynamic = ["version"]
+
+readme = "README.md"
+
+license = { file = "LICENSE.txt" }
+
+description = "Ontology based modeling tools."
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+]
+
+requires-python = ">=3.11"
+
+dependencies = [
+    "f90nml",
+    "h5py",
+    "netcdf4",
+    "pyyaml",
+    "lxml",
+    "numpy",
+    "scipy",
+    "scikit_image",
+    "matplotlib",
+    "networkx",
+    "pygraphviz",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["spdm"]
+
+exclude = ["*.obsolete", "*.obsolete.*", "*.todo", "*.todo.*"]
+
+namespaces = true
+
+[tool.setuptools_scm]
+version_file = "python/spdm/__version__.py"
+# version_scheme = "no-guess-dev"
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
